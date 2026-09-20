@@ -554,9 +554,10 @@ body.admin .ph .del{display:grid}
 
       <div class="panel set-card">
         <h3>Firebase 연결</h3>
-        <p>연결하면 여러 사람이 같은 자료를 보고, 수정 내용이 바로 공유됩니다. 연결 전에는 이 기기에만 저장됩니다.</p>
+        <p>연결하면 여러 사람이 같은 자료를 보고, 수정 내용이 바로 공유됩니다.
+           <b>fire-inspection-dash 설정이 이미 들어 있으니 칸을 비운 채 눌러도 됩니다.</b></p>
         <div class="fld">
-          <label for="fbCfg">firebaseConfig 붙여넣기</label>
+          <label for="fbCfg">firebaseConfig 붙여넣기 (다른 프로젝트를 쓸 때만)</label>
           <textarea id="fbCfg" spellcheck="false" placeholder='{
   "apiKey": "...",
   "authDomain": "wongrove-check.firebaseapp.com",
@@ -1025,10 +1026,28 @@ async function fbConnect(cfg, quiet){
     return true;
   } catch(e){
     console.warn('firebase', e);
-    S.mode = 'local'; setMode();
-    if (!quiet) toast('연결 실패 — 이 기기 저장으로 계속합니다: ' + (e.message||''), true);
+    S.mode = 'local'; S.fbErr = fbReason(e); setMode();
+    if (!quiet) toast('연결 실패 — 이 기기 저장으로 계속합니다', true);
     return false;
   }
+}
+/* 실패 원인을 콘솔에서 고칠 항목으로 바꿔 줍니다 */
+function fbReason(e){
+  const c = String(e?.code || ''), m = String(e?.message || '');
+  const sandbox = !!window.claude;
+  if (sandbox)
+    return '미리보기 화면에서는 외부 접속이 막혀 Firebase에 연결할 수 없습니다. GitHub Pages 주소에서 열면 연결됩니다.';
+  if (/SDK를 불러오지/.test(m))
+    return 'Firebase 스크립트를 내려받지 못했습니다. 사내망에서 cdn.jsdelivr.net 과 gstatic.com 이 막혀 있는지 확인해 주세요.';
+  if (/operation-not-allowed|admin-restricted-operation|configuration-not-found/.test(c))
+    return '콘솔 → Authentication → Sign-in method 에서 [익명] 로그인을 사용 설정해 주세요.';
+  if (/unauthorized-domain/.test(c))
+    return `콘솔 → Authentication → Settings → 승인된 도메인 에 "${location.hostname}" 을 추가해 주세요.`;
+  if (/api-key-not-valid|invalid-api-key/.test(c))
+    return 'apiKey 가 올바르지 않습니다. 콘솔 → 프로젝트 설정 → 내 앱 의 값과 대조해 주세요.';
+  if (/network-request-failed|시간 초과/.test(c + m))
+    return '네트워크 응답이 없습니다. 인터넷 연결이나 사내 방화벽을 확인해 주세요.';
+  return (c ? c + ' — ' : '') + (m || '알 수 없는 오류');
 }
 let seeded = false;
 function subscribe(){
@@ -1044,7 +1063,17 @@ function subscribe(){
       S.rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       afterLoad();
     },
-    err => { console.warn(err); toast('실시간 동기화가 끊겼습니다', true); }
+    err => {
+      console.warn(err);
+      const c = String(err?.code || '');
+      S.fbErr = /permission-denied/.test(c)
+        ? 'Firestore 규칙이 막고 있습니다. 콘솔 → Firestore → 규칙 에 firestore.rules 를 붙여넣고 [게시] 해 주세요.'
+        : /not-found|failed-precondition|unavailable/.test(c)
+        ? 'Firestore 데이터베이스가 아직 없습니다. 콘솔 → Firestore Database → 데이터베이스 만들기 (위치: asia-northeast3 서울)'
+        : '동기화 오류: ' + (err?.message || c);
+      S.mode = 'local'; setMode();
+      toast('자료를 읽지 못했습니다 — 설정 탭에서 원인을 확인하세요', true);
+    }
   );
 }
 function setMode(){
@@ -1054,7 +1083,7 @@ function setMode(){
   $('#stMode').textContent = S.mode === 'cloud' ? 'Firestore (실시간 공유)' : '브라우저 (IndexedDB)';
   $('#fbState').textContent = S.mode === 'cloud'
     ? `연결됨 · 프로젝트 ${S.fb.app().options.projectId} · SDK ${S.cdn} · 수정 내용이 모든 기기에 즉시 반영됩니다.`
-    : '연결 전에는 이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.';
+    : (S.fbErr || '연결 전에는 이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.');
 }
 
 /* ═══ 저장 / 삭제 ══════════════════════════════════════════════ */
@@ -1833,14 +1862,33 @@ $('#pinSave').onclick = async () => {
   if (v.length < 4) return toast('4자리 이상 입력해 주세요', true);
   ls('wg_pin', await sha(v)); $('#pinNew').value = ''; toast('비밀번호를 변경했습니다');
 };
+/* firebaseConfig 읽기 — 키를 하나씩 찾아냅니다.
+   따옴표 없는 키, 홑따옴표, 끝의 세미콜론, import 문이 붙은 통째 복사본,
+   그리고 값 안에 콜론이 들어 있는 appId 까지 모두 그대로 받습니다. */
+const CFG_KEYS = ['apiKey','authDomain','projectId','storageBucket',
+                  'messagingSenderId','appId','measurementId','databaseURL'];
+function parseCfg(t){
+  const out = {};
+  for (const k of CFG_KEYS){
+    const m = t.match(new RegExp('["\']?' + k + '["\']?\\s*:\\s*["\']([^"\']+)["\']'));
+    if (m) out[k] = m[1];
+  }
+  return out;
+}
 $('#fbConnect').onclick = async () => {
   let cfg = FB_DEFAULT;
   const t = $('#fbCfg').value.trim();
   if (t){
-    try { cfg = JSON.parse(t.replace(/^[^{]*/,'').replace(/[^}]*$/,'').replace(/(\w+)\s*:/g,'"$1":').replace(/'/g,'"').replace(/,(\s*})/g,'$1')); }
-    catch(e){ return toast('설정을 읽지 못했습니다. 중괄호 부분만 붙여넣어 주세요.', true); }
+    const got = parseCfg(t);
+    const miss = ['apiKey','projectId','appId'].filter(k => !got[k]);
+    if (miss.length){
+      $('#fbState').textContent = `설정에서 ${miss.join(', ')} 를 찾지 못했습니다. 콘솔의 firebaseConfig 를 그대로 붙여넣거나, 칸을 비우고 누르면 내장된 fire-inspection-dash 설정으로 연결합니다.`;
+      return toast('설정에서 ' + miss.join(', ') + ' 를 찾지 못했습니다', true);
+    }
+    cfg = got;
   }
   $('#fbConnect').disabled = true;
+  $('#fbState').textContent = '연결하는 중…';
   await fbConnect(cfg); renderStats();
   $('#fbConnect').disabled = false;
 };
