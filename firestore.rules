@@ -1,0 +1,60 @@
+rules_version = '2';
+
+/* ═══════════════════════════════════════════════════════════════
+   원그로브 종합점검 현황판 — Firestore 보안 규칙
+   Firebase 콘솔 → Firestore Database → 규칙 에 붙여넣고 [게시]
+   ═══════════════════════════════════════════════════════════════ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ── 관리자 이메일 목록 ──────────────────────────────────────
+       구글 로그인을 쓸 때 수정·삭제를 허용할 계정입니다.
+       소방안전관리 책임자와 대리자만 넣으세요.                     */
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email in [
+               'withwe68@gmail.com'
+             ];
+    }
+
+    /* 로그인만 되어 있으면 되는 경우(익명 로그인 포함) */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /* 지적사항이 갖춰야 할 최소 형식 */
+    function validItem() {
+      return request.resource.data.keys().hasAll(['half', 'sheet'])
+          && request.resource.data.half is string
+          && request.resource.data.half.size() <= 12
+          && request.resource.data.size() < 60;
+    }
+
+    match /items/{itemId} {
+
+      /* 조회는 누구나 — 현장에서 링크만으로 확인할 수 있게 */
+      allow read: if true;
+
+      /* ── 1단계(기본): 대시보드의 관리자 비밀번호로 통제 ───────
+         익명 로그인 사용자면 쓰기 허용. 화면의 관리자 버튼이
+         1차 관문 역할을 합니다. 사내에서 링크를 공유해 쓰는
+         단계에 적합합니다.                                      */
+      allow create, update: if isSignedIn() && validItem();
+      allow delete: if isSignedIn();
+
+      /* ── 2단계(권장): 구글 로그인 + 이메일 확인 ───────────────
+         외부에 링크가 알려질 가능성이 있으면 위 3줄을 지우고
+         아래 2줄의 주석을 풀어 쓰세요. 서버가 직접 막아 줍니다.
+
+      allow create, update: if isAdmin() && validItem();
+      allow delete: if isAdmin();
+      */
+    }
+
+    /* 그 밖의 경로는 모두 차단 */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

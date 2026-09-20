@@ -1,605 +1,1905 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>소방시설 종합점검 통합 관리 시스템</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="원그로브 소방시설 종합점검 지적사항 관리 대시보드">
+<meta name="theme-color" content="#141B23">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141B23'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23DE3B2C'/%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{color-scheme:dark}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>원그로브 점검 현황판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+/* ── 원그로브 방재실 다크 팔레트 (기존 연동로직 시뮬레이터와 동일 토큰) ───── */
+:root{
+  --bg:#141B23; --panel:#1E2A34; --panel2:#26333E; --raise:#2E3C48;
+  --line:#36464F; --line2:#44565F;
+  --ink:#DFE7EE; --dim:#93A6B5; --faint:#6B808F;
+  --undone:#C8811F; --doing:#3C8FC7; --done:#2FA35F; --hold:#7E93A3; --excl:#5A6E7E;
+  --crit:#DE3B2C; --accent:#E07B39;
+  --undone-t:#E8B265; --doing-t:#7CBCE6; --done-t:#5FCB8D; --crit-t:#F0796C;
+  --r:6px; --rl:10px;
+  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:14px; line-height:1.55; -webkit-text-size-adjust:100%;
+  padding-inline:16px;
+}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:600}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.wrap{max-width:1400px;margin:0 auto;padding-block:0 72px}
+[hidden]{display:none!important}
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome (Icons) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    .animate-in { animation: fadeIn 0.3s ease-out forwards; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  </style>
+/* ── 상단바 ───────────────────────────────────────────────────────── */
+.topbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:60;
+  background:linear-gradient(180deg,var(--bg) 84%,rgba(20,27,35,.86));
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+  margin-inline:-16px; padding:10px 16px;
+}
+.topbar-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand .mark{width:26px;height:26px;border-radius:5px;background:var(--crit);flex:none;
+  display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.brand b{font-size:15px;font-weight:600;letter-spacing:-.2px;white-space:nowrap}
+.brand small{color:var(--faint);font-size:11.5px;white-space:nowrap}
+.spacer{flex:1 1 auto}
+.sel{
+  background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:6px 10px;font-size:13px;
+}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;
+  font-size:11.5px;font-weight:500;border:1px solid var(--line);background:var(--panel2);color:var(--dim);
+  white-space:nowrap;
+}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
+.badge.live .dot{background:var(--done)}
+.badge.local .dot{background:var(--doing)}
 
-  <!-- React & ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- SheetJS for Excel Upload -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  
-  <!-- Firebase App & Firestore & Storage (Compat ver for CDN) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage-compat.js"></script>
+.btn{
+  background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:7px 13px;font-size:13px;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;transition:background .13s,border-color .13s;
+}
+.btn:hover{background:var(--raise);border-color:var(--line2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1B1206;font-weight:600}
+.btn.primary:hover{background:#EC8B48;border-color:#EC8B48}
+.btn.danger{border-color:#7B3229;color:var(--crit-t);background:#2B1D1B}
+.btn.danger:hover{background:#3A2320;border-color:var(--crit)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--dim)}
+.btn.ghost:hover{background:var(--panel2);color:var(--ink)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn[disabled]{opacity:.42;cursor:not-allowed}
+.btn-admin{
+  background:transparent;border:1px dashed var(--line2);color:var(--faint);
+  border-radius:var(--r);padding:6px 11px;font-size:12px;letter-spacing:.02em;
+}
+.btn-admin:hover{color:var(--ink);border-color:var(--dim);border-style:solid}
+body.admin .btn-admin{background:#2B1D1B;border:1px solid var(--crit);border-style:solid;color:var(--crit-t);font-weight:600}
+
+/* 관리자 모드일 때만 보이는 것 */
+.admin-only{display:none}
+body.admin .admin-only{display:inline-flex}
+body.admin tr.row .admin-only{display:inline-flex}
+.admin-rail{display:none}
+body.admin .admin-rail{display:flex}
+
+/* ── 탭 ───────────────────────────────────────────────────────────── */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -16px 20px;padding:0 16px;overflow-x:auto}
+.tab{
+  background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
+  padding:11px 14px;font-size:13.5px;font-weight:500;white-space:nowrap;margin-bottom:-1px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab .cnt{font-family:var(--mono);font-size:11px;color:var(--faint);margin-left:5px}
+
+/* ── 패널 ─────────────────────────────────────────────────────────── */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);padding:18px}
+.panel-h{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.panel-h h2{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.panel-h .sub{font-size:12px;color:var(--faint);margin-left:auto}
+
+/* ── KPI ──────────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);
+  padding:14px 16px;position:relative;overflow:hidden;
+}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--faint)}
+.kpi.k-all::before{background:var(--line2)}
+.kpi.k-undone::before{background:var(--undone)}
+.kpi.k-doing::before{background:var(--doing)}
+.kpi.k-done::before{background:var(--done)}
+.kpi.k-hold::before{background:var(--hold)}
+.kpi .lab{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
+.kpi .val{font-family:var(--mono);font-size:29px;font-weight:600;line-height:1.15;margin-top:3px}
+.kpi .val small{font-size:13px;color:var(--faint);font-weight:400;margin-left:3px}
+.kpi .delta{font-size:11.5px;color:var(--faint);margin-top:2px}
+.kpi.k-undone .val{color:var(--undone-t)}
+.kpi.k-done .val{color:var(--done-t)}
+
+/* 완료율 게이지 */
+.rate{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.ring{width:104px;height:104px;flex:none}
+.rate-legend{display:flex;flex-direction:column;gap:7px;min-width:180px;flex:1}
+.lg-row{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.lg-row .sw{width:10px;height:10px;border-radius:2px;flex:none}
+.lg-row .nm{color:var(--dim)}
+.lg-row .vv{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 막대 차트 ────────────────────────────────────────────────────── */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:minmax(74px,auto) 1fr auto;align-items:center;gap:10px;font-size:12.5px}
+.bar-row .nm{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:14px;background:var(--panel2);border-radius:3px;overflow:hidden;display:flex;gap:2px;min-width:40px}
+.bar-seg{height:100%;border-radius:0}
+.bar-seg:first-child{border-radius:3px 0 0 3px}
+.bar-seg:last-child{border-radius:0 4px 4px 0}
+.bar-seg:only-child{border-radius:3px}
+.bar-row .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);font-size:12px;min-width:56px;text-align:right}
+.bar-row .vv em{font-style:normal;color:var(--faint)}
+.bars.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:9px 30px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.chart-legend i{width:10px;height:10px;border-radius:2px;display:block}
+
+/* ── 필터 ─────────────────────────────────────────────────────────── */
+.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.search{
+  flex:1 1 220px;min-width:180px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:var(--r);padding:8px 12px;font-size:13px;
+}
+.search::placeholder{color:var(--faint)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{
+  background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  border-radius:99px;padding:4px 11px;font-size:12px;white-space:nowrap;
+}
+.chip:hover{color:var(--ink);border-color:var(--line2)}
+.chip[aria-pressed="true"]{background:var(--raise);border-color:var(--dim);color:var(--ink);font-weight:500}
+.chip .n{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:5px}
+.chip[aria-pressed="true"] .n{color:var(--dim)}
+.filter-group{display:flex;align-items:flex-start;gap:10px;margin-bottom:9px}
+.filter-group>.gl{font-size:11px;color:var(--faint);letter-spacing:.05em;padding-top:6px;min-width:56px;flex:none;text-transform:uppercase}
+
+/* ── 표 ───────────────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--rl);background:var(--panel)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;font-size:13px}
+thead th{
+  position:sticky;top:0;z-index:5;background:var(--panel2);color:var(--dim);
+  font-weight:600;font-size:11.5px;letter-spacing:.04em;text-align:left;
+  padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.row{cursor:pointer}
+tbody tr.row:hover td{background:var(--panel2)}
+tbody tr.row.sel td{background:var(--raise)}
+td.c-no{font-family:var(--mono);color:var(--faint);font-size:12px;white-space:nowrap}
+td.c-loc{max-width:210px;font-size:12.5px;color:var(--dim)}
+td.c-prob{max-width:300px;min-width:180px}
+td.c-prob b{font-weight:400;display:block;white-space:pre-line}
+td.c-prob i{font-style:normal;display:block;color:var(--faint);font-size:11.5px;margin-top:3px}
+td.c-date{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;
+  font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid;
+}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.p-미조치{color:var(--undone-t);border-color:#6A4715;background:#2B2010}
+.p-진행중{color:var(--doing-t);border-color:#1F4C68;background:#122430}
+.p-조치완료{color:var(--done-t);border-color:#1E5636;background:#10261A}
+.p-보류{color:var(--hold);border-color:var(--line2);background:var(--panel2)}
+.p-제외{color:var(--excl);border-color:var(--line);background:var(--panel2)}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;background:var(--panel2);
+  border:1px solid var(--line);font-size:11px;color:var(--dim);white-space:nowrap}
+.thumbs{display:flex;gap:3px}
+.thumbs img{width:34px;height:28px;object-fit:cover;border-radius:3px;border:1px solid var(--line);display:block;background:var(--panel2)}
+.thumbs .more{font-size:10px;color:var(--faint);align-self:center;font-family:var(--mono)}
+.nophoto{color:var(--faint);font-size:11px;font-family:var(--mono)}
+
+/* ── 빈 상태 ──────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:52px 20px;color:var(--faint)}
+.empty h3{font-size:15px;color:var(--dim);margin-bottom:6px;font-weight:500}
+.empty p{font-size:13px;margin:0 auto 18px;max-width:420px;line-height:1.6}
+
+/* ── 드로어 ───────────────────────────────────────────────────────── */
+.scrim{position:fixed;inset:0;background:rgba(10,14,19,.66);z-index:80;backdrop-filter:blur(2px)}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:81;
+  background:var(--panel);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.4);
+}
+.drawer-h{
+  display:flex;align-items:center;gap:10px;padding:14px 18px;
+  border-bottom:1px solid var(--line);flex:none;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+}
+.drawer-h h3{font-size:14px;flex:1;min-width:0}
+.drawer-h .key{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.drawer-b{overflow-y:auto;padding:18px;flex:1}
+.drawer-f{
+  display:flex;gap:9px;padding:13px 18px;border-top:1px solid var(--line);flex:none;
+  background:var(--panel2);padding-bottom:calc(13px + env(safe-area-inset-bottom,0px));
+}
+.fld{margin-bottom:14px}
+.fld>label{display:block;font-size:11.5px;color:var(--dim);letter-spacing:.03em;margin-bottom:5px;font-weight:500}
+.fld input[type=text],.fld input[type=date],.fld select,.fld textarea{
+  width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:8px 10px;font-size:13px;
+}
+.fld textarea{resize:vertical;min-height:62px;line-height:1.5}
+.fld input:disabled,.fld select:disabled,.fld textarea:disabled{opacity:.62;cursor:not-allowed;background:var(--panel)}
+.fld .hint{font-size:11px;color:var(--faint);margin-top:4px}
+.fld-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fld-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ro{font-size:13px;white-space:pre-line;background:var(--panel2);border:1px solid var(--line);
+  border-radius:var(--r);padding:8px 10px;min-height:36px}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
+.chk input{width:15px;height:15px;accent-color:var(--accent)}
+
+.photoset{margin-bottom:16px}
+.photoset>.ph-h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.photoset>.ph-h span{font-size:11.5px;color:var(--dim);font-weight:500;letter-spacing:.03em}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
+.ph{position:relative;aspect-ratio:4/3;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--panel2)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.ph .del{
+  position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:4px;
+  background:rgba(20,27,35,.85);border:1px solid var(--line2);color:var(--crit-t);
+  display:none;place-items:center;font-size:13px;line-height:1;padding:0;
+}
+body.admin .ph .del{display:grid}
+.ph-add{
+  aspect-ratio:4/3;border:1px dashed var(--line2);border-radius:var(--r);background:transparent;
+  color:var(--faint);font-size:11.5px;display:grid;place-items:center;
+}
+.ph-add:hover{border-color:var(--dim);color:var(--ink)}
+.ph-none{font-size:12px;color:var(--faint);font-family:var(--mono)}
+
+.lightbox{position:fixed;inset:0;background:rgba(8,11,15,.94);z-index:95;display:grid;place-items:center;padding:24px}
+.lightbox img{max-width:100%;max-height:88vh;border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lightbox .cap{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:var(--dim);font-size:12.5px}
+
+/* ── 모달 ─────────────────────────────────────────────────────────── */
+.modal{
+  position:fixed;z-index:90;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(420px,calc(100% - 32px));background:var(--panel);
+  border:1px solid var(--line2);border-radius:var(--rl);padding:22px;
+  box-shadow:0 24px 70px rgba(0,0,0,.55);
+}
+.modal h3{font-size:15px;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--dim);margin:0 0 16px;line-height:1.6}
+.modal input[type=password],.modal input[type=text]{
+  width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:10px 12px;font-size:16px;font-family:var(--mono);letter-spacing:.2em;text-align:center;
+}
+.modal .err{color:var(--crit-t);font-size:12px;margin-top:8px;min-height:16px}
+.modal-row{display:flex;gap:9px;margin-top:16px}
+.modal-row .btn{flex:1;justify-content:center}
+
+/* ── 업로드 ───────────────────────────────────────────────────────── */
+.drop{
+  border:1px dashed var(--line2);border-radius:var(--rl);padding:30px 20px;text-align:center;
+  background:var(--panel);transition:border-color .15s,background .15s;
+}
+.drop.over{border-color:var(--accent);background:var(--panel2)}
+.drop h3{font-size:14px;margin-bottom:6px}
+.drop p{font-size:12.5px;color:var(--faint);margin:0 0 16px;line-height:1.6}
+.prog{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:14px}
+.prog>i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;border-radius:3px}
+.log{
+  font-family:var(--mono);font-size:11.5px;color:var(--dim);background:var(--bg);
+  border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-top:12px;
+  max-height:170px;overflow-y:auto;white-space:pre-wrap;line-height:1.65;text-align:left;
+}
+.log b{color:var(--done-t);font-weight:500}
+.log em{color:var(--undone-t);font-style:normal}
+
+/* ── 설정 ─────────────────────────────────────────────────────────── */
+.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px}
+.set-card h3{font-size:13.5px;margin-bottom:5px}
+.set-card>p{font-size:12.5px;color:var(--faint);margin:0 0 14px;line-height:1.6}
+.set-card textarea{
+  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:11.5px;
+  min-height:130px;resize:vertical;line-height:1.5;
+}
+.steps{counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{counter-increment:s;position:relative;padding-left:26px;margin-bottom:9px;font-size:12.5px;color:var(--dim);line-height:1.6}
+.steps li::before{
+  content:counter(s);position:absolute;left:0;top:1px;width:17px;height:17px;border-radius:50%;
+  background:var(--panel2);border:1px solid var(--line2);color:var(--faint);
+  font-family:var(--mono);font-size:10px;display:grid;place-items:center;
+}
+.steps code{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:1px 5px;
+  font-family:var(--mono);font-size:11px;color:var(--ink)}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:none}
+.kv dt{color:var(--dim)}
+.kv dd{margin:0;font-family:var(--mono);color:var(--ink);text-align:right}
+
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));
+  background:var(--raise);border:1px solid var(--line2);border-radius:99px;
+  padding:9px 18px;font-size:13px;z-index:99;box-shadow:0 8px 26px rgba(0,0,0,.45);
+}
+.toast.bad{border-color:var(--crit);color:var(--crit-t)}
+
+/* ── 반응형 ───────────────────────────────────────────────────────── */
+@media (max-width:720px){
+  .kpi .val{font-size:24px}
+  .fld-2,.fld-3{grid-template-columns:1fr}
+  .drawer{width:100%}
+  .brand small{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+
+/* ── 인쇄 (소방서 제출·현장 배포용) ───────────────────────────────── */
+@media print{
+  :root{--bg:#fff;--panel:#fff;--panel2:#fff;--ink:#000;--dim:#333;--faint:#666;--line:#999}
+  body{background:#fff;color:#000;font-size:10pt;padding:0}
+  .topbar,.tabs,.toolbar,.chips,.drawer,.scrim,.no-print,.btn,.kpi::before{display:none!important}
+  .panel,.table-wrap{border:1px solid #999;break-inside:avoid;border-radius:0}
+  table{min-width:0;font-size:9pt}
+  thead th{background:#eee;color:#000;position:static}
+  tbody tr{break-inside:avoid}
+  .pill{border:1px solid #666;color:#000!important;background:none!important}
+  .thumbs img{width:26px;height:20px}
+}
+</style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body>
 
-  <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">WG</span>
+      <span>
+        <b>원그로브 종합점검 현황판</b><br>
+        <small>소방시설 법정점검 지적사항 관리</small>
+      </span>
+    </div>
+    <div class="spacer"></div>
+    <label class="badge" style="gap:8px">
+      점검회차
+      <select id="halfSel" class="sel" style="padding:2px 6px;font-size:12px;border:none;background:transparent">
+        <option value="2026H2">26년 하반기</option>
+        <option value="2026H1">26년 상반기</option>
+      </select>
+    </label>
+    <span class="badge local" id="modeBadge"><span class="dot"></span><span id="modeText">로컬 저장</span></span>
+    <button class="btn-admin" id="adminBtn" aria-pressed="false">관리자</button>
+  </div>
+</header>
 
-    // Firebase 설정
-    const firebaseConfig = {
-      apiKey: "AIzaSyAo6uhvr2T-ZMfdbQ_Ck4mSGsialQ7hZEI",
-      authDomain: "fire-inspection-dash.firebaseapp.com",
-      projectId: "fire-inspection-dash",
-      storageBucket: "fire-inspection-dash.firebasestorage.app",
-      messagingSenderId: "569597734948",
-      appId: "1:569597734948:web:5c40bbd1fd09602e1668b1",
-      measurementId: "G-6QK465Y0N7"
-    };
+<div class="wrap">
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-view="board">현황판</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="list">지적내역<span class="cnt" id="tabCnt">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-view="upload">점검표 업로드</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="settings">설정</button>
+  </nav>
 
-    // Firebase 초기화
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+  <!-- ══ 현황판 ═══════════════════════════════════════════════════ -->
+  <section id="view-board" role="tabpanel">
+    <div class="kpi-grid">
+      <div class="kpi k-all"><div class="lab">전체 지적</div><div class="val num" id="kAll">0<small>건</small></div><div class="delta" id="kAllSub">—</div></div>
+      <div class="kpi k-undone"><div class="lab">미조치</div><div class="val num" id="kUndone">0<small>건</small></div><div class="delta" id="kUndoneSub">—</div></div>
+      <div class="kpi k-doing"><div class="lab">진행중</div><div class="val num" id="kDoing">0<small>건</small></div><div class="delta" id="kDoingSub">—</div></div>
+      <div class="kpi k-done"><div class="lab">조치완료</div><div class="val num" id="kDone">0<small>건</small></div><div class="delta" id="kDoneSub">—</div></div>
+      <div class="kpi k-hold"><div class="lab">보류 · 제외</div><div class="val num" id="kHold">0<small>건</small></div><div class="delta" id="kHoldSub">—</div></div>
+    </div>
 
-    const App = () => {
-      // 데이터 및 필터 상태
-      const [data, setData] = useState([]);
-      const [filterBuilding, setFilterBuilding] = useState('전체');
-      const [filterStatus, setFilterStatus] = useState('전체');
-      const [searchTerm, setSearchTerm] = useState('');
-      const [viewMode, setViewMode] = useState('list');
-      const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
-      
-      // UI 상태
-      const [isUploading, setIsUploading] = useState(false);
-      const [notification, setNotification] = useState(null);
-      const [isLoading, setIsLoading] = useState(true);
-      
-      // 모달 상태
-      const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-      const [selectedItem, setSelectedItem] = useState(null);
-      const [imageUploadProgress, setImageUploadProgress] = useState(0);
-
-      const fileInputRef = useRef(null);
-      const imageInputRef = useRef(null);
-
-      // 1. Firebase Firestore 실시간 연동
-      useEffect(() => {
-        const unsubscribe = db.collection("inspections").onSnapshot((snapshot) => {
-          const fireStoreData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setData(fireStoreData);
-          setIsLoading(false);
-        }, (error) => {
-          console.error("DB 연동 에러:", error);
-          showToast("DB 연결 실패. 규칙을 확인하세요.", "error");
-          setIsLoading(false);
-        });
-        return () => unsubscribe();
-      }, []);
-
-      const showToast = (message, type = 'info') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
-      };
-
-      // 날짜 포맷 (엑셀 날짜 변환 포함)
-      const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        if (typeof dateStr === 'number') {
-          const date = new Date((dateStr - (25567 + 2)) * 86400 * 1000);
-          return date.toISOString().split('T')[0];
-        }
-        return dateStr.toString().replace(/[./]/g, '-').replace(/\s/g, '').trim();
-      };
-
-      const normalizeBuilding = (str) => {
-        if (!str) return '기타동';
-        const trimmed = str.toString().trim().replace(/동/g, '');
-        return `${trimmed}동`;
-      };
-
-      // 2. 엑셀/CSV 업로드 및 스마트 파싱
-      const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setIsUploading(true);
-        const reader = new FileReader();
-
-        reader.onload = async (evt) => {
-          try {
-            const bstr = evt.target.result;
-            const wb = window.XLSX.read(bstr, { type: 'binary', cellDates: true });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const rawRows = window.XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-            let headerIndex = -1;
-            let map = {};
-
-            // 헤더 위치 자동 감지
-            for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
-              const rowText = (rawRows[i] || []).join('');
-              if (rowText.includes('점검일자') && (rowText.includes('문제점') || rowText.includes('지적'))) {
-                headerIndex = i;
-                rawRows[i].forEach((col, idx) => {
-                  if(!col) return;
-                  const text = col.toString().replace(/\s/g, '');
-                  if(text.includes('점검일자')) map.date = idx;
-                  if(text.includes('시설') || text.includes('설비')) map.cat = idx;
-                  if(text.includes('상세')) map.sub = idx;
-                  if(text.includes('동별')) map.bld = idx;
-                  if(text.includes('층') || text.includes('위치')) map.zone = idx;
-                  if(text.includes('문제점') || text.includes('지적')) map.issue = idx;
-                  if(text.includes('대책') || text.includes('계획')) map.plan = idx;
-                  if(text.includes('완료일')) map.comp = idx;
-                  if(text.includes('비고')) map.remark = idx;
-                });
-                break;
-              }
-            }
-
-            if (headerIndex === -1) throw new Error("양식을 인식할 수 없습니다. '점검일자' 및 '문제점' 헤더가 필요합니다.");
-
-            const batch = db.batch();
-            let count = 0;
-
-            for (let i = headerIndex + 1; i < rawRows.length; i++) {
-              const row = rawRows[i];
-              if (!row || row.length < 5) continue;
-              
-              const dateVal = formatDate(row[map.date]);
-              const issueVal = row[map.issue] || '';
-              if (!dateVal && !issueVal) continue;
-
-              const completionVal = formatDate(row[map.comp]);
-              
-              const newDocRef = db.collection("inspections").doc();
-              batch.set(newDocRef, {
-                date: dateVal,
-                category: row[map.cat] || '기타',
-                subCategory: row[map.sub] || '',
-                building: normalizeBuilding(row[map.bld]),
-                zone: row[map.zone] || '',
-                issue: issueVal.toString(),
-                plan: row[map.plan] || '',
-                completionDate: completionVal,
-                status: completionVal ? '완료' : '조치중',
-                remark: row[map.remark] || '',
-                imageUrl: ''
-              });
-              count++;
-            }
-
-            await batch.commit();
-            showToast(`${count}건의 점검 내역 업로드 완료!`, 'success');
-          } catch (err) {
-            showToast(err.message, 'error');
-          } finally {
-            setIsUploading(false);
-          }
-        };
-        reader.readAsBinaryString(file);
-        e.target.value = null;
-      };
-
-      // 3. 사진 업로드 (Firebase Storage)
-      const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file || !selectedItem) return;
-
-        if (file.size > 5 * 1024 * 1024) {
-          showToast("사진 용량은 5MB 이하여야 합니다.", "error");
-          return;
-        }
-
-        const fileExt = file.name.split('.').pop();
-        const fileName = `inspection_${selectedItem.id}_${Date.now()}.${fileExt}`;
-        const storageRef = storage.ref(`inspections/${fileName}`);
-        
-        const uploadTask = storageRef.put(file);
-
-        uploadTask.on('state_changed', 
-          (snapshot) => {
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setImageUploadProgress(progress);
-          }, 
-          (error) => {
-            console.error(error);
-            showToast("사진 업로드 실패", "error");
-            setImageUploadProgress(0);
-          }, 
-          async () => {
-            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-            
-            await db.collection("inspections").doc(selectedItem.id).update({
-              imageUrl: downloadURL
-            });
-            
-            setSelectedItem(prev => ({ ...prev, imageUrl: downloadURL }));
-            setImageUploadProgress(0);
-            showToast("사진이 성공적으로 첨부되었습니다.", "success");
-          }
-        );
-      };
-
-      // 4. 상태 토글
-      const handleToggleStatus = async (id, currentStatus) => {
-        const isNowCompleted = currentStatus !== '완료';
-        const today = new Date().toISOString().split('T')[0];
-        try {
-          await db.collection("inspections").doc(id).update({
-            status: isNowCompleted ? '완료' : '조치중',
-            completionDate: isNowCompleted ? today : ''
-          });
-          showToast(isNowCompleted ? '완료 처리되었습니다.' : '조치중으로 변경되었습니다.', 'success');
-        } catch (error) {
-          showToast('상태 변경 실패', 'error');
-        }
-      };
-
-      // 데이터 가공 및 필터링
-      const processedData = useMemo(() => {
-        return data.filter(item => {
-          const matchBuilding = filterBuilding === '전체' || item.building === filterBuilding;
-          const matchStatus = filterStatus === '전체' || item.status === filterStatus;
-          const search = searchTerm.toLowerCase();
-          const matchSearch = item.issue.toLowerCase().includes(search) || 
-                              item.zone.toLowerCase().includes(search) ||
-                              item.category.toLowerCase().includes(search);
-          return matchBuilding && matchStatus && matchSearch;
-        }).sort((a, b) => {
-          const dateA = new Date(a.date.replace(/-/g, '/'));
-          const dateB = new Date(b.date.replace(/-/g, '/'));
-          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
-        });
-      }, [data, filterBuilding, filterStatus, searchTerm, sortConfig]);
-
-      // 그룹화
-      const groupedData = useMemo(() => {
-        if (viewMode === 'list') return null;
-        const groups = {};
-        processedData.forEach(item => {
-          const key = viewMode === 'date' ? (item.date || '날짜 미상') : item.building;
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(item);
-        });
-
-        const sortedKeys = Object.keys(groups).sort((a, b) => {
-          if (viewMode === 'date') {
-            return new Date(b.replace(/\./g, '-')) - new Date(a.replace(/\./g, '-'));
-          }
-          return a.localeCompare(b);
-        });
-
-        return sortedKeys.map(key => ({ key, items: groups[key] }));
-      }, [processedData, viewMode]);
-
-      // 통계
-      const stats = useMemo(() => {
-        const total = data.length;
-        const completed = data.filter(d => d.status === '완료').length;
-        const pending = total - completed;
-        const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
-        return { total, completed, pending, rate };
-      }, [data]);
-
-      // 정렬 핸들러
-      const requestSort = (key) => {
-        let direction = 'asc';
-        if (sortConfig.key === key && sortConfig.direction === 'asc') {
-          direction = 'desc';
-        }
-        setSortConfig({ key, direction });
-      };
-
-      return (
-        <div className="min-h-screen p-4 md:p-8">
-          {/* Toast Notification */}
-          {notification && (
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in">
-              {notification.type === 'success' ? <i className="fas fa-check-circle text-emerald-400"></i> : <i className="fas fa-times-circle text-rose-400"></i>}
-              <span className="font-medium text-sm">{notification.message}</span>
-            </div>
-          )}
-
-          <div className="max-w-7xl mx-auto space-y-6">
-            
-            {/* Header */}
-            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-100 uppercase">원그로브 안전방재센터</span>
-                  {isLoading && <span className="text-[10px] text-slate-400 animate-pulse"><i className="fas fa-wifi"></i> DB 동기화 중...</span>}
-                </div>
-                <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                  <i className="fas fa-shield-alt text-blue-600"></i>
-                  종합점검 이력 관제 대시보드
-                </h1>
-                <p className="text-slate-500 text-sm mt-1">엑셀 점검일보 업로드 및 현장 사진 클라우드 동기화 지원</p>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <button 
-                  onClick={() => showToast("신규 등록 모달 개발중", "info")}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white shadow-sm transition-all"
-                >
-                  <i className="fas fa-plus-circle"></i> 현장 직접 등록
-                </button>
-                
-                <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
-
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".xlsx, .xls, .csv" className="hidden" />
-                <button 
-                  onClick={() => fileInputRef.current.click()}
-                  disabled={isUploading}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-50"
-                >
-                  {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-excel"></i>}
-                  엑셀 일괄 업로드
-                </button>
-              </div>
-            </header>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatCard title="총 누적 지적건수" value={stats.total} icon="fa-clipboard-list" color="blue" />
-              <StatCard title="조치 완료" value={stats.completed} icon="fa-check-circle" color="emerald" />
-              <StatCard title="조치 대기" value={stats.pending} icon="fa-clock" color="amber" />
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[11px] font-black text-slate-400 uppercase">종합 조치율</span>
-                  <div className="text-blue-600 text-xl font-black">{stats.rate}%</div>
-                </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-full transition-all duration-700" style={{ width: `${stats.rate}%` }}></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-3 bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button onClick={() => setViewMode('list')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                  <i className="fas fa-list"></i> 목록
-                </button>
-                <button onClick={() => setViewMode('date')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'date' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                  <i className="fas fa-calendar-day"></i> 일자별
-                </button>
-                <button onClick={() => setViewMode('building')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'building' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                  <i className="fas fa-building"></i> 동별
-                </button>
-              </div>
-
-              <div className="h-8 w-px bg-slate-200 hidden md:block mx-1"></div>
-
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                <i className="fas fa-building text-slate-400 text-sm"></i>
-                <select value={filterBuilding} onChange={(e) => setFilterBuilding(e.target.value)} className="bg-transparent text-sm font-bold outline-none cursor-pointer">
-                  <option value="전체">모든 동</option>
-                  <option value="A동">A동</option>
-                  <option value="B동">B동</option>
-                  <option value="C동">C동</option>
-                  <option value="D동">D동</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                <i className="fas fa-filter text-slate-400 text-sm"></i>
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-transparent text-sm font-bold outline-none cursor-pointer">
-                  <option value="전체">모든 상태</option>
-                  <option value="완료">완료</option>
-                  <option value="조치중">조치중</option>
-                </select>
-              </div>
-
-              <div className="flex-grow flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 focus-within:border-blue-400">
-                <i className="fas fa-search text-slate-400 text-sm"></i>
-                <input type="text" placeholder="지적 내용 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent text-sm w-full outline-none font-medium" />
-              </div>
-            </div>
-
-            {/* Data Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="p-4 text-xs font-black text-slate-500 uppercase cursor-pointer hover:bg-slate-100" onClick={() => requestSort('date')}>
-                        <div className="flex items-center gap-1">점검일자 <i className={`fas fa-sort${sortConfig.key === 'date' ? (sortConfig.direction === 'asc' ? '-up text-blue-500' : '-down text-blue-500') : ''}`}></i></div>
-                      th>
-                      <th className="p-4 text-xs font-black text-slate-500 uppercase">동/구역</th>
-                      <th className="p-4 text-xs font-black text-slate-500 uppercase w-[35%]">지적 내용 및 계획</th>
-                      <th className="p-4 text-xs font-black text-slate-500 uppercase text-center">현장사진</th>
-                      <th className="p-4 text-xs font-black text-slate-500 uppercase text-center">상태</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {processedData.length > 0 ? (
-                      viewMode === 'list' ? (
-                        processedData.map(item => <InspectionRow key={item.id} item={item} onSelect={() => { setSelectedItem(item); setIsDetailModalOpen(true); }} onToggleStatus={handleToggleStatus} />)
-                      ) : (
-                        groupedData.map(group => (
-                          <React.Fragment key={group.key}>
-                            <tr className="bg-slate-100/50">
-                              <td colSpan="5" className="p-3 pl-4 text-sm font-black text-slate-800 border-b border-slate-200">
-                                <i className={`fas ${viewMode === 'date' ? 'fa-calendar-day' : 'fa-building'} text-blue-500 mr-2`}></i>
-                                {group.key} <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] ml-1">{group.items.length}건</span>
-                              </td>
-                            </tr>
-                            {group.items.map(item => <InspectionRow key={`group-${item.id}`} item={item} onSelect={() => { setSelectedItem(item); setIsDetailModalOpen(true); }} onToggleStatus={handleToggleStatus} />)}
-                          </React.Fragment>
-                        ))
-                      )
-                    ) : (
-                      <tr><td colSpan="5" className="p-20 text-center text-slate-400"><i className="fas fa-folder-open text-4xl mb-3 block"></i>데이터가 없습니다.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. 상세 및 사진 업로드 모달 */}
-          {isDetailModalOpen && selectedItem && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in">
-                
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                  <h3 className="font-black text-lg text-slate-800 flex items-center gap-2">
-                    <span className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs">{selectedItem.building}</span>
-                    지적 사항 상세 및 조치
-                  </h3>
-                  <button onClick={() => setIsDetailModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors"><i className="fas fa-times"></i></button>
-                </div>
-
-                <div className="p-6 overflow-y-auto space-y-5">
-                  {/* 사진 영역 */}
-                  <div className="bg-slate-100 rounded-2xl p-2 flex flex-col items-center justify-center min-h-[250px] relative overflow-hidden group border border-slate-200">
-                    {selectedItem.imageUrl ? (
-                      <img src={selectedItem.imageUrl} alt="점검 사진" className="w-full h-auto max-h-[400px] object-contain rounded-xl" />
-                    ) : (
-                      <div className="text-center text-slate-400 space-y-3">
-                        <i className="fas fa-camera text-5xl opacity-30"></i>
-                        <p className="text-sm font-semibold">등록된 현장 사진이 없습니다.</p>
-                      </div>
-                    )}
-                    
-                    {/* 사진 업로드 버튼 오버레이 */}
-                    <div className={`absolute inset-0 bg-slate-900/40 flex flex-col items-center justify-center transition-opacity backdrop-blur-[2px] ${selectedItem.imageUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
-                      <input type="file" ref={imageInputRef} onChange={handleImageUpload} accept="image/*" capture="environment" className="hidden" />
-                      <button onClick={() => imageInputRef.current.click()} className="bg-white text-slate-800 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                        <i className="fas fa-upload"></i> {selectedItem.imageUrl ? '사진 변경하기' : '스마트폰/PC 사진 첨부'}
-                      </button>
-                      {imageUploadProgress > 0 && (
-                        <div className="w-48 h-2 bg-slate-200 rounded-full mt-4 overflow-hidden shadow-inner">
-                          <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${imageUploadProgress}%` }}></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 텍스트 정보 */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="col-span-2 sm:col-span-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500 block mb-1">위치 / 구역</span>
-                      <div className="font-bold text-slate-800">{selectedItem.zone || '-'}</div>
-                    </div>
-                    <div className="col-span-2 sm:col-span-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[11px] font-bold text-slate-500 block mb-1">설비 구분</span>
-                      <div className="font-bold text-slate-800">{selectedItem.category} &gt; {selectedItem.subCategory}</div>
-                    </div>
-                    <div className="col-span-2 bg-rose-50/50 p-4 rounded-xl border border-rose-200">
-                      <span className="text-[11px] font-bold text-rose-500 block mb-1">지적 내용 (문제점)</span>
-                      <div className="font-bold text-rose-900">{selectedItem.issue}</div>
-                    </div>
-                    <div className="col-span-2 bg-blue-50/50 p-4 rounded-xl border border-blue-200">
-                      <span className="text-[11px] font-bold text-blue-500 block mb-1">조치 대책 / 계획</span>
-                      <div className="font-bold text-blue-900">{selectedItem.plan || '내용 없음'}</div>
-                    </div>
-                    {selectedItem.remark && (
-                      <div className="col-span-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-500 block mb-1">비고 / 작업자</span>
-                        <div className="font-medium text-slate-700">{selectedItem.remark}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-5 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-                  <div className="text-xs font-bold text-slate-500">
-                    완료일자: <span className="text-slate-800">{selectedItem.completionDate || '미완료'}</span>
-                  </div>
-                  <button 
-                    onClick={() => { handleToggleStatus(selectedItem.id, selectedItem.status); setIsDetailModalOpen(false); }}
-                    className={`px-6 py-3 rounded-xl font-bold text-sm text-white shadow-sm transition-transform active:scale-95 ${selectedItem.status === '완료' ? 'bg-slate-700 hover:bg-slate-800' : 'bg-emerald-600 hover:bg-emerald-700'}`}
-                  >
-                    {selectedItem.status === '완료' ? <><i className="fas fa-undo mr-1"></i> 조치중으로 되돌리기</> : <><i className="fas fa-check mr-1"></i> 조치 완료 처리하기</>}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    const StatCard = ({ title, value, icon, color }) => (
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 group">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-[11px] font-black text-slate-400 uppercase mb-1">{title}</p>
-            <h3 className="text-3xl font-black text-slate-800">{value} <span className="text-sm font-bold text-slate-400">건</span></h3>
-          </div>
-          <div className={`w-10 h-10 flex items-center justify-center rounded-xl bg-${color}-50 text-${color}-500 border border-${color}-100 group-hover:scale-110 transition-transform`}>
-            <i className={`fas ${icon} text-lg`}></i>
-          </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+      <div class="panel">
+        <div class="panel-h"><h2>조치 완료율</h2><span class="sub" id="rateSub"></span></div>
+        <div class="rate">
+          <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
+            <title id="ringTitle">조치 완료율</title>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#26333E" stroke-width="13"></circle>
+            <circle id="ringArc" cx="60" cy="60" r="50" fill="none" stroke="#2FA35F" stroke-width="13"
+                    stroke-linecap="round" stroke-dasharray="0 314" transform="rotate(-90 60 60)"></circle>
+            <text id="ringPct" x="60" y="59" text-anchor="middle" fill="#DFE7EE"
+                  font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">0%</text>
+            <text x="60" y="76" text-anchor="middle" fill="#6B808F" font-family="IBM Plex Sans KR, sans-serif" font-size="11">완료율</text>
+          </svg>
+          <div class="rate-legend" id="rateLegend"></div>
         </div>
       </div>
-    );
 
-    const InspectionRow = ({ item, onSelect, onToggleStatus }) => (
-      <tr className="hover:bg-blue-50/40 transition-colors group cursor-pointer" onClick={onSelect}>
-        <td className="p-4 text-sm font-semibold text-slate-600 whitespace-nowrap">{item.date}</td>
-        <td className="p-4">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black shadow-sm border bg-slate-50 text-slate-600 border-slate-200">
-              {item.building.charAt(0)}
-            </span>
-            <span className="text-sm font-bold text-slate-700 truncate max-w-[120px]">{item.zone}</span>
-          </div>
-        </td>
-        <td className="p-4 text-sm">
-          <div className="font-bold text-slate-800 mb-0.5">{item.issue}</div>
-          <div className="text-[11px] font-medium text-slate-400 flex items-center gap-2">
-            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{item.category} &gt; {item.subCategory}</span>
-            {item.plan && <span className="text-blue-500"><i className="fas fa-tools mr-1"></i>{item.plan}</span>}
-          </div>
-        </td>
-        <td className="p-4 text-center">
-          {item.imageUrl ? (
-             <div className="inline-flex w-8 h-8 items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg"><i className="fas fa-image"></i></div>
-          ) : (
-             <div className="inline-flex w-8 h-8 items-center justify-center bg-slate-50 text-slate-300 border border-slate-100 rounded-lg group-hover:bg-blue-50 group-hover:text-blue-400 transition-colors"><i className="fas fa-camera"></i></div>
-          )}
-        </td>
-        <td className="p-4 text-center">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onToggleStatus(item.id, item.status); }}
-            className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-black shadow-sm border transition-transform active:scale-95 ${
-              item.status === '완료' 
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-            }`}
-          >
-            <i className={`fas ${item.status === '완료' ? 'fa-check-circle' : 'fa-clock'} mr-1.5`}></i>
-            {item.status.toUpperCase()}
-          </button>
-        </td>
-      </tr>
-    );
+      <div class="panel">
+        <div class="panel-h"><h2>처리주체별 진척</h2><span class="sub">건수 · 상태 구성</span></div>
+        <div class="bars" id="barHandler"></div>
+        <div class="chart-legend" id="statusLegend"></div>
+      </div>
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+      <div class="panel">
+        <div class="panel-h"><h2>시설구분별 지적건수</h2><span class="sub">미조치 기준 정렬</span></div>
+        <div class="bars" id="barFac"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>동·구역별 지적건수</h2><span class="sub">미조치 기준 정렬</span></div>
+        <div class="bars" id="barDong"></div>
+      </div>
+
+      <div class="panel" style="grid-column:1/-1">
+        <div class="panel-h"><h2>미조치 다발 항목</h2><span class="sub">상세구분 기준 상위 10</span></div>
+        <div class="bars split" id="barDetail"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 지적내역 ═════════════════════════════════════════════════ -->
+  <section id="view-list" role="tabpanel" hidden>
+    <div class="toolbar">
+      <input id="q" class="search" type="text" placeholder="구역 · 문제점 · 개선대책 · 법규 검색" autocomplete="off">
+      <select id="sortSel" class="sel">
+        <option value="def">기본 정렬 (구역 · 번호)</option>
+        <option value="date">점검일자 최신순</option>
+        <option value="status">미조치 우선</option>
+        <option value="fac">시설구분별</option>
+      </select>
+      <button class="btn sm" id="resetFilter">필터 해제</button>
+      <div class="spacer"></div>
+      <button class="btn sm no-print" id="printBtn">인쇄</button>
+      <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
+      <button class="btn sm primary admin-only" id="newBtn">＋ 지적 추가</button>
+    </div>
+
+    <div id="filterBox">
+      <div class="filter-group"><span class="gl">상태</span><div class="chips" id="fStatus"></div></div>
+      <div class="filter-group"><span class="gl">시설</span><div class="chips" id="fFac"></div></div>
+      <div class="filter-group"><span class="gl">동·구역</span><div class="chips" id="fDong"></div></div>
+      <div class="filter-group"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
+    </div>
+
+    <div class="table-wrap" id="tableWrap">
+      <table>
+        <thead><tr>
+          <th style="width:48px">No.</th>
+          <th style="width:88px">점검일자</th>
+          <th style="width:96px">시설구분</th>
+          <th style="width:86px">상세구분</th>
+          <th style="width:190px">층 및 구역</th>
+          <th>점검결과 문제점 · 개선대책</th>
+          <th style="width:74px">처리주체</th>
+          <th style="width:88px">상태</th>
+          <th style="width:78px">완료일</th>
+          <th style="width:104px">사진</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="listEmpty" class="empty" hidden>
+      <h3>표시할 지적사항이 없습니다</h3>
+      <p>필터를 해제하거나, <b>점검표 업로드</b> 탭에서 점검업체가 작성한 엑셀 파일을 올려 주세요.</p>
+      <button class="btn" id="toUpload">점검표 업로드로 이동</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--faint);margin-top:10px" id="listFoot"></p>
+  </section>
+
+  <!-- ══ 업로드 ═══════════════════════════════════════════════════ -->
+  <section id="view-upload" role="tabpanel" hidden>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+      <div>
+        <div class="drop" id="drop">
+          <h3>점검업체 엑셀 파일 올리기</h3>
+          <p>기존 <b>「종합점검 지적처리 현황」</b> 양식을 그대로 올리면 됩니다.<br>
+             시트에 붙여 넣은 <b>문제점 사진 · 위치표기 · 조치후 사진</b>까지 셀 위치를 읽어 자동으로 분류합니다.</p>
+          <input type="file" id="file" accept=".xlsx,.xlsm" hidden>
+          <button class="btn primary" id="pickBtn">엑셀 파일 선택</button>
+          <div class="prog" id="prog" hidden><i></i></div>
+          <div class="log" id="log" hidden></div>
+        </div>
+        <p style="font-size:12px;color:var(--faint);margin-top:12px;line-height:1.7">
+          같은 회차에 <b>구역 + No.</b>가 같은 건이 이미 있으면 덮어쓰지 않고 <b>사진과 빈 항목만 채웁니다.</b>
+          상반기 파일을 그대로 올려 사진을 붙이는 용도로도 쓸 수 있습니다.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>업체 전달용 양식 안내</h2></div>
+        <p style="font-size:12.5px;color:var(--dim);margin:0 0 14px;line-height:1.7">
+          점검업체에는 아래 열 구성을 그대로 유지해 달라고 전달하시면 됩니다.
+          머리글 이름으로 열을 찾기 때문에 <b>열 순서가 바뀌어도</b> 인식합니다.
+        </p>
+        <dl style="margin:0">
+          <div class="kv"><dt>머리글 행</dt><dd>4행 (No. 로 시작)</dd></div>
+          <div class="kv"><dt>필수 열</dt><dd>No. · 점검일자 · 시설구분</dd></div>
+          <div class="kv"><dt>상세구분 · 동별</dt><dd>선택 항목 자동 매칭</dd></div>
+          <div class="kv"><dt>사진 열</dt><dd>문제점 사진 · 위치표기 · 조치후사진</dd></div>
+          <div class="kv"><dt>처리방안</dt><dd>자체처리 · 건물분 · 입주사 · 보류</dd></div>
+          <div class="kv"><dt>완료일</dt><dd>입력 시 조치완료로 판정</dd></div>
+        </dl>
+        <p style="font-size:12px;color:var(--faint);margin:14px 0 0;line-height:1.7">
+          시트는 <b>업무 A~D동 · 판매시설층 · 트레이더스 · 지하주차장 · 소방펌프실 · 가스계소화설비 · 제연설비 · 경보설비</b> 순으로
+          나누어 두면 동·구역 필터가 자동으로 잡힙니다.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 설정 ═════════════════════════════════════════════════════ -->
+  <section id="view-settings" role="tabpanel" hidden>
+    <div class="set-grid">
+
+      <div class="panel set-card">
+        <h3>관리자 비밀번호</h3>
+        <p>상단 <b>관리자</b> 버튼을 눌러 입력하는 번호입니다. 이 번호를 아는 사람만 수정·삭제·업로드를 할 수 있습니다.</p>
+        <div class="fld"><label for="pinNew">새 비밀번호 (4자리 이상)</label>
+          <input type="text" id="pinNew" placeholder="현재: 0000" autocomplete="off"></div>
+        <button class="btn" id="pinSave">비밀번호 변경</button>
+        <p style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6">
+          이 기기의 브라우저에만 저장됩니다. Firebase를 연결하면 모든 기기에 공통 적용됩니다.
+        </p>
+      </div>
+
+      <div class="panel set-card">
+        <h3>Firebase 연결</h3>
+        <p>연결하면 여러 사람이 같은 자료를 보고, 수정 내용이 바로 공유됩니다. 연결 전에는 이 기기에만 저장됩니다.</p>
+        <div class="fld">
+          <label for="fbCfg">firebaseConfig 붙여넣기</label>
+          <textarea id="fbCfg" spellcheck="false" placeholder='{
+  "apiKey": "...",
+  "authDomain": "wongrove-check.firebaseapp.com",
+  "projectId": "wongrove-check",
+  "storageBucket": "wongrove-check.firebasestorage.app",
+  "appId": "1:...:web:..."
+}'></textarea>
+        </div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn primary" id="fbConnect">연결하기</button>
+          <button class="btn" id="fbPush">이 기기 자료 올리기</button>
+          <button class="btn ghost" id="fbOff">연결 해제</button>
+        </div>
+        <p id="fbState" style="font-size:12px;color:var(--faint);margin:12px 0 0;line-height:1.6"></p>
+      </div>
+
+      <div class="panel set-card">
+        <h3>사진 저장 위치</h3>
+        <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.</p>
+        <div class="fld">
+          <label for="photoDst">저장 위치</label>
+          <select id="photoDst">
+            <option value="local">이 기기 (브라우저 저장소)</option>
+            <option value="drive">Google Drive 폴더</option>
+            <option value="storage">Firebase Storage</option>
+          </select>
+        </div>
+        <div class="fld" id="driveBox" hidden>
+          <label for="driveFolder">Drive 폴더 ID</label>
+          <input type="text" id="driveFolder" placeholder="공유 폴더 URL 뒤쪽 ID" autocomplete="off">
+          <div class="hint">드라이브에서 폴더를 열었을 때 주소 <code>/folders/</code> 뒤의 문자열입니다.</div>
+        </div>
+        <div class="fld">
+          <label for="maxPx">사진 가로·세로 최대 크기</label>
+          <select id="maxPx">
+            <option value="0">원본 그대로</option>
+            <option value="1600">1600px (권장)</option>
+            <option value="1200" selected>1200px</option>
+            <option value="900">900px (가장 가벼움)</option>
+          </select>
+          <div class="hint">업로드할 때 자동으로 줄여서 저장합니다.</div>
+        </div>
+      </div>
+
+      <div class="panel set-card">
+        <h3>구축 절차</h3>
+        <p>GitHub Pages로 공개하고 Firebase로 자료를 공유하는 순서입니다.</p>
+        <ol class="steps">
+          <li>GitHub에 저장소를 만들고 이 <code>index.html</code>을 올립니다.</li>
+          <li>저장소 <code>Settings → Pages</code>에서 <code>main / root</code>를 선택해 공개합니다.</li>
+          <li>Firebase 콘솔에서 프로젝트를 만들고 <code>Firestore</code>를 <b>asia-northeast3(서울)</b>로 생성합니다.</li>
+          <li><code>프로젝트 설정 → 웹 앱 추가</code>에서 나온 <code>firebaseConfig</code>를 위 칸에 붙여넣고 연결합니다.</li>
+          <li><code>Authentication → 익명</code>을 사용 설정하고, 보안 규칙을 함께 드린 <code>firestore.rules</code>로 교체합니다.</li>
+          <li>사진을 Drive에 둘 경우 공유 폴더를 만들고 폴더 ID를 위에 입력합니다.</li>
+        </ol>
+      </div>
+
+      <div class="panel set-card">
+        <h3>자료 관리</h3>
+        <p>현재 <b id="stCount">0</b>건 · 사진 <b id="stPhoto">0</b>장을 보관 중입니다.</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn" id="expJson">전체 백업 (JSON)</button>
+          <button class="btn" id="impJsonBtn">백업 불러오기</button>
+          <input type="file" id="impJson" accept=".json" hidden>
+          <button class="btn danger admin-only" id="wipeBtn">현재 회차 전체 삭제</button>
+        </div>
+        <dl style="margin:16px 0 0">
+          <div class="kv"><dt>저장 방식</dt><dd id="stMode">브라우저 (IndexedDB)</dd></div>
+          <div class="kv"><dt>26년 상반기</dt><dd id="stH1">0건</dd></div>
+          <div class="kv"><dt>26년 하반기</dt><dd id="stH2">0건</dd></div>
+        </dl>
+      </div>
+
+      <div class="panel set-card">
+        <h3>선택 항목 기초자료</h3>
+        <p>입력 칸의 선택지는 26년 상반기 종합점검 <b>479건</b>의 실제 지적내역과 소방시설법 시행령 별표1 분류를 합쳐 만들었습니다.</p>
+        <dl style="margin:0">
+          <div class="kv"><dt>시설구분</dt><dd id="oFac">0종</dd></div>
+          <div class="kv"><dt>상세구분</dt><dd id="oDet">0종</dd></div>
+          <div class="kv"><dt>관련법규</dt><dd id="oLaw">0종</dd></div>
+          <div class="kv"><dt>개선대책</dt><dd id="oAct">0종</dd></div>
+        </dl>
+        <p style="font-size:11.5px;color:var(--faint);margin:14px 0 0;line-height:1.7">
+          상세구분을 고르면 <b>관련법규</b>와 <b>개선대책</b>이 자동으로 추천됩니다.
+          예: 헤드 → NFPC103 제10조 / 감지기 → NFPC203 제7조 / 차압 → NFPC501A 제6조
+        </p>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<!-- 상세 · 편집 드로어 -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="지적사항 상세">
+  <div class="drawer-h">
+    <h3 id="dTitle">지적사항</h3>
+    <span class="key num" id="dKey"></span>
+    <button class="btn ghost sm" id="dClose" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-b" id="dBody"></div>
+  <div class="drawer-f">
+    <button class="btn danger admin-only" id="dDelete">삭제</button>
+    <div class="spacer"></div>
+    <button class="btn" id="dCancel">닫기</button>
+    <button class="btn primary admin-only" id="dSave">저장</button>
+    <span id="dLocked" style="font-size:12px;color:var(--faint);align-self:center">보기 전용 · 수정하려면 상단 <b>관리자</b></span>
+  </div>
+</aside>
+
+<div class="lightbox" id="lightbox" hidden><img id="lbImg" alt="지적사항 사진 확대"><div class="cap" id="lbCap"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   원그로브 종합점검 현황판
+   ─ 단일 파일 · GitHub Pages 배포 · Firebase(Firestore/Storage) 연동
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 기본 Firebase 설정 (fire-inspection-dash) ──────────────────────
+   웹 API 키는 클라이언트에 공개되는 값입니다. 실제 보호는 함께 제공한
+   firestore.rules / storage.rules 의 보안 규칙이 담당합니다.            */
+const FB_DEFAULT = {
+  apiKey: "AIzaSyAo6uhvr2T-ZMfdbQ_Ck4mSGsialQ7hZEI",
+  authDomain: "fire-inspection-dash.firebaseapp.com",
+  projectId: "fire-inspection-dash",
+  storageBucket: "fire-inspection-dash.firebasestorage.app",
+  messagingSenderId: "569597734948",
+  appId: "1:569597734948:web:5c40bbd1fd09602e1668b1",
+  measurementId: "G-6QK465Y0N7"
+};
+/* SDK 는 compat(전역) 빌드를 씁니다. 앞쪽 CDN이 막히면 다음 것으로 넘어갑니다.
+   jsdelivr = 어디서나 열림 / gstatic = 구글 공식·국내 회선에서 빠름          */
+const FB_SOURCES = [
+  { name:'jsdelivr', base:'https://cdn.jsdelivr.net/npm/firebase@10.14.1/' },
+  { name:'gstatic',  base:'https://www.gstatic.com/firebasejs/12.19.0/' }
+];
+
+/* 항목별 선택지 — 26년 상반기 종합점검 479건 실적 + 소방시설법 시행령 별표1 체계 기준 */
+const OPT = {
+  zone: ['업무 A동','업무 B동','업무 C동','업무 D동','판매시설층','트레이더스','지하주차장','소방펌프실','가스계소화설비','제연설비','경보설비'],
+  dong: ['A','B','C','D','판매','트레이더스','주차장','중앙통로','공용'],
+  floor: ['옥상','11층','10층','9층','8층','7층','6층','5층','4층','3층','2층','1층','B1','B2','B3','B4','B5','B6','B7'],
+  fac: ['소화설비','소화기구','경보설비','피난설비','소화활동설비','제연설비','기타설비'],
+  handler: ['자체처리','건물분','입주사','보류','권장사항','제외'],
+  handlerNote: { '자체처리':'시설팀 자체 보수', '건물분':'시공사(태영건설) 하자', '입주사':'임차인 조치', '보류':'조치 보류', '권장사항':'권장 사항', '제외':'점검대상 제외' },
+  status: ['미조치','진행중','조치완료','보류','제외'],
+
+  /* 시설구분 → 상세구분 */
+  detail: {
+    '소화설비': ['헤드','스프링클러','옥내소화전','옥외소화전','소방펌프','압력챔버','알람밸브','유수검지장치','말단시험밸브','송수구','가스계 소화설비','물분무설비','자동소화장치'],
+    '소화기구': ['소화기','자동확산소화기','간이소화용구','소화기 표지','소화기 함'],
+    '경보설비': ['감지기','수신기','중계기','발신기','음향장치(경종)','시각경보기','비상방송','전원반','자동화재속보설비','누전경보기','가스누설경보기','비상경보설비'],
+    '피난설비': ['유도등','유도표지','비상조명등','휴대용 비상조명등','완강기','구조대','피난사다리','인명구조기구','피난안내도','피난관련'],
+    '소화활동설비': ['제연설비','비상콘센트','방수구','연결송수관','연결살수설비','무선통신보조설비','연소방지설비'],
+    '제연설비': ['급기구','배기구','제연댐퍼','제연팬','차압','방연풍속','플랩댐퍼','제연커튼'],
+    '기타설비': ['방화셔터','방화문','방화구획','관통부','슬라이딩도어','출입통제','가연물','피난통로','비상구','배연창']
+  },
+
+  /* 상세구분 → 관련법규 (첫 항목이 기본 추천) */
+  law: {
+    '헤드': ['NFPC103 제10조','NFPC103 제8조'],
+    '스프링클러': ['NFPC103 제8조','NFPC103 제10조'],
+    '옥내소화전': ['NFPC102 제6조','NFPC102 제7조'],
+    '소방펌프': ['NFPC103 제5조','NFPC102 제5조'],
+    '알람밸브': ['NFPC103 제8조'],
+    '유수검지장치': ['NFPC103 제8조'],
+    '말단시험밸브': ['NFPC103 제8조'],
+    '송수구': ['NFPC103 제6조'],
+    '가스계 소화설비': ['NFPC107A 제10조','NFPC106 제10조','NFPC107 제10조'],
+    '물분무설비': ['NFPC104 제4조'],
+    '자동소화장치': ['NFPC101 제4조'],
+    '소화기': ['NFPC101 제4조','소방시설 설치 및 관리에 관한 법률 제16조'],
+    '자동확산소화기': ['NFPC101 제4조'],
+    '소화기 표지': ['NFPC101 제4조'],
+    '소화기 함': ['NFPC101 제4조'],
+    '감지기': ['NFPC203 제7조','NFPC203 제5조'],
+    '수신기': ['NFPC203 제5조'],
+    '중계기': ['NFPC203 제6조'],
+    '발신기': ['NFPC203 제9조'],
+    '음향장치(경종)': ['NFPC203 제8조'],
+    '시각경보기': ['NFPC203 제8조'],
+    '비상방송': ['NFPC202 제4조'],
+    '전원반': ['NFPC203 제10조'],
+    '자동화재속보설비': ['NFPC204 제4조'],
+    '누전경보기': ['NFPC205 제4조'],
+    '가스누설경보기': ['NFPC206 제4조'],
+    '비상경보설비': ['NFPC201 제4조'],
+    '유도등': ['NFPC303 제10조','NFPC303 제5조','NFPC303 제6조'],
+    '유도표지': ['NFPC303 제8조'],
+    '비상조명등': ['NFPC304 제4조'],
+    '휴대용 비상조명등': ['NFPC304 제5조'],
+    '완강기': ['NFPC301 제5조','NFPC301 제4조'],
+    '구조대': ['NFPC301 제5조'],
+    '피난사다리': ['NFPC301 제5조'],
+    '인명구조기구': ['NFPC302 제4조'],
+    '피난안내도': ['소방시설 설치 및 관리에 관한 법률 제36조'],
+    '피난관련': ['소방시설 설치 및 관리에 관한 법률 제16조'],
+    '제연설비': ['NFPC501 제6조','NFPC501 제8조','NFPC501A 제6조'],
+    '급기구': ['NFPC501A 제6조','NFPC501A 제15조'],
+    '배기구': ['NFPC501 제8조'],
+    '제연댐퍼': ['NFPC501 제8조','NFPC501A 제15조'],
+    '제연팬': ['NFPC501 제9조'],
+    '차압': ['NFPC501A 제6조'],
+    '방연풍속': ['NFPC501A 제10조'],
+    '플랩댐퍼': ['NFPC501A 제11조'],
+    '제연커튼': ['NFPC501 제4조'],
+    '비상콘센트': ['NFPC504 제4조'],
+    '방수구': ['NFPC502 제6조'],
+    '연결송수관': ['NFPC502 제4조'],
+    '연결살수설비': ['NFPC503 제4조'],
+    '무선통신보조설비': ['NFPC505 제5조'],
+    '연소방지설비': ['NFPC506 제4조'],
+    '방화셔터': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','자동방화셔터 및 방화문의 기준 제3조'],
+    '방화문': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','소방시설 설치 및 관리에 관한 법률 제16조'],
+    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '관통부': ['건축자재등 품질인정 및 관리기준 제33조 외','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '슬라이딩도어': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '출입통제': ['소방시설 설치 및 관리에 관한 법률 제16조'],
+    '가연물': ['소방시설 설치 및 관리에 관한 법률 제16조'],
+    '피난통로': ['소방시설 설치 및 관리에 관한 법률 제16조'],
+    '비상구': ['소방시설 설치 및 관리에 관한 법률 제16조'],
+    '배연창': ['건축법 시행령 제51조']
+  },
+
+  /* 상세구분 → 자주 쓰는 개선대책 */
+  action: {
+    '헤드': ['도색 제거','뿜칠 제거','보양재 제거','헤드 교체','헤드 이설','헤드 설치','차폐판 재고정','살수장애 없도록 보완','반자 마감 보수'],
+    '스프링클러': ['헤드 교체','배관 보수','누수 보수','살수장애 없도록 보완'],
+    '옥내소화전': ['호스 정비','방수압 조정','함 표지 보완'],
+    '소방펌프': ['펌프 보수','압력스위치 조정','기동점 재설정'],
+    '가스계 소화설비': ['기동용기 점검','선택밸브 보수','방출표시등 보수','경보장치 보수'],
+    '소화기': ['소화기 비치','소화기 교체','표시 보완','축압력 확인','소화기 재배치','충전 및 정비'],
+    '자동확산소화기': ['자동확산소화기 설치','교체'],
+    '소화기 표지': ['표시 보완','축광식 표지 부착'],
+    '감지기': ['감지기 이설','감지기 설치','감지기 교체','감지기 청소','배선 보수','동작에 장애 없도록 보완'],
+    '수신기': ['수신기 보수','프로그램 수정','통신선로 보수','예비전원 교체'],
+    '중계기': ['중계기 교체','통신선로 보수'],
+    '발신기': ['발신기 보수','표시등 교체'],
+    '음향장치(경종)': ['경종 교체','음량 조정','배선 보수'],
+    '시각경보기': ['시각경보기 보수','시각경보기 설치','설치높이 조정'],
+    '비상방송': ['비상방송 설비 보수','앰프 보수','스피커 교체','연동 선로 보수'],
+    '유도등': ['유도등 교체','유도등 보수','예비전원 교체','점등상태 보완','시야 확보'],
+    '유도표지': ['유도표지 부착','축광식 표지 교체'],
+    '비상조명등': ['비상조명등 교체','예비전원 교체'],
+    '휴대용 비상조명등': ['휴대용 비상조명등 비치','표시 보완'],
+    '완강기': ['완강기 비치','지지대 보수','표지 부착','강하공간 확보'],
+    '피난안내도': ['피난안내도 부착','현행화'],
+    '제연설비': ['댐퍼 보수','풍량 조정','연동 선로 보수','제연커튼 보수','급기가압 조정'],
+    '급기구': ['차압공 확인 및 설치','급기구 보수','댐퍼 개방 확인'],
+    '제연댐퍼': ['댐퍼 보수','연동 확인','모터 교체'],
+    '차압': ['차압 재조정','플랩댐퍼 조정'],
+    '비상콘센트': ['비상콘센트 보수','표시 보완'],
+    '방수구': ['방수구 보수','개폐밸브 정비','표지 부착'],
+    '방화셔터': ['방화셔터 보수','연동 선로 보수','동작에 장애 없도록 보완','하강장애물 제거','일체형 셔터 개선'],
+    '방화문': ['방화문 닫힘상태 유지','도어클로저 보수','고임물 제거','방화문 교체','개방장치 연동 보수'],
+    '방화구획': ['구획 복구','관통부 마감 보수','내화충전재 시공'],
+    '관통부': ['관통부 마감 보수','내화충전재 시공'],
+    '슬라이딩도어': ['연동 선로 보수','개방장치 보수'],
+    '출입통제': ['연동 해제 확인','비상시 개방 보완','프로그램 수정'],
+    '가연물': ['가연물 정리','적치물 제거'],
+    '피난통로': ['피난에 장애 없도록 보완','적치물 제거','폭 확보'],
+    '비상구': ['개방상태 확보','표지 보완']
+  },
+
+  /* 자주 쓰는 지적 문구 */
+  problem: {
+    '헤드': ['헤드 도색','헤드 뿜칠 부착','보양재 미제거','차폐판 고정상태 불량','헤드 살수장애','헤드 미설치','반자 이격'],
+    '감지기': ['감지기 설치위치 부적정','감지기 미설치','감지기 동작 불량','감지기 이격거리 미달','감지기 오염','감지기 장애물로 동작 장애'],
+    '소화기': ['소화기 미비치','소화기 축압력 부족','소화기 표지 미부착','소화기 적치물로 사용장애'],
+    '유도등': ['예비전원 불량','점등상태 불량','시야 장애','유도등 미설치'],
+    '방화셔터': ['연동 동작 불량','하강장애물 존재','일체형 셔터 피난문 불량','수동조작함 불량'],
+    '방화문': ['방화문 개방상태 유지','도어클로저 불량','방화문 틈새 과다','고임물로 상시 개방'],
+    '제연설비': ['댐퍼 동작 불량','차압 기준 미달','방연풍속 미달','연동 불량','급기구 폐쇄'],
+    '완강기': ['지지대 고정 불량','강하공간 장애물','표지 미부착','설치위치 부적정'],
+    '수신기': ['통신상태 불량','화재표시 불량','동작시험 불가','예비전원 불량']
+  }
+};
+
+
+/* ── 샘플 2건 (26년 하반기) ─────────────────────────────────────── */
+const SAMPLE = [
+  { half:'2026H2', sheet:'판매시설층', no:1, date:'2026-10-05',
+    fac:'소화설비', detail:'헤드', dong:'B', floor:'2층', loc:'VIPS 룸 2개소 앞',
+    problem:'스프링클러 상향식 헤드 도색으로 감열부 피복\n(살수 지연 우려)',
+    action:'도색 제거', law:'NFPC103 제10조', handler:'입주사',
+    status:'미조치', done:'', submit:false, note:'입주사 통보 완료', sample:true },
+  { half:'2026H2', sheet:'업무 A동', no:2, date:'2026-10-05',
+    fac:'경보설비', detail:'감지기', dong:'A', floor:'11층', loc:'E/L 홀 공조 급기구 하부',
+    problem:'차동식 스포트형 감지기가 급기구로부터 1.5m 이내 설치\n(기류 영향으로 동작 지연 우려)',
+    action:'감지기 이설', law:'NFPC203 제7조', handler:'건물분',
+    status:'진행중', done:'', submit:false, note:'태영 보수 예정', sample:true }
+];
+
+/* ── 상태 색 (dataviz 검증 통과: L밴드·채도·CVD·대비) ─────────────── */
+const SC = { '미조치':'#C8811F', '진행중':'#3C8FC7', '조치완료':'#2FA35F', '보류':'#7E93A3', '제외':'#5A6E7E' };
+const HALF_LABEL = { '2026H1':'26년 상반기', '2026H2':'26년 하반기' };
+
+/* ── 전역 상태 ─────────────────────────────────────────────────── */
+const S = {
+  rows: [], half: '2026H2', view: 'board', admin: false,
+  mode: 'local', fb: null, db: null, unsub: null,
+  filters: { status:new Set(), fac:new Set(), dong:new Set(), handler:new Set() },
+  q: '', sort: 'def', cur: null, dirtyPhotos: null
+};
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+function toast(msg, bad){
+  const t = document.createElement('div');
+  t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+function ls(k, v){
+  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }
+  catch(e){ return null; }
+}
+
+/* ═══ IndexedDB (문서 + 사진) ═══════════════════════════════════ */
+const IDB = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('wongrove-check', 2);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('items'))  d.createObjectStore('items', { keyPath:'id' });
+      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos');
+      if (!d.objectStoreNames.contains('kv'))     d.createObjectStore('kv');
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror   = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode), s = t.objectStore(store);
+      const out = fn(s); t.oncomplete = () => res(out?.result ?? out);
+      t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  };
+  return {
+    all:      ()        => tx('items','readonly',  s => s.getAll()),
+    put:      r         => tx('items','readwrite', s => s.put(r)),
+    putMany:  rs        => tx('items','readwrite', s => { rs.forEach(r => s.put(r)); }),
+    del:      id        => tx('items','readwrite', s => s.delete(id)),
+    clear:    ()        => tx('items','readwrite', s => s.clear()),
+    photoPut: (k,b)     => tx('photos','readwrite',s => s.put(b,k)),
+    photoGet: k         => tx('photos','readonly', s => s.get(k)),
+    photoDel: k         => tx('photos','readwrite',s => s.delete(k)),
+    photoKeys:()        => tx('photos','readonly', s => s.getAllKeys())
+  };
+})();
+
+/* 사진 URL 캐시 — 'idb:key' 는 blob URL 로, 그 외는 원격 URL 그대로 */
+const urlCache = new Map();
+async function photoURL(ref){
+  if (!ref) return '';
+  if (!ref.startsWith('idb:')) return ref;
+  if (urlCache.has(ref)) return urlCache.get(ref);
+  try {
+    const b = await IDB.photoGet(ref.slice(4));
+    if (!b) return '';
+    const u = URL.createObjectURL(b); urlCache.set(ref, u); return u;
+  } catch(e){ return ''; }
+}
+
+/* ═══ 사진 압축 ════════════════════════════════════════════════ */
+async function shrink(blob, maxPx){
+  if (!maxPx) return blob;
+  try {
+    const bmp = await createImageBitmap(blob);
+    if (Math.max(bmp.width, bmp.height) <= maxPx && blob.size < 180e3){ bmp.close?.(); return blob; }
+    const sc = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width*sc)), h = Math.max(1, Math.round(bmp.height*sc));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close?.();
+    const out = await new Promise(r => cv.toBlob(r, 'image/webp', 0.82));
+    return (out && out.size < blob.size) ? out : blob;
+  } catch(e){ return blob; }
+}
+
+/* 사진 저장 — 설정에 따라 로컬 / Storage / Drive */
+async function savePhoto(blob, itemId, kind){
+  const maxPx = +($('#maxPx').value || 1200);
+  const b = await shrink(blob, maxPx);
+  const dst = $('#photoDst').value;
+  const name = `${itemId}-${kind}-${Math.random().toString(36).slice(2,7)}.webp`;
+  if (dst === 'storage' && S.fb?.storage){
+    const r = S.fb.storage().ref(`photos/${S.half}/${name}`);
+    await r.put(b); return await r.getDownloadURL();
+  }
+  if (dst === 'drive'){
+    const u = await driveUpload(b, name); if (u) return u;
+    toast('Drive 업로드에 실패해 이 기기에 저장했습니다', true);
+  }
+  const key = 'p' + uid(); await IDB.photoPut(key, b); return 'idb:' + key;
+}
+
+/* ═══ Google Drive 업로드 (Firebase Google 로그인 토큰 사용) ════ */
+let driveToken = null;
+async function driveUpload(blob, name){
+  const folder = ($('#driveFolder').value || '').trim();
+  if (!folder || !S.fb) return null;
+  try {
+    if (!driveToken){
+      const pv = new S.fb.auth.GoogleAuthProvider();
+      pv.addScope('https://www.googleapis.com/auth/drive.file');
+      const res = await S.fb.auth().signInWithPopup(pv);
+      driveToken = res.credential?.accessToken; if (!driveToken) return null;
+    }
+    const meta = { name, parents:[folder] };
+    const fd = new FormData();
+    fd.append('metadata', new Blob([JSON.stringify(meta)], { type:'application/json' }));
+    fd.append('file', blob);
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      { method:'POST', headers:{ Authorization:'Bearer ' + driveToken }, body:fd });
+    if (!r.ok) throw new Error(await r.text());
+    const { id } = await r.json();
+    await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`, {
+      method:'POST', headers:{ Authorization:'Bearer '+driveToken, 'Content-Type':'application/json' },
+      body: JSON.stringify({ role:'reader', type:'anyone' })
+    }).catch(()=>{});
+    return `https://drive.google.com/thumbnail?id=${id}&sz=w1200`;
+  } catch(e){ console.warn('drive', e); driveToken = null; return null; }
+}
+
+/* ═══ Firebase ═════════════════════════════════════════════════ */
+function loadScript(src){
+  return new Promise((res, rej) => {
+    if ([...document.scripts].some(s => s.src === src)) return res();
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s);
+  });
+}
+async function loadSDK(){
+  let last;
+  for (const src of FB_SOURCES){
+    try {
+      await loadScript(src.base + 'firebase-app-compat.js');
+      await Promise.all(['auth','firestore','storage'].map(m =>
+        loadScript(`${src.base}firebase-${m}-compat.js`)));
+      if (window.firebase?.firestore){ S.cdn = src.name; return window.firebase; }
+      throw new Error('SDK 미완성');
+    } catch(e){ last = e; }
+  }
+  throw new Error('SDK를 불러오지 못했습니다 (' + (last?.message||'') + ')');
+}
+async function fbConnect(cfg, quiet){
+  try {
+    const fb = await loadSDK();
+    if (!fb) throw new Error('SDK 로드 실패');
+    if (!fb.apps.length) fb.initializeApp(cfg);
+    S.fb = fb;
+    await Promise.race([
+      fb.auth().signInAnonymously(),
+      new Promise((_, rj) => setTimeout(() => rj(new Error('연결 시간 초과')), 9000))
+    ]);
+    S.db = fb.firestore();
+    S.mode = 'cloud';
+    ls('wg_fbcfg', JSON.stringify(cfg));
+    subscribe();
+    setMode();
+    if (!quiet) toast('Firebase에 연결되었습니다');
+    return true;
+  } catch(e){
+    console.warn('firebase', e);
+    S.mode = 'local'; setMode();
+    if (!quiet) toast('연결 실패 — 이 기기 저장으로 계속합니다: ' + (e.message||''), true);
+    return false;
+  }
+}
+let seeded = false;
+function subscribe(){
+  if (!S.db) return;
+  S.unsub?.();
+  S.unsub = S.db.collection('items').onSnapshot(
+    async snap => {
+      /* 클라우드가 비어 있고 이 기기에 자료가 있으면 한 번만 올려 둔다 */
+      if (snap.empty && !seeded && S.rows.length){
+        seeded = true; await saveMany(S.rows); return;
+      }
+      seeded = true;
+      S.rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      afterLoad();
+    },
+    err => { console.warn(err); toast('실시간 동기화가 끊겼습니다', true); }
+  );
+}
+function setMode(){
+  const b = $('#modeBadge'), t = $('#modeText');
+  b.className = 'badge ' + (S.mode === 'cloud' ? 'live' : 'local');
+  t.textContent = S.mode === 'cloud' ? 'Firebase 연결됨' : '이 기기에 저장';
+  $('#stMode').textContent = S.mode === 'cloud' ? 'Firestore (실시간 공유)' : '브라우저 (IndexedDB)';
+  $('#fbState').textContent = S.mode === 'cloud'
+    ? `연결됨 · 프로젝트 ${S.fb.app().options.projectId} · SDK ${S.cdn} · 수정 내용이 모든 기기에 즉시 반영됩니다.`
+    : '연결 전에는 이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.';
+}
+
+/* ═══ 저장 / 삭제 ══════════════════════════════════════════════ */
+async function saveRow(r){
+  r.updatedAt = Date.now();
+  if (S.mode === 'cloud'){
+    const { id, ...d } = r;
+    await S.db.collection('items').doc(id).set(d, { merge:false });
+  } else {
+    await IDB.put(r);
+    const i = S.rows.findIndex(x => x.id === r.id);
+    i < 0 ? S.rows.push(r) : (S.rows[i] = r);
+    afterLoad();
+  }
+}
+async function saveMany(rs){
+  if (S.mode === 'cloud'){
+    for (let i = 0; i < rs.length; i += 400){
+      const b = S.db.batch();
+      rs.slice(i, i+400).forEach(r => { const { id, ...d } = r; b.set(S.db.collection('items').doc(id), d); });
+      await b.commit();
+    }
+  } else {
+    await IDB.putMany(rs);
+    rs.forEach(r => { const i = S.rows.findIndex(x => x.id === r.id); i < 0 ? S.rows.push(r) : (S.rows[i] = r); });
+    afterLoad();
+  }
+}
+async function delRow(id){
+  const r = S.rows.find(x => x.id === id);
+  for (const k of ['before','map','after'])
+    for (const ref of (r?.photos?.[k] || []))
+      if (ref.startsWith('idb:')) await IDB.photoDel(ref.slice(4)).catch(()=>{});
+  if (S.mode === 'cloud') await S.db.collection('items').doc(id).delete();
+  else { await IDB.del(id); S.rows = S.rows.filter(x => x.id !== id); afterLoad(); }
+}
+
+/* ═══ 엑셀 파서 (JSZip · 시트 + 셀 앵커 사진) ══════════════════ */
+const NS = {
+  s:'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+  xdr:'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing',
+  a:'http://schemas.openxmlformats.org/drawingml/2006/main',
+  r:'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  pr:'http://schemas.openxmlformats.org/package/2006/relationships'
+};
+const parseXML = t => new DOMParser().parseFromString(t, 'application/xml');
+const el = (p, ns, n) => p.getElementsByTagNameNS(ns, n);
+const el1 = (p, ns, n) => el(p, ns, n)[0];
+const colNum = ref => { let n = 0; for (const c of ref.replace(/\d+/g,'')) n = n*26 + (c.charCodeAt(0)-64); return n; };
+const EMU_PT = 12700, EMU_PX = 9525;
+
+function excelDate(v){
+  const d = new Date(Date.UTC(1899,11,30) + v*86400000);
+  return isNaN(d) ? '' : d.toISOString().slice(0,10);
+}
+function normDate(v, yearHint){
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') return (v > 20000 && v < 80000) ? excelDate(v) : '';
+  let s = String(v).trim();
+  let m = s.match(/(\d{4})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = s.match(/^(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\.?$/);
+  if (m) return `${yearHint||new Date().getFullYear()}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  return s;
+}
+/* 머리글 이름 → 내부 필드 (열 순서가 바뀌어도 인식) */
+const HEAD = [
+  [/^no\.?$/i,'no'], [/점검\s*일자|점검일/,'date'], [/시설\s*구분/,'fac'], [/상세\s*구분/,'detail'],
+  [/동\s*별|동$/,'dong'], [/층.*구역|구역/,'loc'], [/문제점|점검\s*결과/,'problem'], [/개선\s*대책|조치\s*방법/,'action'],
+  [/(지적|문제점).*사진/,'ph_before'], [/관련\s*법규|법규/,'law'], [/위치\s*표기|위치도/,'ph_map'],
+  [/처리\s*방안|처리\s*주체/,'handler'], [/조치\s*후.*사진/,'ph_after'], [/완료\s*일/,'done'],
+  [/소방서\s*제출|제출/,'submit'], [/비고/,'note']
+];
+function mapHead(cells){
+  const m = {};
+  for (const [c, v] of Object.entries(cells)){
+    const t = String(v).replace(/\s+/g,' ').trim(); if (!t) continue;
+    for (const [re, f] of HEAD) if (re.test(t) && !Object.values(m).includes(f)){ m[c] = f; break; }
+  }
+  return m;
+}
+
+async function parseXlsx(file, onProg){
+  const zip = await JSZip.loadAsync(file);
+  const rd = async p => { const f = zip.file(p); return f ? await f.async('text') : null; };
+
+  /* 공유 문자열 */
+  const sst = [];
+  const sstX = await rd('xl/sharedStrings.xml');
+  if (sstX){
+    const doc = parseXML(sstX);
+    for (const si of el(doc, NS.s, 'si')){
+      let s = ''; for (const t of el(si, NS.s, 't')) s += t.textContent;
+      sst.push(s);
+    }
+  }
+  /* 시트 목록 */
+  const wbX = parseXML(await rd('xl/workbook.xml'));
+  const relX = parseXML(await rd('xl/_rels/workbook.xml.rels'));
+  const relMap = {};
+  for (const r of el(relX, NS.pr, 'Relationship')) relMap[r.getAttribute('Id')] = r.getAttribute('Target');
+  const sheets = [...el(wbX, NS.s, 'sheet')].map(s => {
+    let t = relMap[s.getAttributeNS(NS.r, 'id')] || '';
+    t = t.replace(/^\/?xl\//,'').replace(/^\.\.\//,'');
+    return { name: s.getAttribute('name'), path: 'xl/' + t };
+  });
+
+  const out = []; const media = new Map();
+  let si = 0;
+  for (const sh of sheets){
+    si++; onProg?.(si / sheets.length * 0.65, `${sh.name} 읽는 중`);
+    const sx = await rd(sh.path); if (!sx) continue;
+    const doc = parseXML(sx);
+
+    /* 기본 행높이 / 열너비 */
+    const fmt = el1(doc, NS.s, 'sheetFormatPr');
+    const defH = +(fmt?.getAttribute('defaultRowHeight') || 15);
+    const defW = +(fmt?.getAttribute('defaultColWidth') || fmt?.getAttribute('baseColWidth') || 8.43);
+    const colW = {};
+    for (const c of el(doc, NS.s, 'col')){
+      const a = +c.getAttribute('min'), b = +c.getAttribute('max'), w = +c.getAttribute('width');
+      for (let i = a; i <= b && i <= 80; i++) colW[i] = w;
+    }
+    /* 셀 값 */
+    const rows = {}, rowH = {};
+    for (const rEl of el(doc, NS.s, 'row')){
+      const rn = +rEl.getAttribute('r');
+      const h = rEl.getAttribute('ht'); if (h) rowH[rn] = +h;
+      const cells = {};
+      for (const c of el(rEl, NS.s, 'c')){
+        const ref = c.getAttribute('r'); if (!ref) continue;
+        const t = c.getAttribute('t');
+        let v = '';
+        if (t === 'inlineStr'){ for (const x of el(c, NS.s,'t')) v += x.textContent; }
+        else {
+          const vN = el1(c, NS.s, 'v'); if (!vN) continue;
+          v = vN.textContent;
+          if (t === 's') v = sst[+v] ?? '';
+          else if (t === 'b') v = v === '1' ? 'O' : '';
+          else if (t !== 'str') v = +v;
+        }
+        if (v !== '' && v != null) cells[colNum(ref)] = v;
+      }
+      if (Object.keys(cells).length) rows[rn] = cells;
+    }
+    const rowNums = Object.keys(rows).map(Number).sort((a,b) => a-b);
+    if (!rowNums.length) continue;
+
+    /* 머리글 행 찾기 */
+    let hRow = 0, head = null;
+    for (const rn of rowNums.slice(0, 12)){
+      const m = mapHead(rows[rn]);
+      const f = Object.values(m);
+      if (f.includes('no') && (f.includes('problem') || f.includes('fac'))){ hRow = rn; head = m; break; }
+    }
+    if (!head) continue;
+    const colOf = {}; for (const [c, f] of Object.entries(head)) colOf[f] = +c;
+
+    /* 사진 앵커 → 셀 */
+    const imgAt = {};
+    const drNode = el1(doc, NS.s, 'drawing');
+    if (drNode){
+      const shRel = await rd(sh.path.replace(/([^/]+)$/, '_rels/$1.rels'));
+      if (shRel){
+        const m2 = {};
+        for (const r of el(parseXML(shRel), NS.pr, 'Relationship')) m2[r.getAttribute('Id')] = r.getAttribute('Target');
+        let dp = m2[drNode.getAttributeNS(NS.r,'id')] || '';
+        dp = 'xl/' + dp.replace(/^\.\.\//,'').replace(/^\/?xl\//,'');
+        const dx = await rd(dp);
+        if (dx){
+          const dRel = await rd(dp.replace(/([^/]+)$/, '_rels/$1.rels'));
+          const rm = {};
+          if (dRel) for (const r of el(parseXML(dRel), NS.pr,'Relationship'))
+            rm[r.getAttribute('Id')] = 'xl/' + r.getAttribute('Target').replace(/^\.\.\//,'');
+          /* 누적 좌표 */
+          const maxR = Math.max(...rowNums) + 4;
+          const tops = [0]; for (let i = 1; i <= maxR + 2; i++) tops[i] = tops[i-1] + (rowH[i] || defH) * EMU_PT;
+          const lefts = [0]; for (let i = 1; i <= 80; i++) lefts[i] = lefts[i-1] + ((colW[i] || defW) * 7 + 5) * EMU_PX;
+          const find = (arr, v) => { let i = 1; while (i < arr.length && arr[i] <= v) i++; return i - 1; };
+          const dDoc = parseXML(dx);
+          for (const anc of [...el(dDoc, NS.xdr,'oneCellAnchor'), ...el(dDoc, NS.xdr,'twoCellAnchor')]){
+            const from = el1(anc, NS.xdr,'from'); if (!from) continue;
+            const cN = +el1(from, NS.xdr,'col')?.textContent || 0;
+            const cO = +el1(from, NS.xdr,'colOff')?.textContent || 0;
+            const rN = +el1(from, NS.xdr,'row')?.textContent || 0;
+            const rO = +el1(from, NS.xdr,'rowOff')?.textContent || 0;
+            const blip = el1(anc, NS.a,'blip'); if (!blip) continue;
+            const path = rm[blip.getAttributeNS(NS.r,'embed')]; if (!path) continue;
+            const rr = find(tops, tops[rN] + rO) + 1;
+            const cc = find(lefts, lefts[cN] + cO) + 1;
+            (imgAt[rr] ||= {}); (imgAt[rr][cc] ||= []).push(path);
+            if (!media.has(path)) media.set(path, null);
+          }
+        }
+      }
+    }
+
+    /* 데이터 행 */
+    const yearHint = 2026;
+    for (const rn of rowNums){
+      if (rn <= hRow) continue;
+      const c = rows[rn];
+      const get = f => colOf[f] ? c[colOf[f]] : '';
+      const txt = f => String(get(f) ?? '').replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{2,}/g,'\n').trim();
+      if (!get('no') && !txt('problem') && !txt('fac')) continue;
+      const photos = {};
+      for (const [f, k] of [['ph_before','before'],['ph_map','map'],['ph_after','after']]){
+        const cc = colOf[f]; const a = cc && imgAt[rn]?.[cc];
+        if (a?.length) photos[k] = a.slice();
+      }
+      out.push({
+        sheet: sh.name, no: get('no') || '', date: normDate(get('date'), yearHint),
+        fac: txt('fac').replace(/\s/g,''), detail: txt('detail').replace(/\n/g,' '),
+        dong: txt('dong').replace(/\n/g,''), loc: txt('loc'),
+        problem: txt('problem'), action: txt('action').replace(/\n/g,' '),
+        law: txt('law').replace(/\n/g,' '), handler: txt('handler'),
+        done: normDate(get('done'), yearHint), submit: /^o$/i.test(txt('submit')),
+        note: txt('note'), _photos: photos
+      });
+    }
+  }
+  /* 이미지 바이너리 */
+  const keys = [...media.keys()]; let k = 0;
+  for (const p of keys){
+    k++; if (k % 25 === 0) onProg?.(0.65 + k/keys.length*0.3, `사진 ${k}/${keys.length}장`);
+    const f = zip.file(p); if (f) media.set(p, await f.async('blob'));
+  }
+  return { rows: out, media };
+}
+</script>
+
+<script>
+/* ═══ 값 정규화 ════════════════════════════════════════════════
+   점검업체 양식에는 '활동설비', '소화기구/소화설비', 'A, B,\nC, D' 처럼
+   표기가 섞여 들어옵니다. 통계·필터는 대표값으로 묶고 원본은 보존합니다. */
+const FAC_ALIAS = { '활동설비':'소화활동설비', '소화용수설비':'소화활동설비', '자동화재탐지설비':'경보설비',
+                    '피난구조설비':'피난설비', '소화기':'소화기구' };
+function normFac(v){
+  const first = String(v||'').replace(/\s/g,'').split(/[\/,]/)[0];
+  const f = FAC_ALIAS[first] || first;
+  return OPT.fac.includes(f) ? f : (f || '');
+}
+function normDong(v){
+  const first = String(v||'').replace(/\s/g,'').split(/[\/,]/)[0];
+  return first;
+}
+function normalize(r){
+  const f = normFac(r.fac);
+  if (f && f !== r.fac){ r.facRaw ||= r.fac; r.fac = f; }
+  const d = normDong(r.dong);
+  if (d && d !== r.dong){ r.dongRaw ||= r.dong; r.dong = d; }
+  r.date = normDate(r.date, 2026);
+  r.done = normDate(r.done, 2026);
+  if (!r.floor && r.loc){ const s = splitFloor(r.loc); if (s.floor){ r.floor = s.floor; r.loc = s.rest; } }
+  return r;
+}
+
+/* ═══ 파생값 ═══════════════════════════════════════════════════ */
+function deriveStatus(r){
+  if (r.status && OPT.status.includes(r.status)) return r.status;
+  if (r.done) return '조치완료';
+  if (/^보류/.test(r.handler||'')) return '보류';
+  if (/권장|제외/.test(r.handler||'')) return '제외';
+  return '미조치';
+}
+function splitFloor(loc){
+  const m = String(loc||'').match(/^\s*(옥상|지하\s*\d+층|B\s*\d+|\d+\s*층)\s*(.*)$/s);
+  if (!m) return { floor:'', rest: loc||'' };
+  let f = m[1].replace(/\s/g,'');
+  const d = f.match(/^지하(\d+)층$/); if (d) f = 'B' + d[1];
+  return { floor:f, rest:(m[2]||'').trim() };
+}
+const fullLoc = r => [r.floor, r.loc].filter(Boolean).join(' ');
+
+/* ═══ 필터 ═════════════════════════════════════════════════════ */
+function inHalf(){ return S.rows.filter(r => (r.half || '2026H1') === S.half); }
+function current(){
+  const f = S.filters, q = S.q.trim().toLowerCase();
+  let out = inHalf().filter(r => {
+    if (f.status.size && !f.status.has(deriveStatus(r))) return false;
+    if (f.fac.size && !f.fac.has(r.fac)) return false;
+    if (f.dong.size && !f.dong.has(r.dong)) return false;
+    if (f.handler.size && !f.handler.has(r.handler)) return false;
+    if (q){
+      const hay = [r.loc,r.floor,r.problem,r.action,r.law,r.note,r.detail,r.fac,r.sheet].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const zi = z => { const i = OPT.zone.indexOf(z); return i < 0 ? 99 : i; };
+  const so = { '미조치':0, '진행중':1, '보류':2, '제외':3, '조치완료':4 };
+  if (S.sort === 'date')        out.sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  else if (S.sort === 'status') out.sort((a,b) => so[deriveStatus(a)] - so[deriveStatus(b)] || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
+  else if (S.sort === 'fac')    out.sort((a,b) => OPT.fac.indexOf(a.fac)-OPT.fac.indexOf(b.fac) || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
+  else                          out.sort((a,b) => zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
+  return out;
+}
+
+/* ═══ 현황판 ═══════════════════════════════════════════════════ */
+function tally(rows){
+  const t = { 미조치:0, 진행중:0, 조치완료:0, 보류:0, 제외:0 };
+  rows.forEach(r => t[deriveStatus(r)]++);
+  return t;
+}
+function stack(rows){
+  const t = tally(rows), n = rows.length || 1;
+  return OPT.status.filter(s => t[s]).map(s => ({ s, n:t[s], pct: t[s]/n*100 }));
+}
+function barBlock(groups, total){
+  return groups.map(g => {
+    const segs = stack(g.rows).map(x =>
+      `<span class="bar-seg" style="width:${(x.n/total*100).toFixed(2)}%;background:${SC[x.s]}"
+        data-tip="${esc(g.name)} · ${x.s} ${x.n}건"></span>`).join('');
+    const und = g.rows.filter(r => deriveStatus(r) === '미조치').length;
+    return `<div class="bar-row"><span class="nm" title="${esc(g.name)}">${esc(g.name)}</span>
+      <span class="bar-track">${segs}</span>
+      <span class="vv">${g.rows.length}<em> / 미 ${und}</em></span></div>`;
+  }).join('');
+}
+function groupBy(rows, key){
+  const m = new Map();
+  rows.forEach(r => { const k = (r[key]||'미지정'); (m.get(k) || m.set(k,[]).get(k)).push(r); });
+  return [...m].map(([name, rs]) => ({ name, rows: rs }));
+}
+function renderBoard(){
+  const rows = inHalf(), t = tally(rows), n = rows.length;
+  const done = t.조치완료, active = n - t.보류 - t.제외;
+  const pct = active ? Math.round(done/active*100) : 0;
+
+  $('#kAll').innerHTML = n + '<small>건</small>';
+  $('#kUndone').innerHTML = t.미조치 + '<small>건</small>';
+  $('#kDoing').innerHTML = t.진행중 + '<small>건</small>';
+  $('#kDone').innerHTML = done + '<small>건</small>';
+  $('#kHold').innerHTML = (t.보류 + t.제외) + '<small>건</small>';
+  $('#kAllSub').textContent = HALF_LABEL[S.half] + (n ? ` · ${new Set(rows.map(r=>r.sheet)).size}개 구역` : '');
+  $('#kUndoneSub').textContent = n ? `전체의 ${Math.round(t.미조치/n*100)}%` : '—';
+  $('#kDoingSub').textContent = t.진행중 ? '보수 진행 중' : '—';
+  $('#kDoneSub').textContent = active ? `조치대상 ${active}건 중` : '—';
+  $('#kHoldSub').textContent = `보류 ${t.보류} · 제외 ${t.제외}`;
+
+  const C = 2 * Math.PI * 50;
+  $('#ringArc').setAttribute('stroke-dasharray', `${(C*pct/100).toFixed(1)} ${C.toFixed(1)}`);
+  $('#ringArc').setAttribute('stroke', pct >= 90 ? SC.조치완료 : pct >= 60 ? SC.진행중 : SC.미조치);
+  $('#ringPct').textContent = pct + '%';
+  $('#rateSub').textContent = `보류·제외 제외 ${active}건 기준`;
+  $('#rateLegend').innerHTML = OPT.status.map(s =>
+    `<div class="lg-row"><i class="sw" style="background:${SC[s]}"></i>
+      <span class="nm">${s}</span><span class="vv">${t[s]}건</span></div>`).join('');
+
+  $('#statusLegend').innerHTML = OPT.status.map(s =>
+    `<span><i style="background:${SC[s]}"></i>${s}</span>`).join('');
+
+  if (!n){
+    ['#barHandler','#barFac','#barDong','#barDetail'].forEach(id =>
+      $(id).innerHTML = '<p style="color:var(--faint);font-size:12.5px;margin:0">자료가 없습니다. 점검표를 업로드해 주세요.</p>');
+    return;
+  }
+  const max = g => Math.max(...g.map(x => x.rows.length), 1);
+  const undo = g => g.rows.filter(r => deriveStatus(r) === '미조치').length;
+
+  const gh = OPT.handler.map(h => ({ name:h, rows: rows.filter(r => r.handler === h) })).filter(g => g.rows.length);
+  $('#barHandler').innerHTML = barBlock(gh, max(gh));
+
+  const gf = groupBy(rows,'fac').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
+  $('#barFac').innerHTML = barBlock(gf, max(gf));
+
+  const gd = groupBy(rows,'sheet').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
+  $('#barDong').innerHTML = barBlock(gd, max(gd));
+
+  const gx = groupBy(rows,'detail').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length).slice(0,10);
+  $('#barDetail').innerHTML = barBlock(gx, max(gx));
+}
+
+/* 막대 툴팁 */
+let tipEl;
+document.addEventListener('mouseover', e => {
+  const s = e.target.closest?.('[data-tip]'); if (!s) return;
+  tipEl ||= Object.assign(document.createElement('div'), { className:'toast' });
+  tipEl.style.cssText = 'position:fixed;z-index:97;pointer-events:none;padding:5px 11px;font-size:12px';
+  tipEl.textContent = s.dataset.tip; document.body.appendChild(tipEl);
+  const r = s.getBoundingClientRect();
+  tipEl.style.left = Math.min(window.innerWidth - 140, Math.max(10, r.left)) + 'px';
+  tipEl.style.top = (r.top - 34) + 'px'; tipEl.style.bottom = 'auto'; tipEl.style.transform = 'none';
+});
+document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-tip]')) tipEl?.remove(); });
+
+/* ═══ 필터 칩 ══════════════════════════════════════════════════ */
+function renderFilters(){
+  const rows = inHalf();
+  const cnt = (k, v) => rows.filter(r => (k === 'status' ? deriveStatus(r) : r[k]) === v).length;
+  const build = (box, key, vals) => $(box).innerHTML = vals.map(v => {
+    const c = cnt(key, v); if (!c && !S.filters[key].has(v)) return '';
+    return `<button class="chip" data-k="${key}" data-v="${esc(v)}" aria-pressed="${S.filters[key].has(v)}">
+      ${esc(v)}<span class="n">${c}</span></button>`;
+  }).join('');
+  build('#fStatus','status', OPT.status);
+  build('#fFac','fac', OPT.fac);
+  build('#fDong','dong', [...new Set(rows.map(r => r.dong).filter(Boolean))].sort());
+  build('#fHandler','handler', OPT.handler);
+}
+
+/* ═══ 목록 ═════════════════════════════════════════════════════ */
+async function renderList(){
+  const rows = current(), tb = $('#tbody');
+  $('#tabCnt').textContent = inHalf().length;
+  $('#listEmpty').hidden = rows.length > 0;
+  $('#tableWrap').hidden = rows.length === 0;
+  $('#listFoot').textContent = rows.length
+    ? `${rows.length}건 표시 · 전체 ${inHalf().length}건 (${HALF_LABEL[S.half]})` : '';
+  if (!rows.length){ tb.innerHTML = ''; return; }
+
+  tb.innerHTML = rows.map(r => {
+    const st = deriveStatus(r);
+    const np = (r.photos?.before?.length||0) + (r.photos?.map?.length||0) + (r.photos?.after?.length||0);
+    return `<tr class="row" data-id="${r.id}">
+      <td class="c-no">${esc(r.sheet?.replace(/^업무 /,'')||'')}<br>${esc(r.no)}</td>
+      <td class="c-date">${esc((r.date||'').slice(5))}</td>
+      <td>${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
+      <td><span class="tag">${esc(r.detail||'—')}</span></td>
+      <td class="c-loc">${esc(fullLoc(r))}</td>
+      <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
+      <td>${esc(r.handler||'—')}</td>
+      <td><span class="pill p-${st}"><i></i>${st}</span></td>
+      <td class="c-date">${esc((r.done||'').slice(5)||'—')}</td>
+      <td data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  /* 썸네일 비동기 로드 */
+  for (const r of rows.slice(0, 120)){
+    const refs = [...(r.photos?.before||[]), ...(r.photos?.map||[]), ...(r.photos?.after||[])];
+    if (!refs.length) continue;
+    const cell = tb.querySelector(`[data-ph="${r.id}"]`); if (!cell) continue;
+    const urls = (await Promise.all(refs.slice(0,3).map(photoURL))).filter(Boolean);
+    if (!urls.length) continue;
+    cell.innerHTML = `<div class="thumbs">${urls.map(u => `<img src="${u}" alt="" loading="lazy">`).join('')}
+      ${refs.length > 3 ? `<span class="more">+${refs.length-3}</span>` : ''}</div>`;
+  }
+}
+
+/* ═══ 드로어 (상세 · 편집) ═════════════════════════════════════ */
+function selOpts(list, cur, ph){
+  const has = !cur || list.includes(cur);
+  return `<option value="">${ph||'선택'}</option>` +
+    list.map(v => `<option${v===cur?' selected':''}>${esc(v)}</option>`).join('') +
+    (has ? '' : `<option selected>${esc(cur)}</option>`);
+}
+async function openDrawer(r){
+  S.cur = JSON.parse(JSON.stringify(r));
+  S.dirtyPhotos = { before:[], map:[], after:[] };
+  const c = S.cur, ro = !S.admin;
+  $('#dTitle').textContent = c.id ? `${c.sheet||''} ${c.no||''}번 지적` : '새 지적사항';
+  $('#dKey').textContent = c.id ? HALF_LABEL[c.half||S.half] : HALF_LABEL[S.half];
+  $('#dLocked').hidden = S.admin;
+
+  const d = m => ro ? ' disabled' : '';
+  $('#dBody').innerHTML = `
+    <div class="fld-3">
+      <div class="fld"><label for="f_sheet">구역(시트)</label><select id="f_sheet"${d()}>${selOpts(OPT.zone, c.sheet)}</select></div>
+      <div class="fld"><label for="f_no">No.</label><input type="text" id="f_no" value="${esc(c.no)}"${d()}></div>
+      <div class="fld"><label for="f_date">점검일자</label><input type="date" id="f_date" value="${esc(c.date)}"${d()}></div>
+    </div>
+    <div class="fld-2">
+      <div class="fld"><label for="f_fac">시설구분</label><select id="f_fac"${d()}>${selOpts(OPT.fac, c.fac)}</select></div>
+      <div class="fld"><label for="f_detail">상세구분</label><select id="f_detail"${d()}>${selOpts(OPT.detail[c.fac]||[], c.detail)}</select></div>
+    </div>
+    <div class="fld-3">
+      <div class="fld"><label for="f_dong">동별</label><select id="f_dong"${d()}>${selOpts(OPT.dong, c.dong)}</select></div>
+      <div class="fld"><label for="f_floor">층</label><select id="f_floor"${d()}>${selOpts(OPT.floor, c.floor)}</select></div>
+      <div class="fld"><label for="f_handler">처리주체</label><select id="f_handler"${d()}>${selOpts(OPT.handler, c.handler)}</select></div>
+    </div>
+    <div class="fld"><label for="f_loc">구역 상세</label>
+      <input type="text" id="f_loc" value="${esc(c.loc)}" placeholder="예: 4번 계단 앞 여자화장실"${d()}>
+      ${(c.facRaw || c.dongRaw) ? `<div class="hint">점검표 원본 표기: ${esc([c.facRaw, c.dongRaw].filter(Boolean).join(' · '))}</div>` : ''}</div>
+    <div class="fld"><label for="f_problem">점검결과 문제점</label>
+      <textarea id="f_problem" placeholder="현상을 그대로 적습니다"${d()}>${esc(c.problem)}</textarea>
+      <div class="hint" id="h_problem"></div></div>
+    <div class="fld"><label for="f_action">개선 대책</label>
+      <input type="text" id="f_action" list="l_action" value="${esc(c.action)}"${d()}>
+      <datalist id="l_action"></datalist>
+      <div class="hint">상세구분을 고르면 자주 쓰는 대책이 자동으로 채워집니다.</div></div>
+    <div class="fld"><label for="f_law">관련 법규</label>
+      <input type="text" id="f_law" list="l_law" value="${esc(c.law)}"${d()}>
+      <datalist id="l_law"></datalist></div>
+    <div class="fld-3">
+      <div class="fld"><label for="f_status">처리 상태</label><select id="f_status"${d()}>${selOpts(OPT.status, deriveStatus(c),'')}</select></div>
+      <div class="fld"><label for="f_done">완료일</label><input type="date" id="f_done" value="${esc(c.done)}"${d()}></div>
+      <div class="fld"><label for="f_note">비고</label><input type="text" id="f_note" value="${esc(c.note)}"${d()}></div>
+    </div>
+    <div class="fld"><label class="chk"><input type="checkbox" id="f_submit"${c.submit?' checked':''}${d()}> 소방서 제출 대상</label></div>
+    <div id="phWrap"></div>`;
+
+  /* 연동: 시설구분 → 상세구분 → 법규·대책·문구 */
+  const syncDetail = () => {
+    const f = $('#f_fac').value, cur = $('#f_detail').value;
+    $('#f_detail').innerHTML = selOpts(OPT.detail[f] || [], (OPT.detail[f]||[]).includes(cur) ? cur : '');
+    syncLaw();
+  };
+  const syncLaw = () => {
+    const dt = $('#f_detail').value;
+    $('#l_law').innerHTML  = (OPT.law[dt]    || Object.values(OPT.law).flat()).slice(0,12).map(v=>`<option value="${esc(v)}">`).join('');
+    $('#l_action').innerHTML = (OPT.action[dt] || []).map(v=>`<option value="${esc(v)}">`).join('');
+    const p = OPT.problem[dt];
+    $('#h_problem').textContent = p ? '자주 쓰는 문구: ' + p.slice(0,3).join(' · ') : '';
+    if (!ro && !$('#f_law').value && OPT.law[dt]) $('#f_law').value = OPT.law[dt][0];
+  };
+  $('#f_fac').addEventListener('change', syncDetail);
+  $('#f_detail').addEventListener('change', syncLaw);
+  $('#f_done').addEventListener('change', e => { if (e.target.value) $('#f_status').value = '조치완료'; });
+  $('#f_status').addEventListener('change', e => {
+    if (e.target.value === '조치완료' && !$('#f_done').value) $('#f_done').value = new Date().toISOString().slice(0,10);
+  });
+  syncLaw();
+  await renderPhotos();
+  $('#scrim').hidden = false; $('#drawer').hidden = false;
+}
+async function renderPhotos(){
+  const c = S.cur, kinds = [['before','문제점 사진'],['map','위치표기'],['after','조치후 사진']];
+  const blocks = await Promise.all(kinds.map(async ([k, label]) => {
+    const refs = c.photos?.[k] || [];
+    const items = await Promise.all(refs.map(async (ref, i) => {
+      const u = await photoURL(ref);
+      return u ? `<div class="ph"><img src="${u}" alt="${label} ${i+1}" data-lb="${esc(u)}" data-cap="${label}">
+        <button class="del" data-del="${k}:${i}" title="사진 삭제" aria-label="사진 삭제">✕</button></div>` : '';
+    }));
+    const add = S.admin ? `<button class="ph-add" data-add="${k}">＋ 사진 추가</button>` : '';
+    const body = items.filter(Boolean).join('') + add;
+    return `<div class="photoset"><div class="ph-h"><span>${label}</span>
+      <span style="color:var(--faint);font-size:11px;font-family:var(--mono)">${refs.length}장</span></div>
+      ${body ? `<div class="ph-grid">${body}</div>` : '<p class="ph-none">없음</p>'}</div>`;
+  }));
+  $('#phWrap').innerHTML = blocks.join('');
+}
+function collect(){
+  const c = S.cur;
+  const g = id => $(id)?.value?.trim() ?? '';
+  Object.assign(c, {
+    sheet:g('#f_sheet'), no:g('#f_no'), date:g('#f_date'), fac:g('#f_fac'), detail:g('#f_detail'),
+    dong:g('#f_dong'), floor:g('#f_floor'), loc:g('#f_loc'), problem:g('#f_problem'),
+    action:g('#f_action'), law:g('#f_law'), handler:g('#f_handler'), status:g('#f_status'),
+    done:g('#f_done'), note:g('#f_note'), submit:$('#f_submit').checked, half:c.half||S.half
+  });
+  if (!c.id) c.id = uid();
+  c.sample = false;
+  return c;
+}
+function closeDrawer(){ $('#scrim').hidden = true; $('#drawer').hidden = true; S.cur = null; }
+
+/* ═══ 업로드 처리 ══════════════════════════════════════════════ */
+async function handleFile(file){
+  const log = $('#log'), bar = $('#prog');
+  log.hidden = false; bar.hidden = false; log.textContent = `${file.name}\n`;
+  const p = (v, m) => { bar.firstElementChild.style.width = (v*100).toFixed(0)+'%'; if (m) log.textContent += m + '\n'; log.scrollTop = 1e6; };
+  try {
+    const { rows, media } = await parseXlsx(file, (v, m) => bar.firstElementChild.style.width = (v*100).toFixed(0)+'%');
+    p(0.95, `읽은 지적사항 ${rows.length}건 · 사진 ${media.size}장`);
+
+    const existing = new Map(inHalf().map(r => [`${r.sheet}|${r.no}`, r]));
+    const save = [], maxPx = +($('#maxPx').value || 1200);
+    let add = 0, upd = 0, ph = 0;
+
+    for (const nr of rows){
+      const key = `${nr.sheet}|${nr.no}`;
+      let rec = existing.get(key);
+      const isNew = !rec;
+      let touched = false;
+      if (isNew){
+        const fl = splitFloor(nr.loc);
+        rec = { id:uid(), half:S.half, floor:fl.floor, ...nr, loc:fl.rest, photos:{} };
+        delete rec._photos;
+        rec.status = deriveStatus(rec);
+        add++;
+      } else {
+        /* 기존 건은 덮어쓰지 않고 빈 칸만 채움 */
+        for (const k of ['date','fac','detail','dong','problem','action','law','handler','note']){
+          if (!rec[k] && nr[k]){ rec[k] = nr[k]; touched = true; }
+        }
+        if (nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
+        if (touched) upd++;
+        rec.photos ||= {};
+      }
+      /* 사진 첨부 — 이미 있는 종류는 건너뜀 */
+      for (const [k, paths] of Object.entries(nr._photos || {})){
+        rec.photos[k] ||= [];
+        if (rec.photos[k].length) continue;
+        for (const pth of paths){
+          const blob = media.get(pth); if (!blob) continue;
+          const small = await shrink(blob, maxPx);
+          const kk = 'p' + uid(); await IDB.photoPut(kk, small);
+          rec.photos[k].push('idb:' + kk); ph++; touched = true;
+        }
+      }
+      if (!isNew && !touched) continue;
+      save.push(rec);
+    }
+    p(1, `신규 ${add}건 · 보완 ${upd}건 · 사진 ${ph}장 저장`);
+    await saveMany(save);
+    log.innerHTML += `<b>완료 — ${HALF_LABEL[S.half]}에 반영되었습니다.</b>\n`;
+    if ($('#photoDst').value !== 'local')
+      log.innerHTML += `<em>사진은 이 기기에 저장했습니다. 설정에서 Drive/Storage를 연결하면 이후 추가분부터 그쪽으로 올라갑니다.</em>\n`;
+    toast(`${add + upd}건 반영 · 사진 ${ph}장`);
+    setView('list');
+  } catch(e){
+    console.error(e);
+    log.innerHTML += `<em>읽기 실패: ${esc(e.message)}</em>\n양식(머리글 행)이 맞는지 확인해 주세요.\n`;
+    toast('엑셀을 읽지 못했습니다', true);
+  } finally { setTimeout(() => { bar.hidden = true; }, 900); }
+}
+
+/* ═══ 내보내기 ═════════════════════════════════════════════════ */
+function download(name, blob){
+  /* 미리보기 화면은 페이지가 시작하는 내려받기를 막습니다. GitHub 주소에서는 정상 동작합니다. */
+  if (window.claude){
+    toast('미리보기 화면에서는 내려받기가 막혀 있습니다. GitHub 주소에서 받아 주세요.', true);
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function toCSV(){
+  const H = ['구역','No.','점검일자','시설구분','상세구분','동별','층','구역상세','점검결과 문제점','개선 대책','관련법규','처리방안','처리상태','완료일','소방서제출','비고'];
+  const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const body = current().map(r => [r.sheet,r.no,r.date,r.fac,r.detail,r.dong,r.floor,r.loc,
+    r.problem,r.action,r.law,r.handler,deriveStatus(r),r.done,r.submit?'O':'',r.note].map(q).join(','));
+  download(`원그로브_${HALF_LABEL[S.half]}_지적현황_${new Date().toISOString().slice(0,10)}.csv`,
+    new Blob(['﻿' + [H.map(q).join(','), ...body].join('\r\n')], { type:'text/csv;charset=utf-8' }));
+}
+
+/* ═══ 관리자 잠금 ══════════════════════════════════════════════ */
+async function sha(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('wg:' + s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+async function pinHash(){ return ls('wg_pin') || await sha('0000'); }
+function setAdmin(on){
+  S.admin = on;
+  document.body.classList.toggle('admin', on);
+  $('#adminBtn').textContent = on ? '관리자 모드 해제' : '관리자';
+  $('#adminBtn').setAttribute('aria-pressed', on);
+  try { on ? sessionStorage.setItem('wg_adm','1') : sessionStorage.removeItem('wg_adm'); } catch(e){}
+  if (S.cur) openDrawer(S.cur);
+}
+function askPin(){
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.innerHTML = `<h3>관리자 확인</h3>
+    <p>수정 · 삭제 · 점검표 업로드를 하려면 관리자 비밀번호를 입력하세요.</p>
+    <input type="password" id="pinIn" inputmode="numeric" autocomplete="off" placeholder="● ● ● ●">
+    <div class="err" id="pinErr"></div>
+    <div class="modal-row"><button class="btn" id="pinCancel">취소</button>
+      <button class="btn primary" id="pinOk">확인</button></div>`;
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  document.body.append(sc, m);
+  const close = () => { m.remove(); sc.remove(); };
+  const go = async () => {
+    const v = m.querySelector('#pinIn').value;
+    if (await sha(v) === await pinHash()){ close(); setAdmin(true); toast('관리자 모드입니다'); }
+    else { m.querySelector('#pinErr').textContent = '비밀번호가 맞지 않습니다.'; m.querySelector('#pinIn').select(); }
+  };
+  m.querySelector('#pinOk').onclick = go;
+  m.querySelector('#pinCancel').onclick = close;
+  sc.onclick = close;
+  m.querySelector('#pinIn').onkeydown = e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); };
+  setTimeout(() => m.querySelector('#pinIn').focus(), 30);
+}
+
+/* ═══ 화면 전환 ════════════════════════════════════════════════ */
+function setView(v){
+  S.view = v;
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+  ['board','list','upload','settings'].forEach(k => $('#view-' + k).hidden = k !== v);
+  if (v === 'board') renderBoard();
+  if (v === 'list'){ renderFilters(); renderList(); }
+  if (v === 'settings') renderStats();
+}
+function renderStats(){
+  const h1 = S.rows.filter(r => (r.half||'2026H1') === '2026H1').length;
+  const h2 = S.rows.filter(r => r.half === '2026H2').length;
+  $('#stCount').textContent = S.rows.length;
+  $('#stH1').textContent = h1 + '건'; $('#stH2').textContent = h2 + '건';
+  IDB.photoKeys().then(k => $('#stPhoto').textContent = k.length).catch(()=>{});
+  $('#oFac').textContent = OPT.fac.length + '종';
+  $('#oDet').textContent = Object.values(OPT.detail).flat().length + '종';
+  $('#oLaw').textContent = new Set(Object.values(OPT.law).flat()).size + '종';
+  $('#oAct').textContent = new Set(Object.values(OPT.action).flat()).size + '종';
+}
+function afterLoad(){
+  S.rows.forEach(normalize);
+  if (S.view === 'board') renderBoard();
+  if (S.view === 'list'){ renderFilters(); renderList(); }
+  if (S.view === 'settings') renderStats();
+  $('#tabCnt').textContent = inHalf().length;
+}
+
+/* ═══ 이벤트 ═══════════════════════════════════════════════════ */
+$$('.tab').forEach(t => t.onclick = () => setView(t.dataset.view));
+$('#halfSel').onchange = e => { S.half = e.target.value; Object.values(S.filters).forEach(s => s.clear()); afterLoad(); };
+$('#adminBtn').onclick = () => S.admin ? (setAdmin(false), toast('보기 전용으로 돌아갑니다')) : askPin();
+$('#q').oninput = e => { S.q = e.target.value; renderList(); };
+$('#sortSel').onchange = e => { S.sort = e.target.value; renderList(); };
+$('#resetFilter').onclick = () => { Object.values(S.filters).forEach(s => s.clear()); S.q = ''; $('#q').value = ''; renderFilters(); renderList(); };
+$('#filterBox').onclick = e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  const set = S.filters[c.dataset.k];
+  set.has(c.dataset.v) ? set.delete(c.dataset.v) : set.add(c.dataset.v);
+  renderFilters(); renderList();
+};
+$('#tbody').onclick = e => {
+  const tr = e.target.closest('tr.row'); if (!tr) return;
+  $$('#tbody tr').forEach(x => x.classList.remove('sel')); tr.classList.add('sel');
+  const r = S.rows.find(x => x.id === tr.dataset.id); if (r) openDrawer(r);
+};
+$('#newBtn').onclick = () => openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
+  sheet:'', no:'', fac:'', detail:'', dong:'', floor:'', loc:'', problem:'', action:'', law:'',
+  handler:'', status:'미조치', done:'', submit:false, note:'', photos:{} });
+$('#toUpload').onclick = () => setView('upload');
+$('#printBtn').onclick = () => window.print();
+$('#csvBtn').onclick = toCSV;
+$('#dClose').onclick = $('#dCancel').onclick = closeDrawer;
+$('#scrim').onclick = closeDrawer;
+$('#dSave').onclick = async () => { await saveRow(collect()); toast('저장했습니다'); closeDrawer(); };
+$('#dDelete').onclick = async () => {
+  if (!S.cur?.id) return closeDrawer();
+  if (!confirm(`${S.cur.sheet} ${S.cur.no}번 지적사항을 삭제합니다. 되돌릴 수 없습니다.`)) return;
+  await delRow(S.cur.id); toast('삭제했습니다'); closeDrawer();
+};
+$('#dBody').onclick = async e => {
+  const add = e.target.closest('[data-add]');
+  if (add){
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true; inp.capture = 'environment';
+    inp.onchange = async () => {
+      const c = S.cur; c.photos ||= {}; c.photos[add.dataset.add] ||= [];
+      for (const f of inp.files) c.photos[add.dataset.add].push(await savePhoto(f, c.id || 'new', add.dataset.add));
+      await renderPhotos(); toast(`사진 ${inp.files.length}장 추가`);
+    };
+    inp.click(); return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del){
+    const [k, i] = del.dataset.del.split(':');
+    const ref = S.cur.photos[k][+i];
+    if (ref?.startsWith('idb:')) await IDB.photoDel(ref.slice(4)).catch(()=>{});
+    S.cur.photos[k].splice(+i, 1); await renderPhotos(); return;
+  }
+  const lb = e.target.closest('[data-lb]');
+  if (lb){ $('#lbImg').src = lb.dataset.lb; $('#lbCap').textContent = lb.dataset.cap || ''; $('#lightbox').hidden = false; }
+};
+$('#lightbox').onclick = () => $('#lightbox').hidden = true;
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('#lightbox').hidden) $('#lightbox').hidden = true;
+  else if (!$('#drawer').hidden) closeDrawer();
+});
+
+/* 업로드 */
+$('#pickBtn').onclick = () => S.admin ? $('#file').click() : (toast('업로드는 관리자만 가능합니다', true), askPin());
+$('#file').onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; };
+const dz = $('#drop');
+['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  if (!S.admin) return (toast('업로드는 관리자만 가능합니다', true), askPin());
+  handleFile(f);
+});
+
+/* 설정 */
+$('#photoDst').onchange = e => { $('#driveBox').hidden = e.target.value !== 'drive'; ls('wg_dst', e.target.value); };
+$('#maxPx').onchange = e => ls('wg_maxpx', e.target.value);
+$('#driveFolder').onchange = e => ls('wg_drive', e.target.value.trim());
+$('#pinSave').onclick = async () => {
+  const v = $('#pinNew').value.trim();
+  if (v.length < 4) return toast('4자리 이상 입력해 주세요', true);
+  ls('wg_pin', await sha(v)); $('#pinNew').value = ''; toast('비밀번호를 변경했습니다');
+};
+$('#fbConnect').onclick = async () => {
+  let cfg = FB_DEFAULT;
+  const t = $('#fbCfg').value.trim();
+  if (t){
+    try { cfg = JSON.parse(t.replace(/^[^{]*/,'').replace(/[^}]*$/,'').replace(/(\w+)\s*:/g,'"$1":').replace(/'/g,'"').replace(/,(\s*})/g,'$1')); }
+    catch(e){ return toast('설정을 읽지 못했습니다. 중괄호 부분만 붙여넣어 주세요.', true); }
+  }
+  $('#fbConnect').disabled = true;
+  await fbConnect(cfg); renderStats();
+  $('#fbConnect').disabled = false;
+};
+$('#fbOff').onclick = () => { S.unsub?.(); ls('wg_fbcfg',''); S.mode='local'; S.db=null; setMode(); boot(true); toast('연결을 해제했습니다'); };
+$('#fbPush').onclick = async () => {
+  if (S.mode !== 'cloud') return toast('먼저 Firebase에 연결해 주세요', true);
+  const local = await IDB.all();
+  if (!local.length) return toast('이 기기에 올릴 자료가 없습니다');
+  if (!confirm(`이 기기의 ${local.length}건을 Firebase로 올립니다.`)) return;
+  await saveMany(local); toast(`${local.length}건 업로드 완료`);
+};
+$('#expJson').onclick = () => download(`원그로브_점검현황_백업_${new Date().toISOString().slice(0,10)}.json`,
+  new Blob([JSON.stringify(S.rows, null, 1)], { type:'application/json' }));
+$('#impJsonBtn').onclick = () => $('#impJson').click();
+$('#impJson').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const rs = JSON.parse(await f.text());
+    if (!Array.isArray(rs)) throw new Error();
+    rs.forEach(r => r.id ||= uid());
+    await saveMany(rs); toast(`${rs.length}건 불러왔습니다`);
+  } catch(err){ toast('백업 파일을 읽지 못했습니다', true); }
+  e.target.value = '';
+};
+$('#wipeBtn').onclick = async () => {
+  const t = inHalf();
+  if (!t.length) return toast('삭제할 자료가 없습니다');
+  if (!confirm(`${HALF_LABEL[S.half]} ${t.length}건을 모두 삭제합니다. 되돌릴 수 없습니다.`)) return;
+  for (const r of t) await delRow(r.id);
+  toast('삭제했습니다');
+};
+
+/* ═══ 시작 ═════════════════════════════════════════════════════ */
+async function boot(localOnly){
+  try {
+    const local = await IDB.all();
+    S.rows = local;
+    if (!local.length){
+      const seed = SAMPLE.map(s => ({ id:uid(), photos:{}, ...s }));
+      await IDB.putMany(seed); S.rows = seed;
+    }
+  } catch(e){ S.rows = SAMPLE.map(s => ({ id:uid(), photos:{}, ...s })); }
+  afterLoad();
+  if (localOnly) return;
+  const saved = ls('wg_fbcfg');
+  const cfg = saved ? (()=>{ try { return JSON.parse(saved); } catch(e){ return FB_DEFAULT; } })() : FB_DEFAULT;
+  fbConnect(cfg, true);
+}
+(function init(){
+  $('#photoDst').value = ls('wg_dst') || 'local';
+  $('#driveBox').hidden = $('#photoDst').value !== 'drive';
+  $('#driveFolder').value = ls('wg_drive') || '';
+  $('#maxPx').value = ls('wg_maxpx') || '1200';
+  const sv = ls('wg_fbcfg');
+  if (sv) { try { $('#fbCfg').value = JSON.stringify(JSON.parse(sv), null, 2); } catch(e){} }
+  try { if (sessionStorage.getItem('wg_adm')) setAdmin(true); } catch(e){}
+  setMode(); setView('board'); boot();
+})();
+</script>
+
 </body>
 </html>
