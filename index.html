@@ -87,14 +87,16 @@ button{cursor:pointer}
   border-radius:var(--r);padding:6px 11px;font-size:12px;letter-spacing:.02em;
 }
 .btn-admin:hover{color:var(--ink);border-color:var(--dim);border-style:solid}
-body.admin .btn-admin{background:#2B1D1B;border:1px solid var(--crit);border-style:solid;color:var(--crit-t);font-weight:600}
+body.role-admin .btn-admin{background:#2B1D1B;border:1px solid var(--crit);border-style:solid;color:var(--crit-t);font-weight:600}
+body.role-inspector .btn-admin{background:#122430;border:1px solid var(--doing);border-style:solid;color:var(--doing-t);font-weight:600}
 
-/* 관리자 모드일 때만 보이는 것 */
-.admin-only{display:none}
-body.admin .admin-only{display:inline-flex}
-body.admin tr.row .admin-only{display:inline-flex}
-.admin-rail{display:none}
-body.admin .admin-rail{display:flex}
+/* ── 권한별 노출 ──────────────────────────────────────────────────
+   admin-only : 소방안전관리 책임자 전용 (처리 관련 · 수정 · 삭제)
+   staff-only : 책임자 + 점검업체 (지적 추가 · 점검표 업로드)      */
+.admin-only,.staff-only{display:none}
+body.role-admin .admin-only{display:inline-flex}
+body.role-admin .staff-only,body.role-inspector .staff-only{display:inline-flex}
+.role-note{font-size:11.5px;color:var(--faint);align-self:center;line-height:1.5}
 
 /* ── 탭 ───────────────────────────────────────────────────────────── */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -16px 20px;padding:0 16px;overflow-x:auto}
@@ -262,7 +264,7 @@ td.c-date{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:no
   background:rgba(20,27,35,.85);border:1px solid var(--line2);color:var(--crit-t);
   display:none;place-items:center;font-size:13px;line-height:1;padding:0;
 }
-body.admin .ph .del{display:grid}
+body.can-edit .ph .del{display:grid}
 .ph-add{
   aspect-ratio:4/3;border:1px dashed var(--line2);border-radius:var(--r);background:transparent;
   color:var(--faint);font-size:11.5px;display:grid;place-items:center;
@@ -393,7 +395,7 @@ body.admin .ph .del{display:grid}
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true" data-view="board">현황판</button>
     <button class="tab" role="tab" aria-selected="false" data-view="list">지적내역<span class="cnt" id="tabCnt">0</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-view="upload">점검표 업로드</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="upload" data-need="staff">점검표 업로드</button>
     <button class="tab" role="tab" aria-selected="false" data-view="settings">설정</button>
   </nav>
 
@@ -424,7 +426,7 @@ body.admin .ph .del{display:grid}
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-need="admin">
         <div class="panel-h"><h2>처리주체별 진척</h2><span class="sub">건수 · 상태 구성</span></div>
         <div class="bars" id="barHandler"></div>
         <div class="chart-legend" id="statusLegend"></div>
@@ -461,14 +463,14 @@ body.admin .ph .del{display:grid}
       <div class="spacer"></div>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
       <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
-      <button class="btn sm primary admin-only" id="newBtn">＋ 지적 추가</button>
+      <button class="btn sm primary staff-only" id="newBtn">＋ 지적 추가</button>
     </div>
 
     <div id="filterBox">
       <div class="filter-group"><span class="gl">상태</span><div class="chips" id="fStatus"></div></div>
       <div class="filter-group"><span class="gl">시설</span><div class="chips" id="fFac"></div></div>
       <div class="filter-group"><span class="gl">동·구역</span><div class="chips" id="fDong"></div></div>
-      <div class="filter-group"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
+      <div class="filter-group" data-need="admin"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
     </div>
 
     <div class="table-wrap" id="tableWrap">
@@ -480,7 +482,7 @@ body.admin .ph .del{display:grid}
           <th style="width:86px">상세구분</th>
           <th style="width:190px">층 및 구역</th>
           <th>점검결과 문제점 · 개선대책</th>
-          <th style="width:74px">처리주체</th>
+          <th style="width:74px" data-need="admin">처리주체</th>
           <th style="width:88px">상태</th>
           <th style="width:78px">완료일</th>
           <th style="width:104px">사진</th>
@@ -541,18 +543,37 @@ body.admin .ph .del{display:grid}
   <section id="view-settings" role="tabpanel" hidden>
     <div class="set-grid">
 
-      <div class="panel set-card">
-        <h3>관리자 비밀번호</h3>
-        <p>상단 <b>관리자</b> 버튼을 눌러 입력하는 번호입니다. 이 번호를 아는 사람만 수정·삭제·업로드를 할 수 있습니다.</p>
-        <div class="fld"><label for="pinNew">새 비밀번호 (4자리 이상)</label>
-          <input type="text" id="pinNew" placeholder="현재: 0000" autocomplete="off"></div>
-        <button class="btn" id="pinSave">비밀번호 변경</button>
+      <div class="panel set-card" style="grid-column:1/-1">
+        <h3>접속 권한</h3>
+        <p>상단 <b>관리자</b> 버튼에 넣는 번호에 따라 할 수 있는 일이 달라집니다.</p>
+        <div class="table-wrap" style="margin-bottom:16px">
+          <table style="min-width:640px">
+            <thead><tr><th style="width:118px">구분</th><th style="width:84px">비밀번호</th><th>할 수 있는 일</th></tr></thead>
+            <tbody>
+              <tr><td><b>보기 전용</b></td><td class="c-date">없음</td>
+                  <td>현황판 · 지적내역 조회, 사진 확대, 인쇄, CSV 내려받기</td></tr>
+              <tr><td><b style="color:var(--doing-t)">점검업체</b></td><td class="c-date">1111</td>
+                  <td>위의 모든 것 + <b>지적 추가 · 점검표 업로드</b><br>
+                      <span style="color:var(--faint);font-size:11.5px">처리주체 · 처리상태 · 완료일 · 조치후 사진은 보이지 않습니다. 기존 건은 수정할 수 없습니다.</span></td></tr>
+              <tr><td><b style="color:var(--crit-t)">관리자</b></td><td class="c-date">0000</td>
+                  <td>위의 모든 것 + <b>모든 항목 수정 · 삭제 · 처리 관련 입력</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fld-2" data-need="admin">
+          <div class="fld"><label for="pinNew">관리자 비밀번호 변경</label>
+            <input type="text" id="pinNew" placeholder="4자리 이상" autocomplete="off"></div>
+          <div class="fld"><label for="pinStaff">점검업체 비밀번호 변경</label>
+            <input type="text" id="pinStaff" placeholder="4자리 이상" autocomplete="off"></div>
+        </div>
+        <button class="btn admin-only" id="pinSave">비밀번호 저장</button>
         <p style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6">
-          이 기기의 브라우저에만 저장됩니다. Firebase를 연결하면 모든 기기에 공통 적용됩니다.
+          비밀번호는 원문이 아니라 해시로만 이 기기에 보관합니다. 기본값 <b>0000 / 1111</b>은 반드시 바꾸세요.
+          잊으셨다면 브라우저 사이트 데이터를 지우면 기본값으로 돌아갑니다.
         </p>
       </div>
 
-      <div class="panel set-card">
+      <div class="panel set-card" data-need="admin">
         <h3>Firebase 연결</h3>
         <p>연결하면 여러 사람이 같은 자료를 보고, 수정 내용이 바로 공유됩니다.
            <b>fire-inspection-dash 설정이 이미 들어 있으니 칸을 비운 채 눌러도 됩니다.</b></p>
@@ -574,7 +595,7 @@ body.admin .ph .del{display:grid}
         <p id="fbState" style="font-size:12px;color:var(--faint);margin:12px 0 0;line-height:1.6"></p>
       </div>
 
-      <div class="panel set-card">
+      <div class="panel set-card" data-need="admin">
         <h3>사진 저장 위치</h3>
         <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.</p>
         <div class="fld">
@@ -620,7 +641,7 @@ body.admin .ph .del{display:grid}
         <p>현재 <b id="stCount">0</b>건 · 사진 <b id="stPhoto">0</b>장을 보관 중입니다.</p>
         <div style="display:flex;gap:9px;flex-wrap:wrap">
           <button class="btn" id="expJson">전체 백업 (JSON)</button>
-          <button class="btn" id="impJsonBtn">백업 불러오기</button>
+          <button class="btn admin-only" id="impJsonBtn">백업 불러오기</button>
           <input type="file" id="impJson" accept=".json" hidden>
           <button class="btn danger admin-only" id="wipeBtn">현재 회차 전체 삭제</button>
         </div>
@@ -660,11 +681,11 @@ body.admin .ph .del{display:grid}
   </div>
   <div class="drawer-b" id="dBody"></div>
   <div class="drawer-f">
-    <button class="btn danger admin-only" id="dDelete">삭제</button>
+    <button class="btn danger" id="dDelete" hidden>삭제</button>
     <div class="spacer"></div>
     <button class="btn" id="dCancel">닫기</button>
-    <button class="btn primary admin-only" id="dSave">저장</button>
-    <span id="dLocked" style="font-size:12px;color:var(--faint);align-self:center">보기 전용 · 수정하려면 상단 <b>관리자</b></span>
+    <button class="btn primary" id="dSave" hidden>저장</button>
+    <span id="dLocked" class="role-note"></span>
   </div>
 </aside>
 
@@ -858,7 +879,7 @@ const HALF_LABEL = { '2026H1':'26년 상반기', '2026H2':'26년 하반기' };
 
 /* ── 전역 상태 ─────────────────────────────────────────────────── */
 const S = {
-  rows: [], half: '2026H2', view: 'board', admin: false,
+  rows: [], half: '2026H2', view: 'board', role: 'viewer',
   mode: 'local', fb: null, db: null, unsub: null,
   filters: { status:new Set(), fac:new Set(), dong:new Set(), handler:new Set() },
   q: '', sort: 'def', cur: null, dirtyPhotos: null
@@ -1505,7 +1526,7 @@ async function renderList(){
       <td><span class="tag">${esc(r.detail||'—')}</span></td>
       <td class="c-loc">${esc(fullLoc(r))}</td>
       <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
-      <td>${esc(r.handler||'—')}</td>
+      ${isAdmin() ? `<td>${esc(r.handler||'—')}</td>` : ''}
       <td><span class="pill p-${st}"><i></i>${st}</span></td>
       <td class="c-date">${esc((r.done||'').slice(5)||'—')}</td>
       <td data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
@@ -1534,10 +1555,16 @@ function selOpts(list, cur, ph){
 async function openDrawer(r){
   S.cur = JSON.parse(JSON.stringify(r));
   S.dirtyPhotos = { before:[], map:[], after:[] };
-  const c = S.cur, ro = !S.admin;
+  const c = S.cur, ed = canEdit(c), ro = !ed, adm = isAdmin();
   $('#dTitle').textContent = c.id ? `${c.sheet||''} ${c.no||''}번 지적` : '새 지적사항';
   $('#dKey').textContent = c.id ? HALF_LABEL[c.half||S.half] : HALF_LABEL[S.half];
-  $('#dLocked').hidden = S.admin;
+  document.body.classList.toggle('can-edit', ed);
+  $('#dSave').hidden = ro;
+  $('#dDelete').hidden = !adm || !c.id;
+  $('#dLocked').hidden = ed;
+  $('#dLocked').innerHTML = S.role === 'inspector'
+    ? '이미 등록된 건은 수정할 수 없습니다.<br>처리 관련 항목은 관리자가 입력합니다.'
+    : '보기 전용 · 입력하려면 상단 <b>관리자</b>';
 
   const d = m => ro ? ' disabled' : '';
   $('#dBody').innerHTML = `
@@ -1550,10 +1577,11 @@ async function openDrawer(r){
       <div class="fld"><label for="f_fac">시설구분</label><select id="f_fac"${d()}>${selOpts(OPT.fac, c.fac)}</select></div>
       <div class="fld"><label for="f_detail">상세구분</label><select id="f_detail"${d()}>${selOpts(OPT.detail[c.fac]||[], c.detail)}</select></div>
     </div>
-    <div class="fld-3">
+    <div class="${adm ? 'fld-3' : 'fld-2'}">
       <div class="fld"><label for="f_dong">동별</label><select id="f_dong"${d()}>${selOpts(OPT.dong, c.dong)}</select></div>
       <div class="fld"><label for="f_floor">층</label><select id="f_floor"${d()}>${selOpts(OPT.floor, c.floor)}</select></div>
-      <div class="fld"><label for="f_handler">처리주체</label><select id="f_handler"${d()}>${selOpts(OPT.handler, c.handler)}</select></div>
+      <div class="fld"${adm ? '' : ' hidden'}><label for="f_handler">처리주체</label>
+        <select id="f_handler"${d()}>${selOpts(OPT.handler, c.handler)}</select></div>
     </div>
     <div class="fld"><label for="f_loc">구역 상세</label>
       <input type="text" id="f_loc" value="${esc(c.loc)}" placeholder="예: 4번 계단 앞 여자화장실"${d()}>
@@ -1568,12 +1596,15 @@ async function openDrawer(r){
     <div class="fld"><label for="f_law">관련 법규</label>
       <input type="text" id="f_law" list="l_law" value="${esc(c.law)}"${d()}>
       <datalist id="l_law"></datalist></div>
-    <div class="fld-3">
-      <div class="fld"><label for="f_status">처리 상태</label><select id="f_status"${d()}>${selOpts(OPT.status, deriveStatus(c),'')}</select></div>
-      <div class="fld"><label for="f_done">완료일</label><input type="date" id="f_done" value="${esc(c.done)}"${d()}></div>
+    <div class="${adm ? 'fld-3' : 'fld'}">
+      <div class="fld"${adm ? '' : ' hidden'}><label for="f_status">처리 상태</label>
+        <select id="f_status"${d()}>${selOpts(OPT.status, deriveStatus(c),'')}</select></div>
+      <div class="fld"${adm ? '' : ' hidden'}><label for="f_done">완료일</label>
+        <input type="date" id="f_done" value="${esc(c.done)}"${d()}></div>
       <div class="fld"><label for="f_note">비고</label><input type="text" id="f_note" value="${esc(c.note)}"${d()}></div>
     </div>
-    <div class="fld"><label class="chk"><input type="checkbox" id="f_submit"${c.submit?' checked':''}${d()}> 소방서 제출 대상</label></div>
+    <div class="fld"${adm ? '' : ' hidden'}><label class="chk">
+      <input type="checkbox" id="f_submit"${c.submit?' checked':''}${d()}> 소방서 제출 대상</label></div>
     <div id="phWrap"></div>`;
 
   /* 연동: 시설구분 → 상세구분 → 법규·대책·문구 */
@@ -1603,13 +1634,15 @@ async function openDrawer(r){
 async function renderPhotos(){
   const c = S.cur, kinds = [['before','문제점 사진'],['map','위치표기'],['after','조치후 사진']];
   const blocks = await Promise.all(kinds.map(async ([k, label]) => {
+    /* 조치후 사진은 처리 결과이므로 관리자만 올리고 지웁니다 */
+    const may = canEdit(c) && (isAdmin() || k !== 'after');
     const refs = c.photos?.[k] || [];
     const items = await Promise.all(refs.map(async (ref, i) => {
       const u = await photoURL(ref);
       return u ? `<div class="ph"><img src="${u}" alt="${label} ${i+1}" data-lb="${esc(u)}" data-cap="${label}">
-        <button class="del" data-del="${k}:${i}" title="사진 삭제" aria-label="사진 삭제">✕</button></div>` : '';
+        ${may ? `<button class="del" data-del="${k}:${i}" title="사진 삭제" aria-label="사진 삭제">✕</button>` : ''}</div>` : '';
     }));
-    const add = S.admin ? `<button class="ph-add" data-add="${k}">＋ 사진 추가</button>` : '';
+    const add = may ? `<button class="ph-add" data-add="${k}">＋ 사진 추가</button>` : '';
     const body = items.filter(Boolean).join('') + add;
     return `<div class="photoset"><div class="ph-h"><span>${label}</span>
       <span style="color:var(--faint);font-size:11px;font-family:var(--mono)">${refs.length}장</span></div>
@@ -1642,7 +1675,7 @@ async function handleFile(file){
     p(0.95, `읽은 지적사항 ${rows.length}건 · 사진 ${media.size}장`);
 
     const existing = new Map(inHalf().map(r => [`${r.sheet}|${r.no}`, r]));
-    const save = [], maxPx = +($('#maxPx').value || 1200);
+    const save = [], maxPx = +($('#maxPx').value || 1200), adm = isAdmin();
     let add = 0, upd = 0, ph = 0;
 
     for (const nr of rows){
@@ -1654,19 +1687,24 @@ async function handleFile(file){
         const fl = splitFloor(nr.loc);
         rec = { id:uid(), half:S.half, floor:fl.floor, ...nr, loc:fl.rest, photos:{} };
         delete rec._photos;
+        /* 점검업체가 올린 파일에서는 처리 관련 값을 가져오지 않습니다 */
+        if (!adm){ rec.handler = ''; rec.done = ''; rec.submit = false; }
         rec.status = deriveStatus(rec);
         add++;
       } else {
         /* 기존 건은 덮어쓰지 않고 빈 칸만 채움 */
-        for (const k of ['date','fac','detail','dong','problem','action','law','handler','note']){
+        const fields = ['date','fac','detail','dong','problem','action','law','note'];
+        if (adm) fields.push('handler');
+        for (const k of fields){
           if (!rec[k] && nr[k]){ rec[k] = nr[k]; touched = true; }
         }
-        if (nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
+        if (adm && nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
         if (touched) upd++;
         rec.photos ||= {};
       }
       /* 사진 첨부 — 이미 있는 종류는 건너뜀 */
       for (const [k, paths] of Object.entries(nr._photos || {})){
+        if (!adm && k === 'after') continue;   /* 조치후 사진은 관리자만 */
         rec.photos[k] ||= [];
         if (rec.photos[k].length) continue;
         for (const pth of paths){
@@ -1719,20 +1757,41 @@ async function sha(s){
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('wg:' + s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
 }
-async function pinHash(){ return ls('wg_pin') || await sha('0000'); }
-function setAdmin(on){
-  S.admin = on;
-  document.body.classList.toggle('admin', on);
-  $('#adminBtn').textContent = on ? '관리자 모드 해제' : '관리자';
-  $('#adminBtn').setAttribute('aria-pressed', on);
-  try { on ? sessionStorage.setItem('wg_adm','1') : sessionStorage.removeItem('wg_adm'); } catch(e){}
+async function pinHash(kind){
+  return ls(kind === 'admin' ? 'wg_pin' : 'wg_pin_staff')
+      || await sha(kind === 'admin' ? '0000' : '1111');
+}
+const ROLE_LABEL = { admin:'관리자', inspector:'점검업체', viewer:'보기 전용' };
+const isAdmin = () => S.role === 'admin';
+const isStaff = () => S.role === 'admin' || S.role === 'inspector';
+/* 점검업체는 새로 쓰는 건만 입력할 수 있고, 이미 등록된 건은 읽기 전용입니다 */
+const canEdit = rec => isAdmin() || (S.role === 'inspector' && !rec?.id);
+
+function applyRole(){
+  const b = document.body;
+  b.classList.toggle('role-admin', isAdmin());
+  b.classList.toggle('role-inspector', S.role === 'inspector');
+  $$('[data-need]').forEach(el => {
+    el.hidden = el.dataset.need === 'admin' ? !isAdmin() : !isStaff();
+  });
+  const btn = $('#adminBtn');
+  btn.textContent = S.role === 'viewer' ? '관리자' : ROLE_LABEL[S.role] + ' 모드 해제';
+  btn.setAttribute('aria-pressed', S.role !== 'viewer');
+  if (S.view === 'upload' && !isStaff()) setView('board');
+}
+function setRole(role){
+  S.role = role;
+  if (role !== 'admin') S.filters.handler.clear();
+  applyRole();
+  try { role === 'viewer' ? sessionStorage.removeItem('wg_role') : sessionStorage.setItem('wg_role', role); } catch(e){}
+  afterLoad();
   if (S.cur) openDrawer(S.cur);
 }
 function askPin(){
   const m = document.createElement('div');
   m.className = 'modal';
-  m.innerHTML = `<h3>관리자 확인</h3>
-    <p>수정 · 삭제 · 점검표 업로드를 하려면 관리자 비밀번호를 입력하세요.</p>
+  m.innerHTML = `<h3>권한 확인</h3>
+    <p>비밀번호에 따라 <b>점검업체</b> 또는 <b>관리자</b> 모드로 들어갑니다.</p>
     <input type="password" id="pinIn" inputmode="numeric" autocomplete="off" placeholder="● ● ● ●">
     <div class="err" id="pinErr"></div>
     <div class="modal-row"><button class="btn" id="pinCancel">취소</button>
@@ -1741,8 +1800,10 @@ function askPin(){
   document.body.append(sc, m);
   const close = () => { m.remove(); sc.remove(); };
   const go = async () => {
-    const v = m.querySelector('#pinIn').value;
-    if (await sha(v) === await pinHash()){ close(); setAdmin(true); toast('관리자 모드입니다'); }
+    const h = await sha(m.querySelector('#pinIn').value);
+    const role = h === await pinHash('admin') ? 'admin'
+               : h === await pinHash('staff') ? 'inspector' : null;
+    if (role){ close(); setRole(role); toast(ROLE_LABEL[role] + ' 모드입니다'); }
     else { m.querySelector('#pinErr').textContent = '비밀번호가 맞지 않습니다.'; m.querySelector('#pinIn').select(); }
   };
   m.querySelector('#pinOk').onclick = go;
@@ -1783,7 +1844,8 @@ function afterLoad(){
 /* ═══ 이벤트 ═══════════════════════════════════════════════════ */
 $$('.tab').forEach(t => t.onclick = () => setView(t.dataset.view));
 $('#halfSel').onchange = e => { S.half = e.target.value; Object.values(S.filters).forEach(s => s.clear()); afterLoad(); };
-$('#adminBtn').onclick = () => S.admin ? (setAdmin(false), toast('보기 전용으로 돌아갑니다')) : askPin();
+$('#adminBtn').onclick = () => S.role !== 'viewer'
+  ? (setRole('viewer'), toast('보기 전용으로 돌아갑니다')) : askPin();
 $('#q').oninput = e => { S.q = e.target.value; renderList(); };
 $('#sortSel').onchange = e => { S.sort = e.target.value; renderList(); };
 $('#resetFilter').onclick = () => { Object.values(S.filters).forEach(s => s.clear()); S.q = ''; $('#q').value = ''; renderFilters(); renderList(); };
@@ -1798,7 +1860,7 @@ $('#tbody').onclick = e => {
   $$('#tbody tr').forEach(x => x.classList.remove('sel')); tr.classList.add('sel');
   const r = S.rows.find(x => x.id === tr.dataset.id); if (r) openDrawer(r);
 };
-$('#newBtn').onclick = () => openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
+$('#newBtn').onclick = () => isStaff() && openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
   sheet:'', no:'', fac:'', detail:'', dong:'', floor:'', loc:'', problem:'', action:'', law:'',
   handler:'', status:'미조치', done:'', submit:false, note:'', photos:{} });
 $('#toUpload').onclick = () => setView('upload');
@@ -1806,8 +1868,12 @@ $('#printBtn').onclick = () => window.print();
 $('#csvBtn').onclick = toCSV;
 $('#dClose').onclick = $('#dCancel').onclick = closeDrawer;
 $('#scrim').onclick = closeDrawer;
-$('#dSave').onclick = async () => { await saveRow(collect()); toast('저장했습니다'); closeDrawer(); };
+$('#dSave').onclick = async () => {
+  if (!canEdit(S.cur)) return toast('수정 권한이 없습니다', true);
+  await saveRow(collect()); toast('저장했습니다'); closeDrawer();
+};
 $('#dDelete').onclick = async () => {
+  if (!isAdmin()) return toast('삭제는 관리자만 가능합니다', true);
   if (!S.cur?.id) return closeDrawer();
   if (!confirm(`${S.cur.sheet} ${S.cur.no}번 지적사항을 삭제합니다. 되돌릴 수 없습니다.`)) return;
   await delRow(S.cur.id); toast('삭제했습니다'); closeDrawer();
@@ -1842,14 +1908,14 @@ document.addEventListener('keydown', e => {
 });
 
 /* 업로드 */
-$('#pickBtn').onclick = () => S.admin ? $('#file').click() : (toast('업로드는 관리자만 가능합니다', true), askPin());
+$('#pickBtn').onclick = () => isStaff() ? $('#file').click() : (toast('업로드하려면 권한 확인이 필요합니다', true), askPin());
 $('#file').onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; };
 const dz = $('#drop');
 ['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
 ['dragleave','drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
 dz.addEventListener('drop', e => {
   const f = e.dataTransfer.files[0]; if (!f) return;
-  if (!S.admin) return (toast('업로드는 관리자만 가능합니다', true), askPin());
+  if (!isStaff()) return (toast('업로드하려면 권한 확인이 필요합니다', true), askPin());
   handleFile(f);
 });
 
@@ -1858,9 +1924,15 @@ $('#photoDst').onchange = e => { $('#driveBox').hidden = e.target.value !== 'dri
 $('#maxPx').onchange = e => ls('wg_maxpx', e.target.value);
 $('#driveFolder').onchange = e => ls('wg_drive', e.target.value.trim());
 $('#pinSave').onclick = async () => {
-  const v = $('#pinNew').value.trim();
-  if (v.length < 4) return toast('4자리 이상 입력해 주세요', true);
-  ls('wg_pin', await sha(v)); $('#pinNew').value = ''; toast('비밀번호를 변경했습니다');
+  if (!isAdmin()) return toast('관리자만 바꿀 수 있습니다', true);
+  const a = $('#pinNew').value.trim(), b = $('#pinStaff').value.trim();
+  if (!a && !b) return toast('바꿀 비밀번호를 입력해 주세요', true);
+  if ((a && a.length < 4) || (b && b.length < 4)) return toast('4자리 이상 입력해 주세요', true);
+  if (a && b && a === b) return toast('두 비밀번호를 다르게 정해 주세요', true);
+  const done = [];
+  if (a){ ls('wg_pin', await sha(a)); $('#pinNew').value=''; done.push('관리자'); }
+  if (b){ ls('wg_pin_staff', await sha(b)); $('#pinStaff').value=''; done.push('점검업체'); }
+  toast(done.join(' · ') + ' 비밀번호를 바꿨습니다');
 };
 /* firebaseConfig 읽기 — 키를 하나씩 찾아냅니다.
    따옴표 없는 키, 홑따옴표, 끝의 세미콜론, import 문이 붙은 통째 복사본,
@@ -1876,6 +1948,7 @@ function parseCfg(t){
   return out;
 }
 $('#fbConnect').onclick = async () => {
+  if (!isAdmin()) return toast('연결 설정은 관리자만 바꿀 수 있습니다', true);
   let cfg = FB_DEFAULT;
   const t = $('#fbCfg').value.trim();
   if (t){
@@ -1905,6 +1978,7 @@ $('#expJson').onclick = () => download(`원그로브_점검현황_백업_${new D
 $('#impJsonBtn').onclick = () => $('#impJson').click();
 $('#impJson').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
+  if (!isAdmin()){ e.target.value=''; return toast('불러오기는 관리자만 가능합니다', true); }
   try {
     const rs = JSON.parse(await f.text());
     if (!Array.isArray(rs)) throw new Error();
@@ -1914,6 +1988,7 @@ $('#impJson').onchange = async e => {
   e.target.value = '';
 };
 $('#wipeBtn').onclick = async () => {
+  if (!isAdmin()) return toast('삭제는 관리자만 가능합니다', true);
   const t = inHalf();
   if (!t.length) return toast('삭제할 자료가 없습니다');
   if (!confirm(`${HALF_LABEL[S.half]} ${t.length}건을 모두 삭제합니다. 되돌릴 수 없습니다.`)) return;
@@ -1944,7 +2019,11 @@ async function boot(localOnly){
   $('#maxPx').value = ls('wg_maxpx') || '1200';
   const sv = ls('wg_fbcfg');
   if (sv) { try { $('#fbCfg').value = JSON.stringify(JSON.parse(sv), null, 2); } catch(e){} }
-  try { if (sessionStorage.getItem('wg_adm')) setAdmin(true); } catch(e){}
+  try {
+    const r = sessionStorage.getItem('wg_role');
+    if (r === 'admin' || r === 'inspector') S.role = r;
+  } catch(e){}
+  applyRole();
   setMode(); setView('board'); boot();
 })();
 </script>
