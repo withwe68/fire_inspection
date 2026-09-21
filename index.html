@@ -190,7 +190,16 @@ tbody tr:last-child td{border-bottom:none}
 tbody tr.row{cursor:pointer}
 tbody tr.row:hover td{background:var(--panel2)}
 tbody tr.row.sel td{background:var(--raise)}
-td.c-no{font-family:var(--mono);color:var(--faint);font-size:12px;white-space:nowrap}
+td.c-no{font-family:var(--mono);color:var(--dim);font-size:12.5px;white-space:nowrap;text-align:right;padding-right:14px}
+/* 동별 열 : 점검일보(엑셀)의 '동별' 칸과 1:1로 맞춘 독립 열 */
+td.c-dong{white-space:nowrap}
+td.c-dong .dong-b{
+  display:inline-block;min-width:34px;text-align:center;padding:1px 7px;border-radius:4px;
+  background:var(--raise);border:1px solid var(--line2);color:var(--ink);
+  font-size:11.5px;font-weight:600;letter-spacing:.02em;
+}
+td.c-dong .zone-s{display:block;margin-top:3px;font-size:10.5px;color:var(--faint);
+  max-width:110px;overflow:hidden;text-overflow:ellipsis}
 td.c-loc{max-width:210px;font-size:12.5px;color:var(--dim)}
 td.c-prob{max-width:300px;min-width:180px}
 td.c-prob b{font-weight:400;display:block;white-space:pre-line}
@@ -374,8 +383,8 @@ body.can-edit .ph .del{display:grid}
     <div class="brand">
       <span class="mark" aria-hidden="true">WG</span>
       <span>
-        <b>원그로브 소방시설 종합점검 현황판</b><br>
-        <small>26년 소방시설 법정점검 점검사항 관리</small>
+        <b>원그로브 종합점검 현황판</b><br>
+        <small>소방시설 법정점검 지적사항 관리</small>
       </span>
     </div>
     <div class="spacer"></div>
@@ -387,7 +396,7 @@ body.can-edit .ph .del{display:grid}
       </select>
     </label>
     <span class="badge local" id="modeBadge"><span class="dot"></span><span id="modeText">로컬 저장</span></span>
-    <button class="btn-admin" id="adminBtn" aria-pressed="false">접근권한</button>
+    <button class="btn-admin" id="adminBtn" aria-pressed="false">관리자</button>
   </div>
 </header>
 
@@ -476,11 +485,12 @@ body.can-edit .ph .del{display:grid}
     <div class="table-wrap" id="tableWrap">
       <table>
         <thead><tr>
-          <th style="width:48px">No.</th>
+          <th style="width:46px;text-align:right;padding-right:14px">No.</th>
           <th style="width:88px">점검일자</th>
           <th style="width:96px">시설구분</th>
           <th style="width:86px">상세구분</th>
-          <th style="width:190px">층 및 구역</th>
+          <th style="width:96px">동별</th>
+          <th style="width:180px">층 및 구역</th>
           <th>점검결과 문제점 · 개선대책</th>
           <th style="width:74px" data-need="admin">처리주체</th>
           <th style="width:88px">상태</th>
@@ -1379,6 +1389,18 @@ function splitFloor(loc){
 }
 const fullLoc = r => [r.floor, r.loc].filter(Boolean).join(' ');
 
+/* ── 동별 표기 ───────────────────────────────────────────────────
+   점검일보(엑셀)는 'No.'와 '동별'이 서로 다른 칸입니다. 현황판도 같은 방식으로
+   번호 열과 동별 열을 나눠 쓰고, 동별 칸이 비어 있을 때만 시트(구역)명에서
+   유추합니다. ('업무 A동' 시트 → A) */
+function dongOf(r){
+  if (r.dong) return r.dong;
+  const m = String(r.sheet||'').match(/([A-Da-d])\s*동/);
+  return m ? m[1].toUpperCase() : '';
+}
+const dongLabel = d => /^[A-D]$/i.test(d||'') ? String(d).toUpperCase() + '동' : (d || '—');
+const zoneLabel = r => String(r.sheet||'').replace(/^업무\s+/,'');
+
 /* ═══ 필터 ═════════════════════════════════════════════════════ */
 function inHalf(){ return S.rows.filter(r => (r.half || '2026H1') === S.half); }
 function current(){
@@ -1386,10 +1408,11 @@ function current(){
   let out = inHalf().filter(r => {
     if (f.status.size && !f.status.has(deriveStatus(r))) return false;
     if (f.fac.size && !f.fac.has(r.fac)) return false;
-    if (f.dong.size && !f.dong.has(r.dong)) return false;
+    if (f.dong.size && !f.dong.has(dongOf(r))) return false;
     if (f.handler.size && !f.handler.has(r.handler)) return false;
     if (q){
-      const hay = [r.loc,r.floor,r.problem,r.action,r.law,r.note,r.detail,r.fac,r.sheet].join(' ').toLowerCase();
+      const hay = [r.loc,r.floor,r.problem,r.action,r.law,r.note,r.detail,r.fac,r.sheet,
+                   dongOf(r),dongLabel(dongOf(r))].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1494,15 +1517,16 @@ document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-tip]'
 /* ═══ 필터 칩 ══════════════════════════════════════════════════ */
 function renderFilters(){
   const rows = inHalf();
-  const cnt = (k, v) => rows.filter(r => (k === 'status' ? deriveStatus(r) : r[k]) === v).length;
-  const build = (box, key, vals) => $(box).innerHTML = vals.map(v => {
+  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : r[k];
+  const cnt = (k, v) => rows.filter(r => val(r, k) === v).length;
+  const build = (box, key, vals, lab) => $(box).innerHTML = vals.map(v => {
     const c = cnt(key, v); if (!c && !S.filters[key].has(v)) return '';
     return `<button class="chip" data-k="${key}" data-v="${esc(v)}" aria-pressed="${S.filters[key].has(v)}">
-      ${esc(v)}<span class="n">${c}</span></button>`;
+      ${esc(lab ? lab(v) : v)}<span class="n">${c}</span></button>`;
   }).join('');
   build('#fStatus','status', OPT.status);
   build('#fFac','fac', OPT.fac);
-  build('#fDong','dong', [...new Set(rows.map(r => r.dong).filter(Boolean))].sort());
+  build('#fDong','dong', [...new Set(rows.map(dongOf).filter(Boolean))].sort(), dongLabel);
   build('#fHandler','handler', OPT.handler);
 }
 
@@ -1519,11 +1543,14 @@ async function renderList(){
   tb.innerHTML = rows.map(r => {
     const st = deriveStatus(r);
     const np = (r.photos?.before?.length||0) + (r.photos?.map?.length||0) + (r.photos?.after?.length||0);
+    const dl = dongLabel(dongOf(r)), zl = zoneLabel(r);
+    const zs = (zl && zl !== dl) ? `<span class="zone-s" title="${esc(zl)}">${esc(zl)}</span>` : '';
     return `<tr class="row" data-id="${r.id}">
-      <td class="c-no">${esc(r.sheet?.replace(/^업무 /,'')||'')}<br>${esc(r.no)}</td>
+      <td class="c-no">${esc(r.no)}</td>
       <td class="c-date">${esc((r.date||'').slice(5))}</td>
       <td>${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
       <td><span class="tag">${esc(r.detail||'—')}</span></td>
+      <td class="c-dong"><span class="dong-b">${esc(dl)}</span>${zs}</td>
       <td class="c-loc">${esc(fullLoc(r))}</td>
       <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
       ${isAdmin() ? `<td>${esc(r.handler||'—')}</td>` : ''}
