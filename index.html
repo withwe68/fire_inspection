@@ -1,2256 +1,1302 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="원그로브 소방시설 종합점검 지적사항 관리 대시보드">
-<meta name="theme-color" content="#141B23">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141B23'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23DE3B2C'/%3E%3C/svg%3E">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html{color-scheme:dark}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>원그로브 소방시설 종합점검 현황판</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#151C24">
+<meta name="description" content="원그로브 화재시 소방시설 연동로직 체험 시뮬레이터 — 방재실 비화재보 대응 교육용">
+<title>원그로브 화재시 소방시설 연동로직 체험 시뮬레이터</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23151C24'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%23DE3B2C'/%3E%3C/svg%3E">
+<!-- 폰트는 내려받지 못해도 페이지가 즉시 뜨도록 비차단(non-blocking) 로드.
+     사내망처럼 외부 접속이 막힌 환경에서는 시스템 한글 폰트로 자동 대체된다. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
-/* ── 원그로브 방재실 다크 팔레트 (기존 연동로직 시뮬레이터와 동일 토큰) ───── */
 :root{
-  --bg:#141B23; --panel:#1E2A34; --panel2:#26333E; --raise:#2E3C48;
-  --line:#36464F; --line2:#44565F;
-  --ink:#DFE7EE; --dim:#93A6B5; --faint:#6B808F;
-  --undone:#C8811F; --doing:#3C8FC7; --done:#2FA35F; --hold:#7E93A3; --excl:#5A6E7E;
-  --crit:#DE3B2C; --accent:#E07B39;
-  --undone-t:#E8B265; --doing-t:#7CBCE6; --done-t:#5FCB8D; --crit-t:#F0796C;
-  --r:6px; --rl:10px;
-  --sans:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+  --bg:#151C24; --panel:#1F2A35; --panel2:#27353F; --line:#37474F;
+  --ink:#DFE7EE; --dim:#8FA3B3; --faint:#63788A;
+  --ok:#2FA35F; --pre:#E0A33C; --fire:#DE3B2C; --halt:#4A5B6B;
+  --verify:#8E7CE8; --cool:#3C8FC7; --key:#E07B39;
 }
+:root:not([data-theme="light"]){color-scheme:dark}
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{
-  background:var(--bg); color:var(--ink); font-family:var(--sans);
-  font-size:14px; line-height:1.55; -webkit-text-size-adjust:100%;
-  padding-inline:16px;
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,"Malgun Gothic",sans-serif;
+ font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1380px;margin:0 auto;padding:20px 16px 64px}
+
+header{border-bottom:2px solid var(--line);padding-bottom:13px;margin-bottom:18px}
+h1{font-size:25px;font-weight:800;margin:0 0 14px;letter-spacing:-.01em;text-align:center}
+.sub{color:var(--dim);font-size:13.5px;margin:6px 0 0}
+.modes{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.modes button{font:inherit;font-size:13px;font-weight:500;color:var(--dim);background:var(--panel);
+ border:1px solid var(--line);padding:7px 13px;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--panel2);color:var(--ink);border-color:var(--cool);box-shadow:inset 0 -2px 0 var(--cool)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+
+/* 음향 컨트롤 */
+.audiobar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px;
+ padding:8px 11px;background:var(--panel);border:1px solid var(--line)}
+.audiobar button{font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);
+ background:var(--panel2);border:1px solid var(--line);padding:6px 12px;cursor:pointer}
+.audiobar button[aria-pressed="true"]{background:#2B4A5E;border-color:var(--cool);color:#CFE6F5}
+.audiobar .barlabel{font-size:11.5px;font-weight:600;color:var(--dim);letter-spacing:.02em;
+ padding-right:2px;border-right:1px solid var(--line);margin-right:2px}
+.audiobar button.bcast{background:#3A5A2E;border-color:var(--ok);color:#D8F5DE}
+.audiobar button.recov{background:#2B3E52;border-color:var(--cool);color:#CFE6F5}
+.audiobar label{font-size:11.5px;color:var(--faint);display:flex;align-items:center;gap:6px}
+.audiobar select{font:inherit;font-size:12px;color:var(--ink);background:var(--panel2);
+ border:1px solid var(--line);padding:5px 7px}
+.audiobar input[type=range]{width:96px;margin:0;height:18px}
+.audiobar .note{font-size:11px;color:var(--faint);margin-left:auto}
+.sndwarn{font-size:11.5px;font-weight:600;color:#F2C879;background:#3A2E18;
+ border:1px solid var(--pre);padding:5px 9px;border-radius:3px}
+.sndwarn[hidden]{display:none}
+.sndon{color:var(--pre)}
+
+/* 3개 칸을 같은 높이로 늘리고, 발화 위치 칸을 넓혀 동·층 선택을 크게 보여준다 */
+.grid{display:grid;grid-template-columns:360px minmax(0,1fr) minmax(0,400px);gap:15px;align-items:stretch}
+@media (max-width:1150px){.grid{grid-template-columns:330px minmax(0,1fr)}.c3{grid-column:1/-1}}
+@media (max-width:760px){.grid{grid-template-columns:1fr}.c3{grid-column:auto}}
+.box{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.box>.body{flex:1 1 auto}
+.box h2{font-size:12.5px;font-weight:600;margin:0;padding:9px 12px;color:var(--dim);
+ background:var(--panel2);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
+.box h2 em{font-style:normal;color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:11px}
+.body{padding:12px}
+
+/* 적층도 */
+.dongs{display:grid;grid-template-columns:44px repeat(4,1fr);gap:3px;margin-bottom:6px}
+.dongs span{font-size:13px;font-weight:600;color:var(--dim);text-align:center;font-family:"IBM Plex Mono",monospace}
+.stack{display:flex;flex-direction:column;gap:3px}
+.frow{display:grid;grid-template-columns:44px repeat(4,1fr);gap:3px}
+.flab{font-size:12px;font-weight:500;color:var(--dim);display:flex;align-items:center;justify-content:flex-end;
+ padding-right:7px;font-family:"IBM Plex Mono",monospace}
+.cell{height:27px;background:var(--panel2);border:1px solid #33434F;padding:0;cursor:pointer;position:relative}
+/* 발화 위치 칸 — 남는 세로 공간을 적층도가 채워 동·층 선택이 크게 보이도록 */
+.c1 .body{display:flex;flex-direction:column}
+.c1 .stack{flex:1 1 auto}
+.c1 .frow{flex:1 1 auto;min-height:27px}
+.c1 .cell{height:100%}
+.cell:hover{border-color:var(--cool);background:#2F3E4A}
+.cell.sel{background:#3A4A57;border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.cell.alarm{background:rgba(222,59,44,.32);border-color:var(--fire)}
+.cell.prealarm{background:rgba(224,163,60,.26);border-color:var(--pre)}
+/* 방화셔터 하강 애니메이션 — 슬랫(가로줄) 질감의 셔터가 천장에서부터
+   실제로 내려오듯, 위에서부터 채워지는 막대로 표현한다.
+   1차(부분)는 절반까지, 2차(완전폐쇄)는 끝까지 채워진다.
+   높이는 render() 에서 JS로 지정하고, 여기서는 전환 애니메이션만 정의한다. */
+.cell .shtbar{position:absolute;left:0;right:0;top:0;height:0%;overflow:hidden;
+ background:repeating-linear-gradient(to bottom,var(--key) 0 3px,#C4691F 3px 4px);
+ box-shadow:inset 0 -3px 5px rgba(0,0,0,.45);
+ transition:height 1.05s cubic-bezier(.22,.7,.3,1);pointer-events:none}
+.cell .shtbar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+ background:#FFDCA8;box-shadow:0 0 5px 1px rgba(255,220,168,.85)}
+.cell .shtbar[data-stage="2"]{box-shadow:inset 0 -3px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,133,119,.7)}
+.cell.origin{background:var(--fire);border-color:#FF8577}
+.cell.origin::after{content:"";position:absolute;inset:5px;border:2px solid #fff;opacity:.9}
+.usekey{margin-top:10px;font-size:11.5px;color:var(--faint);line-height:1.6}
+.usekey i{display:inline-block;width:10px;height:4px;background:var(--key);vertical-align:middle;margin-right:4px}
+.here{margin-top:9px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);font-size:13px}
+.here b{font-weight:600}
+.here small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
+
+/* 입력 */
+.ingrp{font-size:10.5px;color:var(--faint);font-weight:600;margin:10px 0 4px;letter-spacing:.03em}
+.ingrp:first-child{margin-top:0}
+.inlist{display:flex;flex-direction:column;gap:3px}
+.inlist button{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
+ font:inherit;font-size:13px;text-align:left;color:var(--ink);background:var(--panel2);
+ border:1px solid #2E3D48;padding:7px 9px;cursor:pointer;line-height:1.3}
+.inlist button:hover{border-color:var(--cool)}
+.inlist button[aria-pressed="true"]{border-color:var(--ink);background:#394956}
+.inlist .kind{font-size:10px;color:var(--faint);font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.inlist button.na{opacity:.32;cursor:not-allowed}
+.inlist button.na:hover{border-color:#2E3D48}
+
+.opbox{margin-top:13px;border-top:1px solid var(--line);padding-top:13px}
+.wline{font-size:11.5px;color:var(--faint);margin:0 0 8px}
+.gauge .rowtop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.gauge .nm{font-size:12.5px;color:var(--dim)}
+.gauge .val{font-size:24px;font-weight:600}
+.track{position:relative;height:30px;background:var(--panel2);border:1px solid var(--line)}
+.band{position:absolute;top:0;bottom:0}
+.band.b1{background:rgba(224,163,60,.22)}
+.band.b2{background:rgba(222,59,44,.24)}
+.tick{position:absolute;top:-1px;bottom:-1px;width:2px}
+.tick.t1{background:var(--pre)} .tick.t2{background:var(--fire)}
+.tick span{position:absolute;top:-16px;transform:translateX(-50%);font-size:10.5px;white-space:nowrap;
+ font-family:"IBM Plex Mono",monospace}
+.tick.t1 span{color:var(--pre)} .tick.t2 span{color:var(--fire)}
+.needle{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink)}
+input[type=range]{width:100%;margin:10px 0 0;accent-color:var(--cool);height:22px}
+.bigbtn{width:100%;font:inherit;font-size:15px;font-weight:600;padding:13px;cursor:pointer;
+ background:#5A2520;color:#FFD9D4;border:1px solid var(--fire)}
+.bigbtn[aria-pressed="true"]{background:var(--fire);color:#fff}
+.bigdesc{font-size:12.5px;color:var(--dim);margin:0 0 10px;line-height:1.5}
+
+.verdict{margin-top:13px;border:1px solid var(--line);padding:11px;background:var(--panel2)}
+.lamp{display:flex;align-items:center;gap:9px}
+.dot{width:13px;height:13px;border-radius:50%;flex:0 0 auto;background:var(--ok)}
+.st{font-weight:600;font-size:15px}
+.verdict p{margin:7px 0 0;font-size:12.5px;color:var(--dim);line-height:1.5}
+.s-pre .dot{background:var(--pre);animation:bl 1s steps(1,end) infinite}
+.s-fire .dot{background:var(--fire);animation:bl .5s steps(1,end) infinite}
+@keyframes bl{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none!important}}
+
+/* 출력 */
+.ctl{display:flex;gap:7px;margin-bottom:10px}
+.ctl button{font:inherit;font-size:13px;font-weight:500;flex:1;padding:8px;cursor:pointer;
+ background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+.ctl button.go{background:#2B4A5E;border-color:var(--cool)}
+.ctl button:disabled{opacity:.4;cursor:default}
+ol.out{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+ol.out li{display:grid;grid-template-columns:11px 22px minmax(0,1fr) auto;gap:9px;align-items:start;
+ padding:9px 10px;border:1px solid #2E3A44;background:#232E38}
+.led{width:11px;height:11px;border-radius:50%;background:var(--halt);margin-top:3px}
+.stepno{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--faint);padding-top:2px}
+.dev{font-size:13.5px;line-height:1.4}
+.dev small{display:block;color:var(--faint);font-size:11.5px;margin-top:3px;line-height:1.45}
+.tag{font-size:10.5px;padding:2px 6px;white-space:nowrap;align-self:start;margin-top:2px;font-weight:500}
+li.on{background:rgba(222,59,44,.13);border-color:var(--fire)}
+li.on .led{background:var(--fire);box-shadow:0 0 7px rgba(222,59,44,.9);animation:led .8s steps(1,end) infinite}
+li.on .tag{background:rgba(222,59,44,.22);color:#FF8577;border:1px solid var(--fire);animation:led .8s steps(1,end) infinite}
+@keyframes led{50%{opacity:.2}}
+li.off{background:#1D262E;border-color:#2A343D;opacity:.55}
+li.off .dev{color:var(--faint)}
+li.off .dev small{color:#4E606F}
+li.off .tag{background:transparent;color:var(--faint);border:1px solid var(--halt)}
+li.off .stepno{color:#4E606F}
+@media (prefers-reduced-motion:reduce){li.on .led,li.on .tag{animation:none}}
+@media (prefers-reduced-motion:reduce){.cell .shtbar{transition:none}}
+li.pending{opacity:.14}
+li.key4{box-shadow:inset 3px 0 0 var(--key)}
+.k4{display:inline-block;font-size:9.5px;color:var(--key);border:1px solid var(--key);
+ padding:0 4px;margin-left:6px;vertical-align:1px;font-weight:600}
+.vq{color:var(--verify);font-size:10.5px;margin-left:5px;border-bottom:1px dotted var(--verify);cursor:help}
+.empty{color:var(--faint);font-size:13px;padding:22px 4px;text-align:center;display:block;
+ border:1px dashed #2E3A44}
+.scope{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+.scope b{color:var(--ink);font-weight:600}
+.scope .shtline{color:var(--key);margin-top:4px;display:block}
+
+.sop ol{list-style:none;margin:0;padding:0}
+.sop li{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;padding:7px 0;
+ border-bottom:1px solid #2B3842;font-size:12.5px}
+.sop li:last-child{border-bottom:0}
+.sop .t{font-family:"IBM Plex Mono",monospace;color:var(--cool);font-size:12px}
+.hint{font-size:12.5px;color:var(--dim);margin:0 0 11px;line-height:1.55}
+/* ---------- 방재실 수신기 연동정지(출력차단) 조작반 재현 ----------
+   버튼 배열·명칭은 현장 수신기 조작반 실물 기준. 녹색 LED = 연동 정상,
+   적색 LED = 연동정지(출력차단). 회색 = 이 시뮬레이터 미반영 출력. */
+.rcvgrp{margin-bottom:13px}
+.rcvgrp:last-child{margin-bottom:0}
+.rcvgrp h3{font-size:11px;font-weight:600;color:var(--faint);letter-spacing:.04em;margin:0 0 7px}
+.rcvpanel{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.rbtn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:1px;min-height:62px;padding:12px 4px 6px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);
+ background:var(--panel2);border:1px solid var(--line);border-radius:4px;cursor:pointer;
+ text-align:center;line-height:1.2}
+.rbtn .rled{position:absolute;top:6px;left:7px;width:8px;height:8px;border-radius:50%;
+ background:var(--ok);box-shadow:0 0 5px rgba(47,163,95,.8)}
+.rbtn .rsub{font-size:9.5px;font-weight:400;color:var(--faint)}
+.rbtn .rstate{font-size:9.5px;font-weight:600;color:var(--ok);letter-spacing:.02em;margin-top:2px}
+.rbtn[aria-pressed="true"]{background:#1A232C;border-color:#2E3A44;color:var(--faint)}
+.rbtn[aria-pressed="true"] .rled{background:var(--fire);box-shadow:0 0 5px rgba(222,59,44,.8)}
+.rbtn[aria-pressed="true"] .rstate{color:var(--fire)}
+.rbtn[aria-pressed="true"] .rsub{color:#4A5B6B}
+.rbtn.key{box-shadow:inset 0 -3px 0 var(--key)}
+.rbtn.key .rname{color:var(--key)}
+.rbtn.lock{cursor:default;border-color:var(--ok);background:#1D2E27}
+.rbtn.na{cursor:default;background:#181F27;border-color:#252E37;color:#4A5B6B;font-weight:500}
+.rbtn.na .rled{background:#38424C;box-shadow:none}
+.rbtn.na .rstate,.rbtn.na .rsub{color:#3B4854}
+.rfill{min-height:62px;border:1px dashed #232C35;border-radius:4px}
+.rcvlegend{display:flex;flex-wrap:wrap;gap:12px;margin-top:11px;padding-top:10px;
+ border-top:1px solid var(--line);font-size:11.5px;color:var(--faint)}
+.rcvlegend span{display:flex;align-items:center;gap:5px}
+.rcvlegend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+@media (max-width:1080px){.rcvpanel{grid-template-columns:repeat(5,minmax(0,1fr))}.rfill{display:none}}
+@media (max-width:860px){.rcvpanel{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:620px){.rcvpanel{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:380px){.rcvpanel{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.verify{border-left:3px solid var(--verify)}
+.verify ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--dim);line-height:1.65}
+.verify li{margin-bottom:5px}
+.stackrow{display:flex;flex-direction:column;gap:15px;margin-top:15px}
+footer{margin-top:24px;padding-top:13px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);line-height:1.6}
+
+/* ---------- 터치·모바일 대응 ---------- */
+button,select,label,.cell{-webkit-tap-highlight-color:rgba(60,143,199,.25)}
+button,.cell{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+/* 슬라이더를 끌 때 화면이 같이 스크롤되지 않도록 */
+input[type=range]{touch-action:none}
+@media (hover:none){
+  .cell:hover{border-color:#33434F;background:var(--panel2)}
+  .inlist button:hover{border-color:#2E3D48}
 }
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-h1,h2,h3{margin:0;text-wrap:balance;font-weight:600}
-button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
-.wrap{max-width:1400px;margin:0 auto;padding-block:0 72px}
-[hidden]{display:none!important}
-
-/* ── 상단바 ───────────────────────────────────────────────────────── */
-.topbar{
-  position:sticky; top:env(safe-area-inset-top,0px); z-index:60;
-  background:linear-gradient(180deg,var(--bg) 84%,rgba(20,27,35,.86));
-  backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--line);
-  margin-inline:-16px; padding:10px 16px;
+@media (max-width:760px){
+  .wrap{padding:16px 14px 48px}
+  h1{font-size:20px;margin-bottom:10px}
+  .sub{font-size:13px}
+  /* 손가락으로 누르기 쉽도록 터치 타깃 확대 */
+  .dongs,.frow{grid-template-columns:40px repeat(4,1fr)}
+  .cell,.c1 .frow{min-height:38px}
+  .c1 .cell{height:38px}
+  .inlist button{padding:11px 10px;font-size:14px}
+  .modes button{padding:10px 14px;font-size:13.5px}
+  .audiobar{gap:8px;padding:10px}
+  .audiobar button{padding:9px 14px;font-size:13px}
+  .audiobar .note{margin-left:0;flex:1 1 100%;order:9}
+  .audiobar input[type=range]{width:110px;height:26px}
+  .ctl button{padding:11px}
+  .bigbtn{padding:15px}
+  input[type=range]{height:30px}
+  .rbtn{min-height:58px;font-size:12px;padding:12px 3px 6px}
+  ol.out li{grid-template-columns:11px 20px minmax(0,1fr) auto;padding:10px 9px}
+  .sop li{grid-template-columns:1fr;gap:2px}
+  .sop .t{font-weight:600}
 }
-.topbar-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand .mark{width:26px;height:26px;border-radius:5px;background:var(--crit);flex:none;
-  display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;letter-spacing:-.5px}
-.brand b{font-size:15px;font-weight:600;letter-spacing:-.2px;white-space:nowrap}
-.brand small{color:var(--faint);font-size:11.5px;white-space:nowrap}
-.spacer{flex:1 1 auto}
-.sel{
-  background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-  border-radius:var(--r);padding:6px 10px;font-size:13px;
+@media (max-width:480px){
+  .tick span{font-size:9.5px}
+  .gauge .val{font-size:21px}
 }
-.badge{
-  display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;
-  font-size:11.5px;font-weight:500;border:1px solid var(--line);background:var(--panel2);color:var(--dim);
-  white-space:nowrap;
-}
-.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
-.badge.live .dot{background:var(--done)}
-.badge.local .dot{background:var(--doing)}
-
-.btn{
-  background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-  border-radius:var(--r);padding:7px 13px;font-size:13px;font-weight:500;
-  display:inline-flex;align-items:center;gap:6px;transition:background .13s,border-color .13s;
-}
-.btn:hover{background:var(--raise);border-color:var(--line2)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#1B1206;font-weight:600}
-.btn.primary:hover{background:#EC8B48;border-color:#EC8B48}
-.btn.danger{border-color:#7B3229;color:var(--crit-t);background:#2B1D1B}
-.btn.danger:hover{background:#3A2320;border-color:var(--crit)}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--dim)}
-.btn.ghost:hover{background:var(--panel2);color:var(--ink)}
-.btn.sm{padding:4px 9px;font-size:12px}
-.btn[disabled]{opacity:.42;cursor:not-allowed}
-.btn-admin{
-  background:transparent;border:1px dashed var(--line2);color:var(--faint);
-  border-radius:var(--r);padding:6px 11px;font-size:12px;letter-spacing:.02em;
-}
-.btn-admin:hover{color:var(--ink);border-color:var(--dim);border-style:solid}
-body.role-admin .btn-admin{background:#2B1D1B;border:1px solid var(--crit);border-style:solid;color:var(--crit-t);font-weight:600}
-body.role-inspector .btn-admin{background:#122430;border:1px solid var(--doing);border-style:solid;color:var(--doing-t);font-weight:600}
-
-/* ── 권한별 노출 ──────────────────────────────────────────────────
-   admin-only : 소방안전관리 책임자 전용 (처리 관련 · 수정 · 삭제)
-   staff-only : 책임자 + 점검업체 (지적 추가 · 점검표 업로드)      */
-.admin-only,.staff-only{display:none}
-body.role-admin .admin-only{display:inline-flex}
-body.role-admin .staff-only,body.role-inspector .staff-only{display:inline-flex}
-.role-note{font-size:11.5px;color:var(--faint);align-self:center;line-height:1.5}
-
-/* ── 탭 ───────────────────────────────────────────────────────────── */
-.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -16px 20px;padding:0 16px;overflow-x:auto}
-.tab{
-  background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
-  padding:11px 14px;font-size:13.5px;font-weight:500;white-space:nowrap;margin-bottom:-1px;
-}
-.tab:hover{color:var(--ink)}
-.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
-.tab .cnt{font-family:var(--mono);font-size:11px;color:var(--faint);margin-left:5px}
-
-/* ── 패널 ─────────────────────────────────────────────────────────── */
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);padding:18px}
-.panel-h{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
-.panel-h h2{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-.panel-h .sub{font-size:12px;color:var(--faint);margin-left:auto}
-
-/* ── KPI ──────────────────────────────────────────────────────────── */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px;margin-bottom:14px}
-.kpi{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);
-  padding:14px 16px;position:relative;overflow:hidden;
-}
-.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--faint)}
-.kpi.k-all::before{background:var(--line2)}
-.kpi.k-undone::before{background:var(--undone)}
-.kpi.k-doing::before{background:var(--doing)}
-.kpi.k-done::before{background:var(--done)}
-.kpi.k-hold::before{background:var(--hold)}
-.kpi .lab{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
-.kpi .val{font-family:var(--mono);font-size:29px;font-weight:600;line-height:1.15;margin-top:3px}
-.kpi .val small{font-size:13px;color:var(--faint);font-weight:400;margin-left:3px}
-.kpi .delta{font-size:11.5px;color:var(--faint);margin-top:2px}
-.kpi.k-undone .val{color:var(--undone-t)}
-.kpi.k-done .val{color:var(--done-t)}
-
-/* 완료율 게이지 */
-.rate{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.ring{width:104px;height:104px;flex:none}
-.rate-legend{display:flex;flex-direction:column;gap:7px;min-width:180px;flex:1}
-.lg-row{display:flex;align-items:center;gap:8px;font-size:12.5px}
-.lg-row .sw{width:10px;height:10px;border-radius:2px;flex:none}
-.lg-row .nm{color:var(--dim)}
-.lg-row .vv{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums}
-
-/* ── 막대 차트 ────────────────────────────────────────────────────── */
-.bars{display:flex;flex-direction:column;gap:9px}
-.bar-row{display:grid;grid-template-columns:minmax(74px,auto) 1fr auto;align-items:center;gap:10px;font-size:12.5px}
-.bar-row .nm{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar-track{height:14px;background:var(--panel2);border-radius:3px;overflow:hidden;display:flex;gap:2px;min-width:40px}
-.bar-seg{height:100%;border-radius:0}
-.bar-seg:first-child{border-radius:3px 0 0 3px}
-.bar-seg:last-child{border-radius:0 4px 4px 0}
-.bar-seg:only-child{border-radius:3px}
-.bar-row .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);font-size:12px;min-width:56px;text-align:right}
-.bar-row .vv em{font-style:normal;color:var(--faint)}
-.bars.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:9px 30px}
-.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
-.chart-legend span{display:inline-flex;align-items:center;gap:6px}
-.chart-legend i{width:10px;height:10px;border-radius:2px;display:block}
-
-/* ── 필터 ─────────────────────────────────────────────────────────── */
-.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.search{
-  flex:1 1 220px;min-width:180px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:var(--r);padding:8px 12px;font-size:13px;
-}
-.search::placeholder{color:var(--faint)}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.chip{
-  background:var(--panel2);border:1px solid var(--line);color:var(--dim);
-  border-radius:99px;padding:4px 11px;font-size:12px;white-space:nowrap;
-}
-.chip:hover{color:var(--ink);border-color:var(--line2)}
-.chip[aria-pressed="true"]{background:var(--raise);border-color:var(--dim);color:var(--ink);font-weight:500}
-.chip .n{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:5px}
-.chip[aria-pressed="true"] .n{color:var(--dim)}
-.filter-group{display:flex;align-items:flex-start;gap:10px;margin-bottom:9px}
-.filter-group>.gl{font-size:11px;color:var(--faint);letter-spacing:.05em;padding-top:6px;min-width:56px;flex:none;text-transform:uppercase}
-
-/* ── 표 ───────────────────────────────────────────────────────────── */
-.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--rl);background:var(--panel)}
-table{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;font-size:13px}
-thead th{
-  position:sticky;top:0;z-index:5;background:var(--panel2);color:var(--dim);
-  font-weight:600;font-size:11.5px;letter-spacing:.04em;text-align:left;
-  padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap;
-}
-tbody td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
-tbody tr:last-child td{border-bottom:none}
-tbody tr.row{cursor:pointer}
-tbody tr.row:hover td{background:var(--panel2)}
-tbody tr.row.sel td{background:var(--raise)}
-/* No. 열 : 큰 숫자는 표시용 연번(현재 정렬·필터 기준 1,2,3…),
-   작은 숫자는 점검표 원본 No. — 원본 번호는 대조용이라 그대로 보존합니다 */
-td.c-no{font-family:var(--mono);color:var(--dim);font-size:12.5px;white-space:nowrap;text-align:right;padding-right:14px}
-td.c-no .seq{color:var(--ink);font-size:13px}
-td.c-no .src{display:block;font-size:10px;color:var(--faint);margin-top:2px}
-/* 동별 열 : 점검일보(엑셀)의 '동별' 칸과 1:1로 맞춘 독립 열 */
-td.c-dong{white-space:nowrap}
-td.c-dong .dong-b{
-  display:inline-block;min-width:34px;text-align:center;padding:1px 7px;border-radius:4px;
-  background:var(--raise);border:1px solid var(--line2);color:var(--ink);
-  font-size:11.5px;font-weight:600;letter-spacing:.02em;
-}
-td.c-dong .zone-s{display:block;margin-top:3px;font-size:10.5px;color:var(--faint);
-  max-width:110px;overflow:hidden;text-overflow:ellipsis}
-td.c-loc{max-width:210px;font-size:12.5px;color:var(--dim)}
-td.c-prob{max-width:300px;min-width:180px}
-td.c-prob b{font-weight:400;display:block;white-space:pre-line}
-td.c-prob i{font-style:normal;display:block;color:var(--faint);font-size:11.5px;margin-top:3px}
-td.c-date{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
-.pill{
-  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;
-  font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid;
-}
-.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
-.p-미조치{color:var(--undone-t);border-color:#6A4715;background:#2B2010}
-.p-진행중{color:var(--doing-t);border-color:#1F4C68;background:#122430}
-.p-조치완료{color:var(--done-t);border-color:#1E5636;background:#10261A}
-.p-보류{color:var(--hold);border-color:var(--line2);background:var(--panel2)}
-.p-제외{color:var(--excl);border-color:var(--line);background:var(--panel2)}
-.tag{display:inline-block;padding:1px 7px;border-radius:4px;background:var(--panel2);
-  border:1px solid var(--line);font-size:11px;color:var(--dim);white-space:nowrap}
-.thumbs{display:flex;gap:3px}
-.thumbs img{width:34px;height:28px;object-fit:cover;border-radius:3px;border:1px solid var(--line);display:block;background:var(--panel2)}
-.thumbs .more{font-size:10px;color:var(--faint);align-self:center;font-family:var(--mono)}
-.nophoto{color:var(--faint);font-size:11px;font-family:var(--mono)}
-
-/* ── 빈 상태 ──────────────────────────────────────────────────────── */
-.empty{text-align:center;padding:52px 20px;color:var(--faint)}
-.empty h3{font-size:15px;color:var(--dim);margin-bottom:6px;font-weight:500}
-.empty p{font-size:13px;margin:0 auto 18px;max-width:420px;line-height:1.6}
-
-/* ── 드로어 ───────────────────────────────────────────────────────── */
-.scrim{position:fixed;inset:0;background:rgba(10,14,19,.66);z-index:80;backdrop-filter:blur(2px)}
-.drawer{
-  position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:81;
-  background:var(--panel);border-left:1px solid var(--line);
-  display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.4);
-}
-.drawer-h{
-  display:flex;align-items:center;gap:10px;padding:14px 18px;
-  border-bottom:1px solid var(--line);flex:none;
-  padding-top:calc(14px + env(safe-area-inset-top,0px));
-}
-.drawer-h h3{font-size:14px;flex:1;min-width:0}
-.drawer-h .key{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
-.drawer-b{overflow-y:auto;padding:18px;flex:1}
-.drawer-f{
-  display:flex;gap:9px;padding:13px 18px;border-top:1px solid var(--line);flex:none;
-  background:var(--panel2);padding-bottom:calc(13px + env(safe-area-inset-bottom,0px));
-}
-.fld{margin-bottom:14px}
-.fld>label{display:block;font-size:11.5px;color:var(--dim);letter-spacing:.03em;margin-bottom:5px;font-weight:500}
-.fld input[type=text],.fld input[type=date],.fld select,.fld textarea{
-  width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-  border-radius:var(--r);padding:8px 10px;font-size:13px;
-}
-.fld textarea{resize:vertical;min-height:62px;line-height:1.5}
-.fld input:disabled,.fld select:disabled,.fld textarea:disabled{opacity:.62;cursor:not-allowed;background:var(--panel)}
-.fld .hint{font-size:11px;color:var(--faint);margin-top:4px}
-.fld-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fld-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.ro{font-size:13px;white-space:pre-line;background:var(--panel2);border:1px solid var(--line);
-  border-radius:var(--r);padding:8px 10px;min-height:36px}
-.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer}
-.chk input{width:15px;height:15px;accent-color:var(--accent)}
-
-.photoset{margin-bottom:16px}
-.photoset>.ph-h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.photoset>.ph-h span{font-size:11.5px;color:var(--dim);font-weight:500;letter-spacing:.03em}
-.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
-.ph{position:relative;aspect-ratio:4/3;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--panel2)}
-.ph img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
-.ph .del{
-  position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:4px;
-  background:rgba(20,27,35,.85);border:1px solid var(--line2);color:var(--crit-t);
-  display:none;place-items:center;font-size:13px;line-height:1;padding:0;
-}
-body.can-edit .ph .del{display:grid}
-.ph-add{
-  aspect-ratio:4/3;border:1px dashed var(--line2);border-radius:var(--r);background:transparent;
-  color:var(--faint);font-size:11.5px;display:grid;place-items:center;
-}
-.ph-add:hover{border-color:var(--dim);color:var(--ink)}
-.ph-none{font-size:12px;color:var(--faint);font-family:var(--mono)}
-
-.lightbox{position:fixed;inset:0;background:rgba(8,11,15,.94);z-index:95;display:grid;place-items:center;padding:24px}
-.lightbox img{max-width:100%;max-height:88vh;border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.6)}
-.lightbox .cap{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:var(--dim);font-size:12.5px}
-
-/* ── 모달 ─────────────────────────────────────────────────────────── */
-.modal{
-  position:fixed;z-index:90;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:min(420px,calc(100% - 32px));background:var(--panel);
-  border:1px solid var(--line2);border-radius:var(--rl);padding:22px;
-  box-shadow:0 24px 70px rgba(0,0,0,.55);
-}
-.modal h3{font-size:15px;margin-bottom:6px}
-.modal p{font-size:13px;color:var(--dim);margin:0 0 16px;line-height:1.6}
-.modal input[type=password],.modal input[type=text]{
-  width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-  border-radius:var(--r);padding:10px 12px;font-size:16px;font-family:var(--mono);letter-spacing:.2em;text-align:center;
-}
-.modal .err{color:var(--crit-t);font-size:12px;margin-top:8px;min-height:16px}
-.modal-row{display:flex;gap:9px;margin-top:16px}
-.modal-row .btn{flex:1;justify-content:center}
-
-/* ── 업로드 ───────────────────────────────────────────────────────── */
-.drop{
-  border:1px dashed var(--line2);border-radius:var(--rl);padding:30px 20px;text-align:center;
-  background:var(--panel);transition:border-color .15s,background .15s;
-}
-.drop.over{border-color:var(--accent);background:var(--panel2)}
-.drop h3{font-size:14px;margin-bottom:6px}
-.drop p{font-size:12.5px;color:var(--faint);margin:0 0 16px;line-height:1.6}
-.prog{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:14px}
-.prog>i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;border-radius:3px}
-.log{
-  font-family:var(--mono);font-size:11.5px;color:var(--dim);background:var(--bg);
-  border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-top:12px;
-  max-height:170px;overflow-y:auto;white-space:pre-wrap;line-height:1.65;text-align:left;
-}
-.log b{color:var(--done-t);font-weight:500}
-.log em{color:var(--undone-t);font-style:normal}
-
-/* ── 설정 ─────────────────────────────────────────────────────────── */
-.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:14px}
-.set-card h3{font-size:13.5px;margin-bottom:5px}
-.set-card>p{font-size:12.5px;color:var(--faint);margin:0 0 14px;line-height:1.6}
-.set-card textarea{
-  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);
-  border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:11.5px;
-  min-height:130px;resize:vertical;line-height:1.5;
-}
-.steps{counter-reset:s;margin:0;padding:0;list-style:none}
-.steps li{counter-increment:s;position:relative;padding-left:26px;margin-bottom:9px;font-size:12.5px;color:var(--dim);line-height:1.6}
-.steps li::before{
-  content:counter(s);position:absolute;left:0;top:1px;width:17px;height:17px;border-radius:50%;
-  background:var(--panel2);border:1px solid var(--line2);color:var(--faint);
-  font-family:var(--mono);font-size:10px;display:grid;place-items:center;
-}
-.steps code{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:1px 5px;
-  font-family:var(--mono);font-size:11px;color:var(--ink)}
-.kv{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
-.kv:last-child{border-bottom:none}
-.kv dt{color:var(--dim)}
-.kv dd{margin:0;font-family:var(--mono);color:var(--ink);text-align:right}
-
-.toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));
-  background:var(--raise);border:1px solid var(--line2);border-radius:99px;
-  padding:9px 18px;font-size:13px;z-index:99;box-shadow:0 8px 26px rgba(0,0,0,.45);
-}
-.toast.bad{border-color:var(--crit);color:var(--crit-t)}
-
-/* ── 반응형 : 태블릿 ─────────────────────────────────────────────── */
-@media screen and (max-width:980px){
-  .bars.split{grid-template-columns:1fr}
-}
-
-/* ── 반응형 : 모바일 (휴대폰 세로) ───────────────────────────────────
-   표를 가로 스크롤 대신 '카드' 형태로 바꿔 한 손으로 보게 합니다.     */
-@media screen and (max-width:760px){
-  body{padding-inline:12px;font-size:13.5px}
-  .wrap{padding-block:0 56px}
-  .topbar{margin-inline:-12px;padding:8px 12px}
-  .tabs{margin:0 -12px 16px;padding:0 12px}
-
-  /* 상단바 : 1행 제목 / 2행 회차·저장상태·권한버튼 */
-  .topbar-in{gap:8px 10px}
-  .spacer{display:none}
-  .brand{flex:1 1 100%}
-  .brand .mark{width:24px;height:24px;font-size:11px}
-  .brand b{font-size:14px}
-  .brand small{font-size:11px}
-  #halfBadge{order:8}
-  #halfBadge .lbl{display:none}            /* 좁은 화면에서는 회차만 (26년 하반기) */
-  #modeBadge{order:9}
-  #adminBtn{order:10;margin-left:auto}
-
-  /* 탭 : 좌우 스와이프 */
-  .tabs{-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{padding:10px 11px;font-size:13px}
-
-  /* KPI : 2열 */
-  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
-  .kpi{padding:11px 12px}
-  .kpi .lab{font-size:11px}
-  .kpi .val{font-size:22px}
-  .kpi .delta{font-size:11px;line-height:1.45}
-  .kpi.k-hold{grid-column:1/-1}
-
-  .panel{padding:14px 13px}
-  .rate{gap:14px}
-  .ring{width:92px;height:92px}
-  .rate-legend{min-width:0}
-  .bar-row{grid-template-columns:minmax(62px,34%) 1fr auto;font-size:12px;gap:8px}
-  .bar-row .vv{min-width:0;font-size:11.5px}
-
-  /* 도구줄 · 필터 */
-  .toolbar{gap:7px}
-  .search{flex:1 1 100%;min-width:0}
-  #sortSel{flex:1 1 100%}
-  .filter-group{flex-direction:column;gap:3px;margin-bottom:11px}
-  .filter-group>.gl{padding-top:0;min-width:0}
-  .chips{margin-bottom:8px}
-
-  /* iOS 확대 방지 : 입력칸은 16px */
-  .search,.sel,.fld input,.fld select,.fld textarea,.set-card textarea,.modal input{font-size:16px}
-  #halfSel{font-size:13px}
-
-  /* ── 지적내역 표 → 카드 ─────────────────────────────────────── */
-  #tableWrap{overflow:visible;border:none;background:none;border-radius:0}
-  #tableWrap table{display:block;min-width:0;width:100%}
-  #tableWrap thead{display:none}
-  #tableWrap tbody{display:block}
-  #tableWrap tbody tr.row{
-    display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;
-    background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);
-    padding:11px 12px;margin-bottom:9px;
-  }
-  #tableWrap tbody tr.row.sel{border-color:var(--dim);background:var(--panel2)}
-  #tableWrap tbody tr.row:hover td,#tableWrap tbody tr.row.sel td{background:none}
-  #tableWrap tbody td{display:block;border:none;padding:0;vertical-align:baseline}
-
-  /* 1행 : 연번 · 동 · 상태 */
-  #tableWrap td.c-no{order:1;text-align:left;padding-right:0;display:flex;align-items:baseline;gap:5px}
-  #tableWrap td.c-no .seq{font-size:14px;font-weight:600}
-  #tableWrap td.c-no .src{display:inline;margin:0}
-  #tableWrap td.c-no .src::before{content:"No."}
-  #tableWrap td.c-dong{order:2}
-  #tableWrap td.c-dong .zone-s{display:inline;margin:0 0 0 5px;max-width:none}
-  #tableWrap td.c-status{order:3;margin-left:auto}
-
-  /* 2행 : 위치 */
-  #tableWrap td.c-loc{order:4;flex:1 0 100%;max-width:none;font-size:12.5px;color:var(--dim)}
-  /* 3행 : 문제점 · 개선대책 */
-  #tableWrap td.c-prob{order:5;flex:1 0 100%;max-width:none;min-width:0;
-    border-top:1px solid var(--line);padding-top:8px;font-size:13px}
-  /* 4행 : 시설·상세·일자·완료·처리주체·사진 */
-  #tableWrap td.c-fac{order:6;font-size:12px;color:var(--dim)}
-  #tableWrap td.c-detail{order:7}
-  #tableWrap td.c-date{order:8;font-size:11.5px}
-  #tableWrap td.c-date::before{content:"점검 ";color:var(--faint)}
-  #tableWrap td.c-done{order:9;font-size:11.5px}
-  #tableWrap td.c-done::before{content:"완료 ";color:var(--faint)}
-  #tableWrap td.c-handler{order:10;font-size:12px;color:var(--dim)}
-  #tableWrap td.c-handler::before{content:"처리 ";color:var(--faint)}
-  #tableWrap td.c-photo{order:11;margin-left:auto}
-  /* 값이 없는 칸은 카드에서 숨겨 줄을 아끼도록 */
-  #tableWrap td.none{display:none}
-  .thumbs img{width:30px;height:24px}
-
-  /* 드로어 */
-  .drawer{width:100%}
-  .fld-2,.fld-3{grid-template-columns:1fr 1fr;gap:8px}   /* 짧은 칸은 2열로 묶어 스크롤을 줄입니다 */
-  .fld{margin-bottom:11px}
-  .fld>label{font-size:11px}
-  .fld textarea{min-height:86px}
-  .drawer-b{padding:14px 13px}
-  .drawer-f{padding:11px 13px;flex-wrap:wrap}
-  .drawer-f .btn{flex:1 1 auto;justify-content:center}
-  .drawer-f .role-note{flex:1 1 100%;order:9}
-  .ph-grid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
-
-  /* 설정 · 업로드 */
-  .set-grid{grid-template-columns:1fr}
-  .set-grid>*{min-width:0}                 /* 안쪽 표가 카드를 밀어내지 않도록 */
-  .set-card .table-wrap table{min-width:480px}
-  .set-card textarea{min-height:110px}
-  .drop{padding:22px 14px}
-  .steps li{font-size:12px}
-  .kv{font-size:12px}
-}
-
-@media screen and (max-width:400px){
-  .kpi .val{font-size:20px}
-  .tab{padding:10px 9px;font-size:12.5px}
-  .chip{font-size:11.5px;padding:4px 9px}
-}
-
-@media (prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important}
-}
-
-/* ── 인쇄 (소방서 제출·현장 배포용) ───────────────────────────────── */
-/* 인쇄 제목줄 : 화면에서는 숨기고 인쇄에서만 보입니다 */
-.print-head{display:none}
-
-/* ── 인쇄 ──────────────────────────────────────────────────────────
-   화면용 가로 스크롤 상자와 고정 열폭을 인쇄에서는 모두 해제하고,
-   A4 가로 기준 비율 열폭으로 다시 잡습니다. (지적내역 11열 기준) */
-@page{ size:A4 landscape; margin:11mm 8mm 13mm; }
-@media print{
-  :root{
-    --bg:#fff; --panel:#fff; --panel2:#fff; --raise:#fff;
-    --ink:#000; --dim:#1a1a1a; --faint:#555; --line:#999; --line2:#777;
-    --undone-t:#000; --doing-t:#000; --done-t:#000; --crit-t:#000; --hold:#000; --excl:#000;
-  }
-  body{background:#fff;color:#000;font-size:9pt;padding:0}
-  .wrap{max-width:none;padding-block:0}
-  /* 필터 칩 영역은 라벨까지 통째로 숨김 (라벨만 남아 빈 줄이 생기던 문제) */
-  .topbar,.tabs,.toolbar,.chips,#filterBox,.drawer,.scrim,.no-print,.btn,.kpi::before{display:none!important}
-  .panel{border:1px solid #999;break-inside:avoid;border-radius:0}
-
-  .print-head{
-    display:block;margin:0 0 6px;padding-bottom:5px;border-bottom:1.6px solid #000;
-    font-size:11pt;font-weight:700;color:#000;
-  }
-  .print-head span{display:block;font-size:8.5pt;font-weight:400;color:#333;margin-top:2px}
-
-  /* 표를 스크롤 상자가 아닌 일반 블록으로 — 열 잘림·스크롤바 방지 */
-  .table-wrap{overflow:visible!important;border:1px solid #999;border-radius:0;break-inside:auto}
-  table{min-width:0;width:100%;font-size:8.5pt;table-layout:fixed}
-  thead{display:table-header-group}                 /* 페이지마다 머리글 반복 */
-  thead th{background:#eee;color:#000;position:static;white-space:normal;
-           padding:5px 6px;border-bottom:1.4px solid #333}
-  tbody td{padding:5px 6px;word-break:keep-all;overflow-wrap:anywhere}
-  tbody tr{break-inside:avoid}
-  td.c-loc,td.c-prob,td.c-dong .zone-s{max-width:none;min-width:0}
-  td.c-no{padding-right:8px}
-
-  /* 인쇄 전용 열폭 (화면 px폭 대신 비율 — th의 인라인 width를 덮어야 하므로 !important)
-     처리주체 열은 관리자 모드에서만 나오며, 빠진 폭은 나머지 열이 나눠 갖습니다 */
-  .h-no{width:4.5%!important}  .h-date{width:6.5%!important} .h-fac{width:8%!important}
-  .h-detail{width:8%!important} .h-dong{width:8%!important}  .h-loc{width:16%!important}
-  .h-prob{width:30%!important}  .h-handler{width:6.5%!important}
-  .h-status{width:7%!important} .h-done{width:6%!important}  .h-photo{width:7.5%!important}
-
-  /* 배경 인쇄를 꺼도 구분되도록 테두리·굵기로 표현 */
-  .pill{border:1px solid #666;color:#000!important;background:none!important}
-  .p-미조치{border-color:#000;font-weight:700}
-  .pill i{display:none}
-  .tag,td.c-dong .dong-b{background:none!important;border:1px solid #777;color:#000}
-  td.c-dong .dong-b{font-weight:700}
-  td.c-dong .zone-s{color:#444}
-  .thumbs img{width:26px;height:20px}
+@media (max-width:420px){
+  .dongs,.frow{grid-template-columns:34px repeat(4,1fr);gap:2px}
+  .flab{font-size:11px;padding-right:5px}
+  h1{font-size:18px}
+  .box h2{font-size:12px;padding:9px 10px}
+  .body{padding:10px}
 }
 </style>
 </head>
 <body>
+<!-- 음원은 index.html과 같은 위치의 audio/ 폴더에서 상대경로로 불러옵니다.
+     iOS Safari는 webm/opus를 재생하지 못하므로 mp3를 먼저 두고 webm을 대체로 둡니다. -->
+<audio id="bellAudio" loop preload="auto" playsinline>
+  <source src="audio/bell.mp3" type="audio/mpeg">
+  <source src="audio/bell.webm" type="audio/webm">
+</audio>
+<audio id="sirenAudio" loop preload="auto" playsinline>
+  <source src="audio/siren.mp3" type="audio/mpeg">
+  <source src="audio/siren.webm" type="audio/webm">
+</audio>
+<audio id="paAudio" preload="auto" playsinline>
+  <source src="audio/pa-fire.mp3" type="audio/mpeg">
+  <source src="audio/pa-fire.webm" type="audio/webm">
+</audio>
+<audio id="paSiren" preload="none" playsinline>
+  <source src="audio/pa-siren-3s.mp3" type="audio/mpeg">
+  <source src="audio/pa-siren-3s.webm" type="audio/webm">
+</audio>
+<div class="wrap">
 
-
-<header class="topbar">
-  <div class="topbar-in">
-    <div class="brand">
-      <span class="mark" aria-hidden="true">WG</span>
-      <span>
-        <b>원그로브 소방시설 종합점검 현황판</b><br>
-        <small>26년 원그로브 소방시설 법정 종합점검 지적사항 관리를 위한 대시보드</small>
-      </span>
-    </div>
-    <div class="spacer"></div>
-    <label class="badge" id="halfBadge" style="gap:8px">
-      <span class="lbl">점검회차</span>
-      <select id="halfSel" class="sel" style="padding:2px 6px;font-size:12px;border:none;background:transparent">
-        <option value="2026H2">26년 하반기</option>
-        <option value="2026H1">26년 상반기</option>
-      </select>
-    </label>
-    <span class="badge local" id="modeBadge"><span class="dot"></span><span id="modeText">로컬 저장</span></span>
-    <button class="btn-admin" id="adminBtn" aria-pressed="false">관리자</button>
+<header>
+  <h1>원그로브 화재시 소방시설 연동로직 체험 시뮬레이터</h1>
+  <p class="sub">동·층을 고르고 입력설비를 동작시키면 출력 연동을 확인할 수 있습니다. 연동해제 최종검토 대상 4대설비(방화셔터 · 프리액션/드렌처 · 거실제연 · 공조대표화재)는 주황 표시로 구분됩니다.</p>
+  <div class="modes" role="group" aria-label="운영 모드 — 연동해제 단계">
+    <button data-mode="now" aria-pressed="false" title="방재실 수신기의 현재 상태 — 야간(23:00~08:00)에 비상방송·지구벨·싸이렌·배연창·방화문·소화설비·전실댐퍼·유도등 연동 정상">1단계 · 야간 현행 (23:00~08:00)</button>
+    <button data-mode="night2" aria-pressed="false" title="야간 시간대에 4대설비(방화셔터·프리액션/드렌처·거실제연·공조대표화재)만 연동정지로 남기고 나머지 전부 정상연동">2단계 · 야간 확대 (4대설비만 연동정지)</button>
+    <button data-mode="day" aria-pressed="false" title="같은 구성을 주간 영업시간까지 확대 — 전 설비 정상화 직전 단계">3단계 · 주간 영업시간 적용 (08:00~23:00)</button>
+    <button data-mode="normal" aria-pressed="true" title="4대설비까지 연동을 되살린 최종 정상화 상태">4단계 · 전 설비 정상화</button>
+    <button data-mode="custom" aria-pressed="false">직접 설정</button>
   </div>
+
 </header>
 
-<div class="wrap">
-  <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" aria-selected="true" data-view="board">현황판</button>
-    <button class="tab" role="tab" aria-selected="false" data-view="list">지적내역<span class="cnt" id="tabCnt">0</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-view="upload" data-need="staff">점검표 업로드</button>
-    <button class="tab" role="tab" aria-selected="false" data-view="settings" data-need="admin">설정</button>
-  </nav>
-
-  <!-- ══ 현황판 ═══════════════════════════════════════════════════ -->
-  <section id="view-board" role="tabpanel">
-    <div class="kpi-grid">
-      <div class="kpi k-all"><div class="lab">전체 지적</div><div class="val num" id="kAll">0<small>건</small></div><div class="delta" id="kAllSub">—</div></div>
-      <div class="kpi k-undone"><div class="lab">미조치</div><div class="val num" id="kUndone">0<small>건</small></div><div class="delta" id="kUndoneSub">—</div></div>
-      <div class="kpi k-doing"><div class="lab">진행중</div><div class="val num" id="kDoing">0<small>건</small></div><div class="delta" id="kDoingSub">—</div></div>
-      <div class="kpi k-done"><div class="lab">조치완료</div><div class="val num" id="kDone">0<small>건</small></div><div class="delta" id="kDoneSub">—</div></div>
-      <div class="kpi k-hold"><div class="lab">보류 · 제외</div><div class="val num" id="kHold">0<small>건</small></div><div class="delta" id="kHoldSub">—</div></div>
+<div class="grid">
+  <section class="box c1">
+    <h2>1 · 발화 위치 <em>동 / 층</em></h2>
+    <div class="body">
+      <div class="dongs"><span></span><span>A</span><span>B</span><span>C</span><span>D</span></div>
+      <div class="stack" id="stack"></div>
+      <div class="here" id="here"></div>
+      <div class="usekey">지상 3F~11F 오피스 · 2F~B2 판매시설 · B3~B7 주차장<br><i></i>주황 셔터 표시 = 방화셔터 출력 구역 (위에서 내려오는 만큼이 진행 정도 — 중간까지는 1차 부분폐쇄, 끝까지는 2차 완전폐쇄)</div>
     </div>
+  </section>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px">
-      <div class="panel">
-        <div class="panel-h"><h2>조치 완료율</h2><span class="sub" id="rateSub"></span></div>
-        <div class="rate">
-          <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ringTitle">
-            <title id="ringTitle">조치 완료율</title>
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#26333E" stroke-width="13"></circle>
-            <circle id="ringArc" cx="60" cy="60" r="50" fill="none" stroke="#2FA35F" stroke-width="13"
-                    stroke-linecap="round" stroke-dasharray="0 314" transform="rotate(-90 60 60)"></circle>
-            <text id="ringPct" x="60" y="59" text-anchor="middle" fill="#DFE7EE"
-                  font-family="IBM Plex Mono, monospace" font-size="25" font-weight="600">0%</text>
-            <text x="60" y="76" text-anchor="middle" fill="#6B808F" font-family="IBM Plex Sans KR, sans-serif" font-size="11">완료율</text>
-          </svg>
-          <div class="rate-legend" id="rateLegend"></div>
-        </div>
-      </div>
-
-      <div class="panel" data-need="admin">
-        <div class="panel-h"><h2>처리주체별 진척</h2><span class="sub">건수 · 상태 구성</span></div>
-        <div class="bars" id="barHandler"></div>
-        <div class="chart-legend" id="statusLegend"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-h"><h2>시설구분별 지적건수</h2><span class="sub">미조치 기준 정렬</span></div>
-        <div class="bars" id="barFac"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-h"><h2>동·구역별 지적건수</h2><span class="sub">미조치 기준 정렬</span></div>
-        <div class="bars" id="barDong"></div>
-      </div>
-
-      <div class="panel" style="grid-column:1/-1">
-        <div class="panel-h"><h2>미조치 다발 항목</h2><span class="sub">상세구분 기준 상위 10</span></div>
-        <div class="bars split" id="barDetail"></div>
+  <section class="box">
+    <h2>2 · 입력설비 <em>INPUT</em></h2>
+    <div class="body">
+      <div id="inlist" role="group" aria-label="입력설비 선택"></div>
+      <div class="opbox" id="opbox"></div>
+      <div class="verdict" id="verdict">
+        <div class="lamp"><span class="dot"></span><span class="st" id="vtext">대기</span></div>
+        <p id="vnote">입력설비를 선택하고 동작시키십시오.</p>
       </div>
     </div>
   </section>
 
-  <!-- ══ 지적내역 ═════════════════════════════════════════════════ -->
-  <section id="view-list" role="tabpanel" hidden>
-    <div class="toolbar">
-      <input id="q" class="search" type="text" placeholder="구역 · 문제점 · 개선대책 · 법규 검색" autocomplete="off">
-      <select id="sortSel" class="sel">
-        <option value="def">기본 정렬 (구역 · 점검표 번호)</option>
-        <option value="date">점검일자 최신순</option>
-        <option value="status">미조치 우선</option>
-        <option value="fac">시설구분별</option>
-      </select>
-      <button class="btn sm" id="resetFilter">필터 해제</button>
-      <div class="spacer"></div>
-      <button class="btn sm no-print" id="printBtn">인쇄</button>
-      <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
-      <button class="btn sm primary staff-only" id="newBtn">＋ 지적 추가</button>
-    </div>
-
-    <div id="filterBox">
-      <div class="filter-group"><span class="gl">상태</span><div class="chips" id="fStatus"></div></div>
-      <div class="filter-group"><span class="gl">시설</span><div class="chips" id="fFac"></div></div>
-      <div class="filter-group"><span class="gl">동·구역</span><div class="chips" id="fDong"></div></div>
-      <div class="filter-group" data-need="admin"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
-    </div>
-
-    <!-- 인쇄할 때만 나오는 제목줄 (화면 상단바가 인쇄에서 숨겨지므로 대체) -->
-    <div class="print-head" id="printHead" aria-hidden="true"></div>
-
-    <div class="table-wrap" id="tableWrap">
-      <table>
-        <thead><tr>
-          <th class="h-no" style="width:52px;text-align:right;padding-right:14px"
-              title="표시 순번입니다. 아래 작은 숫자는 점검표 원본 No.">연번</th>
-          <th class="h-date"   style="width:88px">점검일자</th>
-          <th class="h-fac"    style="width:96px">시설구분</th>
-          <th class="h-detail" style="width:86px">상세구분</th>
-          <th class="h-dong"   style="width:96px">동별</th>
-          <th class="h-loc"    style="width:180px">층 및 구역</th>
-          <th class="h-prob">점검결과 문제점 · 개선대책</th>
-          <th class="h-handler" style="width:74px" data-need="admin">처리주체</th>
-          <th class="h-status" style="width:88px">상태</th>
-          <th class="h-done"   style="width:78px">완료일</th>
-          <th class="h-photo"  style="width:104px">사진</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-    <div id="listEmpty" class="empty" hidden>
-      <h3>표시할 지적사항이 없습니다</h3>
-      <p>필터를 해제하거나, <b>점검표 업로드</b> 탭에서 점검업체가 작성한 엑셀 파일을 올려 주세요.</p>
-      <button class="btn" id="toUpload">점검표 업로드로 이동</button>
-    </div>
-    <p style="font-size:11.5px;color:var(--faint);margin-top:10px" id="listFoot"></p>
-  </section>
-
-  <!-- ══ 업로드 ═══════════════════════════════════════════════════ -->
-  <section id="view-upload" role="tabpanel" hidden>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px">
-      <div>
-        <div class="drop" id="drop">
-          <h3>점검업체 엑셀 파일 올리기</h3>
-          <p>기존 <b>「종합점검 지적처리 현황」</b> 양식을 그대로 올리면 됩니다.<br>
-             시트에 붙여 넣은 <b>문제점 사진 · 위치표기 · 조치후 사진</b>까지 셀 위치를 읽어 자동으로 분류합니다.</p>
-          <input type="file" id="file" accept=".xlsx,.xlsm" hidden>
-          <button class="btn primary" id="pickBtn">엑셀 파일 선택</button>
-          <div class="prog" id="prog" hidden><i></i></div>
-          <div class="log" id="log" hidden></div>
-        </div>
-        <p style="font-size:12px;color:var(--faint);margin-top:12px;line-height:1.7">
-          같은 회차에 <b>구역 + No.</b>가 같은 건이 이미 있으면 덮어쓰지 않고 <b>사진과 빈 항목만 채웁니다.</b>
-          상반기 파일을 그대로 올려 사진을 붙이는 용도로도 쓸 수 있습니다.
-        </p>
+  <section class="box c3">
+    <h2>3 · 출력 연동 <em>OUTPUT</em></h2>
+    <div class="body">
+      <div class="ctl">
+        <button id="play" class="go">순차 재생</button>
+        <button id="reset">초기화</button>
       </div>
-
-      <div class="panel">
-        <div class="panel-h"><h2>업체 전달용 양식 안내</h2></div>
-        <p style="font-size:12.5px;color:var(--dim);margin:0 0 14px;line-height:1.7">
-          점검업체에는 아래 열 구성을 그대로 유지해 달라고 전달하시면 됩니다.
-          머리글 이름으로 열을 찾기 때문에 <b>열 순서가 바뀌어도</b> 인식합니다.
-        </p>
-        <dl style="margin:0">
-          <div class="kv"><dt>머리글 행</dt><dd>4행 (No. 로 시작)</dd></div>
-          <div class="kv"><dt>필수 열</dt><dd>No. · 점검일자 · 시설구분</dd></div>
-          <div class="kv"><dt>상세구분 · 동별</dt><dd>선택 항목 자동 매칭</dd></div>
-          <div class="kv"><dt>사진 열</dt><dd>문제점 사진 · 위치표기 · 조치후사진</dd></div>
-          <div class="kv"><dt>처리방안</dt><dd>자체처리 · 건물분 · 입주사 · 보류</dd></div>
-          <div class="kv"><dt>완료일</dt><dd>입력 시 조치완료로 판정</dd></div>
-        </dl>
-        <p style="font-size:12px;color:var(--faint);margin:14px 0 0;line-height:1.7">
-          시트는 <b>업무 A~D동 · 판매시설층 · 트레이더스 · 지하주차장 · 소방펌프실 · 가스계소화설비 · 제연설비 · 경보설비</b> 순으로
-          나누어 두면 동·구역 필터가 자동으로 잡힙니다.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══ 설정 ═════════════════════════════════════════════════════ -->
-  <section id="view-settings" role="tabpanel" hidden>
-    <div class="set-grid">
-
-      <div class="panel set-card" style="grid-column:1/-1">
-        <h3>접속 권한</h3>
-        <p>상단 <b>관리자</b> 버튼에 넣는 번호에 따라 할 수 있는 일이 달라집니다.</p>
-        <div class="table-wrap" style="margin-bottom:16px">
-          <table style="min-width:640px">
-            <thead><tr><th style="width:118px">구분</th><th style="width:84px">비밀번호</th><th>할 수 있는 일</th></tr></thead>
-            <tbody>
-              <tr><td><b>보기 전용</b></td><td class="c-date">없음</td>
-                  <td>현황판 · 지적내역 조회, 사진 확대, 인쇄, CSV 내려받기</td></tr>
-              <tr><td><b style="color:var(--doing-t)">점검업체</b></td><td class="c-date">1111</td>
-                  <td>위의 모든 것 + <b>지적 추가 · 점검표 업로드</b><br>
-                      <span style="color:var(--faint);font-size:11.5px">처리주체 · 처리상태 · 완료일 · 조치후 사진은 보이지 않습니다. 기존 건은 수정할 수 없습니다.</span></td></tr>
-              <tr><td><b style="color:var(--crit-t)">관리자</b></td><td class="c-date">0000</td>
-                  <td>위의 모든 것 + <b>모든 항목 수정 · 삭제 · 처리 관련 입력</b></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="fld-2" data-need="admin">
-          <div class="fld"><label for="pinNew">관리자 비밀번호 변경</label>
-            <input type="text" id="pinNew" placeholder="4자리 이상" autocomplete="off"></div>
-          <div class="fld"><label for="pinStaff">점검업체 비밀번호 변경</label>
-            <input type="text" id="pinStaff" placeholder="4자리 이상" autocomplete="off"></div>
-        </div>
-        <button class="btn admin-only" id="pinSave">비밀번호 저장</button>
-        <p style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6">
-          비밀번호는 원문이 아니라 해시로만 이 기기에 보관합니다. 기본값 <b>0000 / 1111</b>은 반드시 바꾸세요.
-          잊으셨다면 브라우저 사이트 데이터를 지우면 기본값으로 돌아갑니다.
-        </p>
-      </div>
-
-      <div class="panel set-card" data-need="admin">
-        <h3>Firebase 연결</h3>
-        <p>연결하면 여러 사람이 같은 자료를 보고, 수정 내용이 바로 공유됩니다.
-           <b>fire-inspection-dash 설정이 이미 들어 있으니 칸을 비운 채 눌러도 됩니다.</b></p>
-        <div class="fld">
-          <label for="fbCfg">firebaseConfig 붙여넣기 (다른 프로젝트를 쓸 때만)</label>
-          <textarea id="fbCfg" spellcheck="false" placeholder='{
-  "apiKey": "...",
-  "authDomain": "wongrove-check.firebaseapp.com",
-  "projectId": "wongrove-check",
-  "storageBucket": "wongrove-check.firebasestorage.app",
-  "appId": "1:...:web:..."
-}'></textarea>
-        </div>
-        <div style="display:flex;gap:9px;flex-wrap:wrap">
-          <button class="btn primary" id="fbConnect">연결하기</button>
-          <button class="btn" id="fbPush">이 기기 자료 올리기</button>
-          <button class="btn ghost" id="fbOff">연결 해제</button>
-        </div>
-        <p id="fbState" style="font-size:12px;color:var(--faint);margin:12px 0 0;line-height:1.6"></p>
-      </div>
-
-      <div class="panel set-card" data-need="admin">
-        <h3>사진 저장 위치</h3>
-        <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.</p>
-        <div class="fld">
-          <label for="photoDst">저장 위치</label>
-          <select id="photoDst">
-            <option value="local">이 기기 (브라우저 저장소)</option>
-            <option value="drive">Google Drive 폴더</option>
-            <option value="storage">Firebase Storage</option>
-          </select>
-        </div>
-        <div class="fld" id="driveBox" hidden>
-          <label for="driveFolder">Drive 폴더 ID</label>
-          <input type="text" id="driveFolder" placeholder="공유 폴더 URL 뒤쪽 ID" autocomplete="off">
-          <div class="hint">드라이브에서 폴더를 열었을 때 주소 <code>/folders/</code> 뒤의 문자열입니다.</div>
-        </div>
-        <div class="fld">
-          <label for="maxPx">사진 가로·세로 최대 크기</label>
-          <select id="maxPx">
-            <option value="0">원본 그대로</option>
-            <option value="1600">1600px (권장)</option>
-            <option value="1200" selected>1200px</option>
-            <option value="900">900px (가장 가벼움)</option>
-          </select>
-          <div class="hint">업로드할 때 자동으로 줄여서 저장합니다.</div>
-        </div>
-      </div>
-
-      <div class="panel set-card">
-        <h3>구축 절차</h3>
-        <p>GitHub Pages로 공개하고 Firebase로 자료를 공유하는 순서입니다.</p>
-        <ol class="steps">
-          <li>GitHub에 저장소를 만들고 이 <code>index.html</code>을 올립니다.</li>
-          <li>저장소 <code>Settings → Pages</code>에서 <code>main / root</code>를 선택해 공개합니다.</li>
-          <li>Firebase 콘솔에서 프로젝트를 만들고 <code>Firestore</code>를 <b>asia-northeast3(서울)</b>로 생성합니다.</li>
-          <li><code>프로젝트 설정 → 웹 앱 추가</code>에서 나온 <code>firebaseConfig</code>를 위 칸에 붙여넣고 연결합니다.</li>
-          <li><code>Authentication → 익명</code>을 사용 설정하고, 보안 규칙을 함께 드린 <code>firestore.rules</code>로 교체합니다.</li>
-          <li>사진을 Drive에 둘 경우 공유 폴더를 만들고 폴더 ID를 위에 입력합니다.</li>
-        </ol>
-      </div>
-
-      <div class="panel set-card">
-        <h3>자료 관리</h3>
-        <p>현재 <b id="stCount">0</b>건 · 사진 <b id="stPhoto">0</b>장을 보관 중입니다.</p>
-        <div style="display:flex;gap:9px;flex-wrap:wrap">
-          <button class="btn" id="expJson">전체 백업 (JSON)</button>
-          <button class="btn admin-only" id="impJsonBtn">백업 불러오기</button>
-          <input type="file" id="impJson" accept=".json" hidden>
-          <button class="btn danger admin-only" id="wipeBtn">현재 회차 전체 삭제</button>
-        </div>
-        <dl style="margin:16px 0 0">
-          <div class="kv"><dt>저장 방식</dt><dd id="stMode">브라우저 (IndexedDB)</dd></div>
-          <div class="kv"><dt>26년 상반기</dt><dd id="stH1">0건</dd></div>
-          <div class="kv"><dt>26년 하반기</dt><dd id="stH2">0건</dd></div>
-        </dl>
-      </div>
-
-      <div class="panel set-card">
-        <h3>선택 항목 기초자료</h3>
-        <p>입력 칸의 선택지는 26년 상반기 종합점검 <b>479건</b>의 실제 지적내역과 소방시설법 시행령 별표1 분류를 합쳐 만들었습니다.</p>
-        <dl style="margin:0">
-          <div class="kv"><dt>시설구분</dt><dd id="oFac">0종</dd></div>
-          <div class="kv"><dt>상세구분</dt><dd id="oDet">0종</dd></div>
-          <div class="kv"><dt>관련법규</dt><dd id="oLaw">0종</dd></div>
-          <div class="kv"><dt>개선대책</dt><dd id="oAct">0종</dd></div>
-        </dl>
-        <p style="font-size:11.5px;color:var(--faint);margin:14px 0 0;line-height:1.7">
-          상세구분을 고르면 <b>관련법규</b>와 <b>개선대책</b>이 자동으로 추천됩니다.
-          예: 헤드 → NFPC103 제10조 / 감지기 → NFPC203 제7조 / 차압 → NFPC501A 제6조
-        </p>
-      </div>
-
+      <ol class="out" id="out"><li class="empty">입력설비 동작 시 출력 연동이 표시됩니다.</li></ol>
+      <div class="scope" id="scope">경보 출력범위는 입력 성립 후 표시됩니다.</div>
     </div>
   </section>
 </div>
 
-<!-- 상세 · 편집 드로어 -->
-<div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="drawer" hidden aria-label="지적사항 상세">
-  <div class="drawer-h">
-    <h3 id="dTitle">지적사항</h3>
-    <span class="key num" id="dKey"></span>
-    <button class="btn ghost sm" id="dClose" aria-label="닫기">✕</button>
+<div class="stackrow">
+<section class="box">
+  <h2>소방설비 연동설정 <em>방재실 수신기 조작반 기준</em></h2>
+  <div class="body">
+    <p class="hint">방재실 <b>화재수신기 연동정지(출력차단) 조작반</b>의 버튼 명칭과 배열을 그대로 옮겼습니다. 버튼을 누르면 그 설비에 <b>연동정지</b>가 걸려(적색) 화재신호가 와도 동작하지 않고, 다시 누르면 정상연동(녹색)으로 돌아옵니다. 프리액션과 드렌처는 조작반 버튼이 하나로 묶여 있어 함께 잡히고, 방화셔터도 1·2차 기동이 한 버튼입니다. <b>소화설비(소화펌프)는 연동정지를 이미 해제해 상시 정상운영</b> 중이므로 정지할 수 없도록 잠가 두었습니다.</p>
+    <p class="hint">화면 상단의 단계 버튼으로 <b>1단계 야간 현행(23:00~08:00) → 2단계 야간 확대(4대설비만 연동정지) → 3단계 주간 영업시간 확대(08:00~23:00) → 4단계 전 설비 정상화</b> 순서를 그대로 불러올 수 있습니다. 2·3단계는 연동정지 설비 구성(방화셔터 · 프리액션/드렌처 · 거실제연 · 공조대표화재)이 같고 <b>적용 시간대만 다릅니다</b>.</p>
+    <div class="rcvgrp">
+      <h3>연동정지 조작반 (출력차단)</h3>
+      <div class="rcvpanel" id="cfg"></div>
+    </div>
+    <div class="rcvgrp">
+      <h3>수신기 조작부 — 별도 스위치</h3>
+      <div class="rcvpanel" id="cfg2"></div>
+    </div>
+    <div class="rcvlegend">
+      <span><i style="background:var(--ok)"></i>녹색 = 연동 정상</span>
+      <span><i style="background:var(--fire)"></i>적색 = 연동정지(출력차단)</span>
+      <span><i style="background:#38424C"></i>회색 = 이 시뮬레이터 미반영 출력</span>
+      <span><i style="background:var(--key)"></i>주황 = 연동해제 최종검토 4대설비</span>
+    </div>
   </div>
-  <div class="drawer-b" id="dBody"></div>
-  <div class="drawer-f">
-    <button class="btn danger" id="dDelete" hidden>삭제</button>
-    <div class="spacer"></div>
-    <button class="btn" id="dCancel">닫기</button>
-    <button class="btn primary" id="dSave" hidden>저장</button>
-    <span id="dLocked" class="role-note"></span>
+</section>
+
+<div class="audiobar">
+  <span class="barlabel">음향송출줄</span>
+  <button id="sndBtn" aria-pressed="true">🔊 음향 켜짐</button>
+  <label>음량 <input type="range" id="vol" min="0" max="100" value="60" aria-label="음량"></label>
+  <label>방송 선택
+    <select id="script">
+      <option value="nonfire">비화재 안내방송</option>
+      <option value="recover">비화재보 복구안내</option>
+      <option value="fire">화재시 안내방송</option>
+    </select>
+  </label>
+  <button id="broadcastBtn" class="bcast">▶ 송출</button>
+  <button id="stopSnd">음향 정지</button>
+  <button id="recoverBtn" class="recov">↺ 복구</button>
+  <span class="sndwarn" id="sndwarn" role="status" hidden>🔇 브라우저가 소리를 막고 있습니다 — 화면을 한 번 누르면 송출됩니다</span>
+  <span class="note">주경종·지구경종·비상방송은 연동정지가 없으면 화재신호와 동시에 자동 송출되고, 연동정지를 걸면 멈춥니다. 싸이렌(유수검지장치·가스계 연동) 구동 시 지구경종도 함께 명동합니다. 비상방송(화재시 안내방송)은 <b>실제 녹음(사이렌 5초+멘트+사이렌 5초)</b>을 다른 방송보다 높은 음량으로 반복 송출해 구분됩니다. 안내방송 3종은 [송출]을 누를 때만 나갑니다. [복구]는 화재신호를 발생 전 평상시 감시상태로 되돌립니다.</span>
+</div>
+
+<section class="box sop">
+  <h2><b>비화재보 SOP(같은 시간에 사람이 해야 하는 일) — 소방청고시 제2023-37호 《소방시설 폐쇄·차단 시 행동요령 등에 관한 고시》 기준</b></h2>
+  <div class="body">
+    <p class="hint">설비 연동은 수초 안에 끝납니다. 아래 시간은 그 뒤로 경종이 계속 울리는 상태에서 흘러갑니다.</p>
+    <ol>
+      <li><span class="t">T+0초</span><span>화재신호 수신. 발신 주소·동·층과 함께 <b>입력설비 종류</b>를 먼저 확인합니다. 일반 자탐감지기인지, 셔터·거실제연·프리액션 전용 감지기인지에 따라 대응이 달라집니다.</span></li>
+      <li><span class="t">T+30초 이내</span><span>1차 안내방송. 비화재보로 단정하지 말고 확인 중임을 알리는 문안을 사용합니다.</span></li>
+      <li><span class="t">T+5~8분</span><span>현장 확인 완료. 이 구간 내내 경종은 계속 울리고 민원 전화가 들어옵니다.</span></li>
+      <li><span class="t">확인 후</span><span>화재 아님 확인 → 재실자 안내 → 수신기 화재경보 복구 → 비화재보 방지조치. 소방청고시 제2023-37호 제3조제5호.</span></li>
+    </ol>
   </div>
-</aside>
+</section>
 
-<div class="lightbox" id="lightbox" hidden><img id="lbImg" alt="지적사항 사진 확대"><div class="cap" id="lbCap"></div></div>
+<section class="box verify">
+  <h2>확인이 필요한 항목</h2>
+  <div class="body">
+    <ul>
+      <li><b>경보구역의 동(棟) 범위</b> — 층 범위는 발화층 및 직상 4개층 우선경보(NFTC 203 2.5.1.2) 적용. 같은 층에서 A·B동 / C·D동 그룹인지 4개동 일괄인지는 층별 확인 필요 (현재 3~7층 동 그룹, 8층 이상 동별 독립으로 가정).</li>
+      <li><b>공조대표화재의 AHU 묶음 범위</b> — 어느 감지기가 어느 AHU를 정지시키는지 계통도 대조 필요. 묶음 범위에 따라 피해등급 상향 가능.</li>
+      <li><b>설비자동제어(판매·마트) 수동복구 필요 여부</b> — 자동복구 불가 시 AHU 재기동 소요 증가.</li>
+      <li><b>거실제연·전실제연 수동조작함 조작 시 화재신호 성립 여부</b> — 현재는 설비만 기동하고 경보는 미발생으로 구현.</li>
+      <li><b>거실제연 수동조작함(SVP)의 셔터 연동 여부</b> — 거실제연 감지기(자동)는 셔터 1차 연동을 반영했으나, 수동조작함은 사람이 직접 조작하는 계통이라 셔터 자동연동에서 제외했습니다. 실제로 수동조작 시에도 셔터가 연동되는지 확인 필요.</li>
+      <li><b>발신기 신호의 방화셔터 연동 여부</b> — 일반 자탐 화재신호와 동일하게 처리되는지 미확인.</li>
+      <li><b>주차장 패시브휀</b> — A·B구역 배기 / C·D구역 급기 교대 기동의 연동정지 포함 여부 미확인.</li>
+      <li><b>설비별 지연시간</b> — 실제 지연초 미상이라 순서(Step)만 표시. 실동시험 실측 필요.</li>
+      <li><b>조작반 버튼과 출력설비의 대응</b> — 가스출력은 가스계 약제방출·해당구역 공조정지/댐퍼폐쇄로, 제연댐퍼·제연급기휀·제연배기휀은 거실제연 계통으로, 전실댐퍼·전실급기휀·전실배기휀은 전실제연 계통으로 대응시켰습니다. 실제 결선 기준 확인 필요.</li>
+      <li><b>미반영 출력(회색 버튼)</b> — 제연커텐·자동문·대표화재·조명제어·출입통제·속보기·에어컨정지·미디어·A/B출력은 설치 여부와 연동조건이 확인되지 않아 연동로직에서 제외했습니다. 확인 후 반영 필요.</li>
+    </ul>
+  </div>
+</section>
+</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<footer>
+아날로그 임계값: 연기 예비경보 15% / 화재점 17%, 열 예비경보 60℃ / 화재점 80℃ (GFS F3G). 경보방식: 발화층 및 직상 4개층 우선경보 — 지상 2층 이상 발화 시 발화층+직상 4개층, 1층 발화 시 발화층+직상 4개층+지하 전층, 지하층 발화 시 발화층+직상층+기타 지하 전층. 방화셔터 1차기동 출력범위: 지상 3~11층·지하 3~7층 해당 셔터 개별 / 지상 1~2층 동 그룹 / 지하 1~2층 전동 일괄, 2차기동은 전 층 해당 셔터 개별. 싸이렌은 자탐 화재신호 연동 출력이 아니며, 유수검지장치(알람밸브·프리액션·드렌처) 발신 시 또는 가스계 소화설비 기동 시에만 동작합니다 — 자탐 지구음향장치는 지구경종입니다. 「소방설비 연동설정」 칸의 버튼 명칭·배열은 방재실 화재수신기 연동정지(출력차단) 조작반 실물 기준이며, 소화설비(소화펌프)는 연동정지를 해제해 상시 정상운영 중이므로 정지 조작 대상에서 제외했습니다. 교육용 재현이며 실제 동작 시간과 다를 수 있습니다.
+</footer>
+</div>
+
 <script>
-/* ═══════════════════════════════════════════════════════════════════
-   원그로브 종합점검 현황판
-   ─ 단일 파일 · GitHub Pages 배포 · Firebase(Firestore/Storage) 연동
-   ═══════════════════════════════════════════════════════════════════ */
+const FLOORS=["11F","10F","9F","8F","7F","6F","5F","4F","3F","2F","1F","B1","B2","B3","B4","B5","B6","B7"];
+const DONGS=["A","B","C","D"];
+const isB=f=>f[0]==="B";
+const SALES=["2F","1F","B1","B2"];
+function useOf(f){
+  if(isB(f)) return (f==="B1"||f==="B2")?"sales":"parking";
+  return parseInt(f)<=2?"sales":"office";
+}
+const USE_KO={sales:"판매시설",office:"오피스",parking:"주차장"};
 
-/* ── 기본 Firebase 설정 (fire-inspection-dash) ──────────────────────
-   웹 API 키는 클라이언트에 공개되는 값입니다. 실제 보호는 함께 제공한
-   firestore.rules / storage.rules 의 보안 규칙이 담당합니다.            */
-const FB_DEFAULT = {
-  apiKey: "AIzaSyAo6uhvr2T-ZMfdbQ_Ck4mSGsialQ7hZEI",
-  authDomain: "fire-inspection-dash.firebaseapp.com",
-  projectId: "fire-inspection-dash",
-  storageBucket: "fire-inspection-dash.firebasestorage.app",
-  messagingSenderId: "569597734948",
-  appId: "1:569597734948:web:5c40bbd1fd09602e1668b1",
-  measurementId: "G-6QK465Y0N7"
+/* ---------- 경보범위: 발화층 및 직상 4개층 우선경보 ---------- */
+function floorSpan(f){
+  const base=FLOORS.filter(isB);
+  if(isB(f)) return f==="B1"?base.concat(["1F"]):base.slice();
+  const n=parseInt(f),out=[];
+  for(let i=n;i<=Math.min(n+4,11);i++) out.push(i+"F");
+  if(n===1) base.forEach(x=>out.push(x));
+  return out;
+}
+function dongSpan(f,d){
+  if(isB(f)||parseInt(f)<=2) return DONGS.slice();
+  const n=parseInt(f);
+  if(n<=7) return (d==="A"||d==="B")?["A","B"]:["C","D"];
+  return [d];
+}
+function alarmCells(f,d){
+  const out=[];
+  floorSpan(f).forEach(x=>dongSpan(f,d).forEach(y=>out.push(x+y)));
+  return out;
+}
+function scopeText(f,d){
+  const ds=dongSpan(f,d), dl=ds.length===4?"A·B·C·D 전동":ds.join("·")+"동";
+  if(isB(f)) return "지하 1~7층 전층"+(f==="B1"?" + 지상 1층":"")+" · "+dl;
+  const n=parseInt(f), top=Math.min(n+4,11);
+  let s = top>n ? "지상 "+n+"층 ~ "+top+"층 (발화층 + 직상 "+(top-n)+"개층)"
+                : "지상 "+n+"층 (최상층 — 직상층 없음)";
+  if(n===1) s+=" + 지하 1~7층 전층";
+  return s+" · "+dl;
+}
+
+/* ---------- 방화셔터 출력범위 ---------- */
+function shutter1(f,d){
+  if(f==="B1"||f==="B2") return {cells:DONGS.map(x=>f+x),label:"A·B·C·D 전동 일괄",stage:1};
+  if(f==="1F"||f==="2F"){const g=(d==="A"||d==="B")?["A","B"]:["C","D"];
+    return {cells:g.map(x=>f+x),label:g.join("+")+"동 그룹 출력",stage:1};}
+  return {cells:[f+d],label:"해당 셔터 개별",stage:1};
+}
+function shutter2(f,d){ return {cells:[f+d],label:"해당 셔터 개별 (완전폐쇄)",stage:2}; }
+/* 일반 자탐 화재신호가 셔터 1차를 유발하는 층 */
+const GEN_SHUTTER=["1F","2F","B1","B2"];
+
+/* ---------- 출력설비 ----------
+   KEY4 = 연동해제 최종검토 대상 4대설비
+   ①방화셔터 ②프리액션/드렌처 ③거실제연설비(댐퍼·급기휀·배기휀) ④공조대표화재 */
+const KEY4=["sht1","sht2","preact","dren","rdmp","rexh","rsup","ahu"];
+const OUT={
+ recv:{n:"수신기 화재표시 · 발신주소 표시",fixed:1},
+ mbell:{n:"주경종 (수신기 내장)"},
+ resp:{n:"발신기 응답표시등 점등",fixed:1},
+ svplamp:{n:"수동조작함 동작표시등 점등",fixed:1},
+ gasind:{n:"가스누설 표시 · 경보부저",fixed:1},
+ bell:{n:"지구경종"},
+ pag:{n:"비상방송"},
+ vis:{n:"시각경보기"},
+ sir:{n:"싸이렌 (유수검지장치 · 가스계 연동)"},
+ exit:{n:"유도등 비상점등"},
+ fdoor:{n:"방화문 자동폐쇄"},
+ sht1:{n:"방화셔터 1차 하강 (부분)"},
+ sht2:{n:"방화셔터 2차 하강 (완전폐쇄)"},
+ vdmp:{n:"전실제연 급기댐퍼 개방"},
+ vfan:{n:"전실제연 급기송풍기 기동"},
+ vexh:{n:"전실제연 배기댐퍼 개방 · 배기휀 기동"},
+ swin:{n:"배연창 개방"},
+ rdmp:{n:"거실제연 댐퍼 개방"},
+ rexh:{n:"거실제연 배기휀 기동"},
+ rsup:{n:"거실제연 급기휀 기동"},
+ pfan:{n:"주차장 패시브휀 기동"},
+ ahu:{n:"공조대표화재 — AHU 정지"},
+ elev:{n:"엘리베이터 기준층 리콜 · 운행정지"},
+ preact:{n:"프리액션 밸브 개방 · 2차측 충수"},
+ dren:{n:"드렌처 일제살수"},
+ drenz:{n:"해당 방수구역 개방형헤드 살수"},
+ avs:{n:"유수검지장치 발신 · 밸브개방표시등 점등",fixed:1},
+ pump:{n:"소화펌프 기동",always:1},          /* 연동정지 해제 후 상시 정상운영 — 정지 대상 아님 */
+ gasrel:{n:"가스계 약제 방출"},
+ gasdmp:{n:"해당구역 공조정지 · 댐퍼 폐쇄"}
 };
-/* SDK 는 compat(전역) 빌드를 씁니다. 앞쪽 CDN이 막히면 다음 것으로 넘어갑니다.
-   jsdelivr = 어디서나 열림 / gstatic = 구글 공식·국내 회선에서 빠름          */
-const FB_SOURCES = [
-  { name:'jsdelivr', base:'https://cdn.jsdelivr.net/npm/firebase@10.14.1/' },
-  { name:'gstatic',  base:'https://www.gstatic.com/firebasejs/12.19.0/' }
+/* 프리액션·드렌처는 연동정지 버튼이 하나 — 함께 토글 */
+const PD_GROUP=["preact","dren","drenz"];
+/* 현행(야간 1단계) 기준 연동이 살아있는 설비 — 방재실 수신기 조작반 현재 상태
+   비상방송 · 지구벨 · 싸이렌 · 배연창 · 방화문 · 소화설비 · 전실댐퍼 · 유도등 (녹색)
+   주경종은 수신기 내장 음향이라 상시 정상 명동 기준으로 둔다. */
+const LIVE_NOW=["pag","bell","sir","swin","fdoor","vdmp","exit","mbell","pump"];
+/* 4대설비만 연동정지로 남기는 단계 — 야간 2단계에서 먼저 적용하고,
+   같은 구성을 주간 영업시간(08:00~23:00)까지 확대한 뒤 전 설비 정상화로 넘어간다.
+   드렌처 방수구역(drenz)은 프리액션과 조작반 버튼이 하나로 묶여 있어 함께 잡힌다. */
+const HALT_4=["sht1","sht2","preact","dren","drenz","rdmp","rexh","rsup","ahu"];
+
+/* ---------- 입력설비 ---------- */
+const ANY=()=>true;
+const INPUTS=[
+ {g:"자동화재탐지 (일반)",id:"smk",name:"연기감지기",kind:"아날로그",mode:"analog",
+  unit:"%",min:0,max:25,step:.5,pre:15,fire:17,init:0,at:ANY,where:"전 층"},
+ {g:"자동화재탐지 (일반)",id:"heat",name:"열감지기",kind:"아날로그",mode:"analog",
+  unit:"℃",min:20,max:100,step:1,pre:60,fire:80,init:20,at:ANY,where:"전 층"},
+ {g:"자동화재탐지 (일반)",id:"call",name:"발신기",kind:"수동",mode:"binary",at:ANY,where:"전 층",
+  desc:"누름스위치를 누르는 즉시 화재신호가 성립합니다. 예비경보 구간이 없어 확인할 시간이 주어지지 않습니다."},
+
+ {g:"방화셔터 전용",id:"shs",name:"셔터 연기감지기",kind:"아날로그",mode:"analog",
+  unit:"%",min:0,max:25,step:.5,pre:15,fire:17,init:0,at:ANY,where:"셔터 설치구역 (전 층)",
+  desc:"일반 연기감지기와 동일한 이중 임계값(예비 15% · 화재 17%)을 씁니다. 예비경보 구간에서는 주경종만 단독 명동하고, 화재점을 넘겨야 해당 셔터 1차(부분) 하강과 함께 일반 감지기와 동일한 경보계통이 성립합니다. 단 지하 2층에서는 1차기동을 유발하지 않고 2차기동만 일으킵니다."},
+ {g:"방화셔터 전용",id:"shh",name:"셔터 정온식감지기",kind:"아날로그",mode:"analog",
+  unit:"℃",min:20,max:100,step:1,pre:60,fire:80,init:20,at:ANY,where:"셔터 설치구역 (전 층)",
+  desc:"일반 열감지기와 동일한 이중 임계값(예비 60℃ · 화재 80℃)을 씁니다. 예비경보 구간에서는 주경종만 단독 명동하고, 화재점을 넘겨야 해당 셔터 2차(완전폐쇄)까지 하강하며 경보계통이 함께 성립합니다. 전 층 공통으로 해당 셔터만 개별 동작합니다."},
+
+ {g:"거실제연 전용",id:"rsmk",name:"거실제연 감지기",kind:"아날로그",mode:"analog",
+  unit:"%",min:0,max:25,step:.5,pre:15,fire:17,init:0,
+  at:f=>SALES.includes(f),where:"지상 2층 ~ 지하 2층 판매시설층",
+  desc:"거실제연 전용 감지기입니다. 일반 자탐 화재신호와 별개로 이 감지기가 동작해야 거실제연설비가 연동되며, 판매시설층(지상 2층~지하 2층) 범위가 방화셔터 연동 대상층과 겹쳐 해당 셔터 1차(부분) 하강도 함께 유발합니다."},
+ {g:"거실제연 전용",id:"svpr",name:"거실제연 수동조작함",kind:"수동",mode:"binary",
+  at:f=>SALES.includes(f),where:"지상 2층 ~ 지하 2층 판매시설층",
+  desc:"해당 동에 설정된 제연구역의 댐퍼를 열고 배기휀·급기휀을 기동합니다. 정상 공조가 즉시 차단됩니다."},
+
+ {g:"프리액션 · 드렌처",id:"pxsmk",name:"프리액션 교차회로 감지기",kind:"아날로그",mode:"analog",
+  unit:"%",min:0,max:25,step:.5,pre:15,fire:17,init:0,
+  at:f=>["1F","B1","B2"].includes(f),where:"지상 1층 · 지하 1~2층",
+  desc:"교차회로 1차신호(연기)만으로 프리액션 밸브가 개방됩니다. 열감지기의 2차신호 확인 절차가 없어 오동작 문턱이 낮습니다."},
+ {g:"프리액션 · 드렌처",id:"svpp",name:"프리액션 수동조작함",kind:"수동",mode:"binary",
+  at:f=>["1F","B1","B2"].includes(f),where:"지상 1층 · 지하 1~2층",
+  desc:"프리액션 밸브를 직접 개방합니다. 2차측 배관에 물이 차고 헤드 개방 시 살수됩니다."},
+ {g:"프리액션 · 드렌처",id:"drsmk",name:"드렌처 전용 감지기",kind:"아날로그",mode:"analog",
+  unit:"%",min:0,max:25,step:.5,pre:15,fire:17,init:0,
+  at:(f,d)=>f==="B1"&&(d==="C"||d==="D"),where:"지하 1층 C·D동",
+  desc:"드렌처 전용 감지기입니다. 프리액션과는 신호상 무관한 별개 계통으로, 이 감지기가 동작해야만 살수됩니다."},
+ {g:"프리액션 · 드렌처",id:"svpd",name:"드렌처 수동조작함",kind:"수동",mode:"binary",
+  at:(f,d)=>f==="B1"&&(d==="C"||d==="D"),where:"지하 1층 C·D동",
+  desc:"개방형 헤드에 일제 살수합니다. 기동하면 중간에 멈출 수 없고, 살수 구역 전체가 수손 피해를 입습니다."},
+
+ {g:"기타 설비",id:"svpv",name:"전실제연 수동조작함 (급/배기)",kind:"수동",mode:"binary",at:ANY,where:"전 층 피난계단",
+  desc:"피난계단 부속실의 급기댐퍼·급기송풍기와 배기댐퍼·배기휀을 기동합니다."},
+ {g:"기타 설비",id:"svpg",name:"가스계 소화설비 수동조작함",kind:"수동",mode:"binary",
+  at:f=>f==="B5",where:"지하 5층",
+  desc:"기동스위치 조작 후 지연시간이 경과하면 약제가 방출됩니다. 지연 중에는 비상스위치로만 중단할 수 있습니다."},
+ {g:"기타 설비",id:"ps",name:"알람밸브 압력스위치 (PS)",kind:"소화설비",mode:"binary",at:ANY,where:"알람밸브실",
+  desc:"스프링클러 헤드 개방 등으로 유수가 검지되면 동작합니다."},
+ {g:"기타 설비",id:"gas",name:"가스누설경보기",kind:"경보설비",mode:"binary",at:ANY,where:"가스 사용구역",
+  desc:"가연성 가스 누설을 검지합니다. 자동화재탐지 화재신호와는 별개 계통입니다."}
 ];
+const avail=(I,f,d)=>I.at(f,d);
 
-/* 항목별 선택지 — 26년 상반기 종합점검 479건 실적 + 소방시설법 시행령 별표1 체계 기준 */
-const OPT = {
-  zone: ['업무 A동','업무 B동','업무 C동','업무 D동','판매시설층','트레이더스','지하주차장','소방펌프실','가스계소화설비','제연설비','경보설비'],
-  dong: ['A','B','C','D','판매','트레이더스','주차장','중앙통로','공용'],
-  floor: ['옥상','11층','10층','9층','8층','7층','6층','5층','4층','3층','2층','1층','B1','B2','B3','B4','B5','B6','B7'],
-  fac: ['소화설비','소화기구','경보설비','피난설비','소화활동설비','제연설비','기타설비'],
-  handler: ['자체처리','건물분','입주사','보류','권장사항','제외'],
-  handlerNote: { '자체처리':'시설팀 자체 보수', '건물분':'시공사(태영건설) 하자', '입주사':'임차인 조치', '보류':'조치 보류', '권장사항':'권장 사항', '제외':'점검대상 제외' },
-  status: ['미조치','진행중','조치완료','보류','제외'],
+/* ---------- 일반 자탐 화재신호 연동 ---------- */
+function fireCascade(f,d,opt){
+  opt=opt||{};
+  const u=useOf(f), L=[], P=(id,note,vq)=>L.push({id,note,vq});
+  P("recv","발신 주소 · 동 · 층 표시");
+  P("mbell","방재실 수신기 주경종 명동");
+  P("bell","발화층 및 직상 4개층 우선경보 구역 일제 명동");
+  P("pag","발화층 및 직상 4개층 스피커 출력 — 지하층 발화 시 지하 전층");
+  P("vis","음성점멸");
+  P("exit");
+  P("fdoor");
+  /* 방화셔터 — 일반 자탐은 지상 1~2층·지하 1~2층에서만 1차기동 유발 */
+  const stg = opt.shutter;
+  if(stg===1) P("sht1","출력범위: "+shutter1(f,d).label);
+  else if(stg===2) P("sht2","출력범위: "+shutter2(f,d).label);
+  else if(stg===undefined && GEN_SHUTTER.includes(f)) P("sht1","출력범위: "+shutter1(f,d).label);
+  P("vdmp"); P("vfan");
+  if(u==="office"&&!isB(f)&&parseInt(f)>=3) P("swin","우천·강풍 시 침수 피해 주의");
+  if(u==="parking") P("pfan","A·B구역 배기 / C·D구역 급기 교대",1);
+  if(SALES.includes(f)) P("ahu","해당 층 계통 AHU 일괄 정지 — 설비자동제어 수동복구 필요 여부 확인요망",1);
+  P("elev","A·B·C·D 전동 전 호기 동시 기준층(1층 또는 2층) 강제리콜");
+  return L;
+}
 
-  /* 시설구분 → 상세구분 */
-  detail: {
-    '소화설비': ['헤드','스프링클러','옥내소화전','옥외소화전','소방펌프','압력챔버','알람밸브','유수검지장치','말단시험밸브','송수구','가스계 소화설비','물분무설비','자동소화장치'],
-    '소화기구': ['소화기','자동확산소화기','간이소화용구','소화기 표지','소화기 함'],
-    '경보설비': ['감지기','수신기','중계기','발신기','음향장치(경종)','시각경보기','비상방송','전원반','자동화재속보설비','누전경보기','가스누설경보기','비상경보설비'],
-    '피난설비': ['유도등','유도표지','비상조명등','휴대용 비상조명등','완강기','구조대','피난사다리','인명구조기구','피난안내도','피난관련'],
-    '소화활동설비': ['제연설비','비상콘센트','방수구','연결송수관','연결살수설비','무선통신보조설비','연소방지설비'],
-    '제연설비': ['급기구','배기구','제연댐퍼','제연팬','차압','방연풍속','플랩댐퍼','제연커튼'],
-    '기타설비': ['방화셔터','방화문','방화구획','관통부','슬라이딩도어','출입통제','가연물','피난통로','비상구','배연창']
-  },
+function compute(st){
+  const {f,d,input,val,fired}=st;
+  const I=INPUTS.find(x=>x.id===input);
+  if(!I) return {lv:0,list:[],alarm:false};
+  const on = I.mode==="analog" ? (val>=I.fire?2:val>=I.pre?1:0) : (fired?2:0);
+  /* 예비경보 — 주경종만 단독 명동, 지구경종·비상방송·설비 연동은 없음 */
+  if(on===1) return {lv:1,alarm:false,list:[{id:"mbell",note:"예비경보 — 방재실 확인 요망. 지구경종·설비 연동은 아직 없음"}]};
+  if(on<2) return {lv:on,list:[],alarm:false};
 
-  /* 상세구분 → 관련법규 (첫 항목이 기본 추천) */
-  law: {
-    '헤드': ['NFPC103 제10조','NFPC103 제8조'],
-    '스프링클러': ['NFPC103 제8조','NFPC103 제10조'],
-    '옥내소화전': ['NFPC102 제6조','NFPC102 제7조'],
-    '소방펌프': ['NFPC103 제5조','NFPC102 제5조'],
-    '알람밸브': ['NFPC103 제8조'],
-    '유수검지장치': ['NFPC103 제8조'],
-    '말단시험밸브': ['NFPC103 제8조'],
-    '송수구': ['NFPC103 제6조'],
-    '가스계 소화설비': ['NFPC107A 제10조','NFPC106 제10조','NFPC107 제10조'],
-    '물분무설비': ['NFPC104 제4조'],
-    '자동소화장치': ['NFPC101 제4조'],
-    '소화기': ['NFPC101 제4조','소방시설 설치 및 관리에 관한 법률 제16조'],
-    '자동확산소화기': ['NFPC101 제4조'],
-    '소화기 표지': ['NFPC101 제4조'],
-    '소화기 함': ['NFPC101 제4조'],
-    '감지기': ['NFPC203 제7조','NFPC203 제5조'],
-    '수신기': ['NFPC203 제5조'],
-    '중계기': ['NFPC203 제6조'],
-    '발신기': ['NFPC203 제9조'],
-    '음향장치(경종)': ['NFPC203 제8조'],
-    '시각경보기': ['NFPC203 제8조'],
-    '비상방송': ['NFPC202 제4조'],
-    '전원반': ['NFPC203 제10조'],
-    '자동화재속보설비': ['NFPC204 제4조'],
-    '누전경보기': ['NFPC205 제4조'],
-    '가스누설경보기': ['NFPC206 제4조'],
-    '비상경보설비': ['NFPC201 제4조'],
-    '유도등': ['NFPC303 제10조','NFPC303 제5조','NFPC303 제6조'],
-    '유도표지': ['NFPC303 제8조'],
-    '비상조명등': ['NFPC304 제4조'],
-    '휴대용 비상조명등': ['NFPC304 제5조'],
-    '완강기': ['NFPC301 제5조','NFPC301 제4조'],
-    '구조대': ['NFPC301 제5조'],
-    '피난사다리': ['NFPC301 제5조'],
-    '인명구조기구': ['NFPC302 제4조'],
-    '피난안내도': ['소방시설 설치 및 관리에 관한 법률 제36조'],
-    '피난관련': ['소방시설 설치 및 관리에 관한 법률 제16조'],
-    '제연설비': ['NFPC501 제6조','NFPC501 제8조','NFPC501A 제6조'],
-    '급기구': ['NFPC501A 제6조','NFPC501A 제15조'],
-    '배기구': ['NFPC501 제8조'],
-    '제연댐퍼': ['NFPC501 제8조','NFPC501A 제15조'],
-    '제연팬': ['NFPC501 제9조'],
-    '차압': ['NFPC501A 제6조'],
-    '방연풍속': ['NFPC501A 제10조'],
-    '플랩댐퍼': ['NFPC501A 제11조'],
-    '제연커튼': ['NFPC501 제4조'],
-    '비상콘센트': ['NFPC504 제4조'],
-    '방수구': ['NFPC502 제6조'],
-    '연결송수관': ['NFPC502 제4조'],
-    '연결살수설비': ['NFPC503 제4조'],
-    '무선통신보조설비': ['NFPC505 제5조'],
-    '연소방지설비': ['NFPC506 제4조'],
-    '방화셔터': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','자동방화셔터 및 방화문의 기준 제3조'],
-    '방화문': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','소방시설 설치 및 관리에 관한 법률 제16조'],
-    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
-    '관통부': ['건축자재등 품질인정 및 관리기준 제33조 외','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
-    '슬라이딩도어': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
-    '출입통제': ['소방시설 설치 및 관리에 관한 법률 제16조'],
-    '가연물': ['소방시설 설치 및 관리에 관한 법률 제16조'],
-    '피난통로': ['소방시설 설치 및 관리에 관한 법률 제16조'],
-    '비상구': ['소방시설 설치 및 관리에 관한 법률 제16조'],
-    '배연창': ['건축법 시행령 제51조']
-  },
+  switch(I.id){
+    case "smk": case "heat":
+      return {lv:2,alarm:true,list:fireCascade(f,d,{}),sht:GEN_SHUTTER.includes(f)?shutter1(f,d):null};
+    case "call":
+      return {lv:2,alarm:true,sht:GEN_SHUTTER.includes(f)?shutter1(f,d):null,
+        list:[{id:"resp",note:"누름 위치 확인용"},
+          ...fireCascade(f,d,{}).map(x=>x.id==="sht1"?{id:x.id,note:x.note,vq:1}:x)]};
+    case "shs":
+      if(f==="B2") return {lv:2,alarm:true,sht:shutter2(f,d),list:fireCascade(f,d,{shutter:2})};
+      return {lv:2,alarm:true,sht:shutter1(f,d),list:fireCascade(f,d,{shutter:1})};
+    case "shh":
+      return {lv:2,alarm:true,sht:shutter2(f,d),list:fireCascade(f,d,{shutter:2})};
 
-  /* 상세구분 → 자주 쓰는 개선대책 */
-  action: {
-    '헤드': ['도색 제거','뿜칠 제거','보양재 제거','헤드 교체','헤드 이설','헤드 설치','차폐판 재고정','살수장애 없도록 보완','반자 마감 보수'],
-    '스프링클러': ['헤드 교체','배관 보수','누수 보수','살수장애 없도록 보완'],
-    '옥내소화전': ['호스 정비','방수압 조정','함 표지 보완'],
-    '소방펌프': ['펌프 보수','압력스위치 조정','기동점 재설정'],
-    '가스계 소화설비': ['기동용기 점검','선택밸브 보수','방출표시등 보수','경보장치 보수'],
-    '소화기': ['소화기 비치','소화기 교체','표시 보완','축압력 확인','소화기 재배치','충전 및 정비'],
-    '자동확산소화기': ['자동확산소화기 설치','교체'],
-    '소화기 표지': ['표시 보완','축광식 표지 부착'],
-    '감지기': ['감지기 이설','감지기 설치','감지기 교체','감지기 청소','배선 보수','동작에 장애 없도록 보완'],
-    '수신기': ['수신기 보수','프로그램 수정','통신선로 보수','예비전원 교체'],
-    '중계기': ['중계기 교체','통신선로 보수'],
-    '발신기': ['발신기 보수','표시등 교체'],
-    '음향장치(경종)': ['경종 교체','음량 조정','배선 보수'],
-    '시각경보기': ['시각경보기 보수','시각경보기 설치','설치높이 조정'],
-    '비상방송': ['비상방송 설비 보수','앰프 보수','스피커 교체','연동 선로 보수'],
-    '유도등': ['유도등 교체','유도등 보수','예비전원 교체','점등상태 보완','시야 확보'],
-    '유도표지': ['유도표지 부착','축광식 표지 교체'],
-    '비상조명등': ['비상조명등 교체','예비전원 교체'],
-    '휴대용 비상조명등': ['휴대용 비상조명등 비치','표시 보완'],
-    '완강기': ['완강기 비치','지지대 보수','표지 부착','강하공간 확보'],
-    '피난안내도': ['피난안내도 부착','현행화'],
-    '제연설비': ['댐퍼 보수','풍량 조정','연동 선로 보수','제연커튼 보수','급기가압 조정'],
-    '급기구': ['차압공 확인 및 설치','급기구 보수','댐퍼 개방 확인'],
-    '제연댐퍼': ['댐퍼 보수','연동 확인','모터 교체'],
-    '차압': ['차압 재조정','플랩댐퍼 조정'],
-    '비상콘센트': ['비상콘센트 보수','표시 보완'],
-    '방수구': ['방수구 보수','개폐밸브 정비','표지 부착'],
-    '방화셔터': ['방화셔터 보수','연동 선로 보수','동작에 장애 없도록 보완','하강장애물 제거','일체형 셔터 개선'],
-    '방화문': ['방화문 닫힘상태 유지','도어클로저 보수','고임물 제거','방화문 교체','개방장치 연동 보수'],
-    '방화구획': ['구획 복구','관통부 마감 보수','내화충전재 시공'],
-    '관통부': ['관통부 마감 보수','내화충전재 시공'],
-    '슬라이딩도어': ['연동 선로 보수','개방장치 보수'],
-    '출입통제': ['연동 해제 확인','비상시 개방 보완','프로그램 수정'],
-    '가연물': ['가연물 정리','적치물 제거'],
-    '피난통로': ['피난에 장애 없도록 보완','적치물 제거','폭 확보'],
-    '비상구': ['개방상태 확보','표지 보완']
-  },
+    /* 거실제연 감지기(rsmk)는 판매시설층(SALES = GEN_SHUTTER와 동일 범위)에만 설치되므로
+       일반 자탐과 동일한 셔터 1차 연동 규칙(1F·2F 동그룹 / B1·B2 전동일괄)을 그대로 적용한다.
+       거실제연 수동조작함(svpr)은 사람이 직접 조작하는 수동 계통이라 셔터 자동연동에서 제외한다. */
+    case "rsmk": case "svpr":
+      return {lv:2,alarm:false,
+        sht: I.id==="rsmk" ? shutter1(f,d) : null,
+        list:[
+        {id: I.id==="svpr"?"svplamp":"recv", note: I.id==="svpr"?"거실제연 SVP 동작 표시":"거실제연 감지기 동작 표시"},
+        ...(I.id==="rsmk"?[{id:"sht1",note:"출력범위: "+shutter1(f,d).label}]:[]),
+        {id:"rdmp",note:"해당 동에 설정된 제연구역 댐퍼 개방 — 정상 공조 차단"},
+        {id:"rexh",note:"배기휀 기동"},
+        {id:"rsup",note:"급기휀 기동 — 덕트 분진 비산, 경량 상품 비산 우려"},
+        ...(I.id==="svpr"?[{id:"recv",note:"화재신호까지 성립하는지 확인 필요",vq:1}]:[])]};
 
-  /* 자주 쓰는 지적 문구 */
-  problem: {
-    '헤드': ['헤드 도색','헤드 뿜칠 부착','보양재 미제거','차폐판 고정상태 불량','헤드 살수장애','헤드 미설치','반자 이격'],
-    '감지기': ['감지기 설치위치 부적정','감지기 미설치','감지기 동작 불량','감지기 이격거리 미달','감지기 오염','감지기 장애물로 동작 장애'],
-    '소화기': ['소화기 미비치','소화기 축압력 부족','소화기 표지 미부착','소화기 적치물로 사용장애'],
-    '유도등': ['예비전원 불량','점등상태 불량','시야 장애','유도등 미설치'],
-    '방화셔터': ['연동 동작 불량','하강장애물 존재','일체형 셔터 피난문 불량','수동조작함 불량'],
-    '방화문': ['방화문 개방상태 유지','도어클로저 불량','방화문 틈새 과다','고임물로 상시 개방'],
-    '제연설비': ['댐퍼 동작 불량','차압 기준 미달','방연풍속 미달','연동 불량','급기구 폐쇄'],
-    '완강기': ['지지대 고정 불량','강하공간 장애물','표지 미부착','설치위치 부적정'],
-    '수신기': ['통신상태 불량','화재표시 불량','동작시험 불가','예비전원 불량']
+    case "pxsmk": case "svpp":
+      return {lv:2,alarm:false,list:[
+        {id: I.id==="svpp"?"svplamp":"recv",
+         note: I.id==="svpp"?"프리액션 SVP 동작 표시":"교차회로 1차신호(연기) 성립 — 열감지 확인 불필요"},
+        {id:"preact",note:"밸브 개방 · 2차측 배관 충수"},
+        {id:"avs",note:"유수검지장치 화재신호 발신 · 밸브개방표시등 점등"},
+        {id:"sir",note:"유수검지장치 발신에 따른 음향장치 경보 (NFPC 103 제9조)"},
+        {id:"pump",note:"압력 저하에 따른 기동"}]};
+
+    case "drsmk": case "svpd":
+      return {lv:2,alarm:false,list:[
+        {id: I.id==="svpd"?"svplamp":"recv",
+         note: I.id==="svpd"?"드렌처 SVP 동작 표시":"드렌처 전용 감지기 동작 — 프리액션과 무관한 별개 계통"},
+        {id:"dren",note:"개방형 헤드 일제살수 — 기동 후 중단 불가"},
+        {id:"avs",note:"유수검지장치 화재신호 발신 · 밸브개방표시등 점등"},
+        {id:"sir",note:"유수검지장치 발신에 따른 음향장치 경보"},
+        {id:"pump",note:"압력 저하에 따른 기동"},
+        {id:"drenz",note:"마곡역 연결통로 인접 구역 전면 수손"}]};
+
+    case "svpv":
+      return {lv:2,alarm:false,list:[
+        {id:"svplamp",note:"전실제연 SVP 동작 표시"},
+        {id:"vdmp",note:"해당 피난계단 부속실 급기댐퍼 개방"},
+        {id:"vfan",note:"급기송풍기 기동"},
+        {id:"vexh",note:"배기댐퍼 개방 및 배기휀 기동",vq:1},
+        {id:"recv",note:"화재신호까지 성립하는지 확인 필요",vq:1}]};
+    case "svpg":
+      return {lv:2,alarm:false,list:[
+        {id:"svplamp",note:"기동스위치 조작 표시"},
+        {id:"sir",note:"기동장치 조작과 연동한 음향경보 — 이 지연 구간에만 비상스위치로 중단 가능. 방출 개시 후 1분 이상 계속 (NFPC 107A 제11조)"},
+        {id:"gasdmp",note:"약제 유출 방지를 위한 구역 밀폐"},
+        {id:"gasrel",note:"지연시간 경과 후 방출 — 이후 중단 불가"}]};
+    case "ps":
+      return {lv:2,alarm:false,list:[
+        {id:"avs",note:"헤드 개방에 따른 유수검지 — 알람밸브 개방표시등 점등"},
+        {id:"sir",note:"유수검지장치 발신에 따른 음향장치 경보 (NFPC 103 제9조)"},
+        {id:"recv",note:"수신기 밸브개방 신호 수신"},
+        {id:"pump",note:"압력 저하에 따른 기동"},
+        {id:"bell",note:"지구경종 동반 여부 확인 필요",vq:1}]};
+    case "gas":
+      return {lv:2,alarm:false,list:[
+        {id:"gasind",note:"가스누설 표시 및 경보부저"},
+        {id:"pag",note:"해당 구역 안내방송",vq:1}]};
   }
-};
-
-
-/* ── 샘플 2건 (26년 하반기) ─────────────────────────────────────── */
-const SAMPLE = [
-  { half:'2026H2', sheet:'판매시설층', no:1, date:'2026-10-05',
-    fac:'소화설비', detail:'헤드', dong:'B', floor:'2층', loc:'VIPS 룸 2개소 앞',
-    problem:'스프링클러 상향식 헤드 도색으로 감열부 피복\n(살수 지연 우려)',
-    action:'도색 제거', law:'NFPC103 제10조', handler:'입주사',
-    status:'미조치', done:'', submit:false, note:'입주사 통보 완료', sample:true },
-  { half:'2026H2', sheet:'업무 A동', no:2, date:'2026-10-05',
-    fac:'경보설비', detail:'감지기', dong:'A', floor:'11층', loc:'E/L 홀 공조 급기구 하부',
-    problem:'차동식 스포트형 감지기가 급기구로부터 1.5m 이내 설치\n(기류 영향으로 동작 지연 우려)',
-    action:'감지기 이설', law:'NFPC203 제7조', handler:'건물분',
-    status:'진행중', done:'', submit:false, note:'태영 보수 예정', sample:true }
-];
-
-/* ── 상태 색 (dataviz 검증 통과: L밴드·채도·CVD·대비) ─────────────── */
-const SC = { '미조치':'#C8811F', '진행중':'#3C8FC7', '조치완료':'#2FA35F', '보류':'#7E93A3', '제외':'#5A6E7E' };
-const HALF_LABEL = { '2026H1':'26년 상반기', '2026H2':'26년 하반기' };
-
-/* ── 전역 상태 ─────────────────────────────────────────────────── */
-const S = {
-  rows: [], half: '2026H2', view: 'board', role: 'viewer',
-  mode: 'local', fb: null, db: null, unsub: null,
-  filters: { status:new Set(), fac:new Set(), dong:new Set(), handler:new Set() },
-  q: '', sort: 'def', cur: null, dirtyPhotos: null
-};
-const $  = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const uid = () => 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-
-function toast(msg, bad){
-  const t = document.createElement('div');
-  t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
-  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
-}
-function ls(k, v){
-  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }
-  catch(e){ return null; }
+  return {lv:0,list:[],alarm:false};
 }
 
-/* ═══ IndexedDB (문서 + 사진) ═══════════════════════════════════ */
-const IDB = (() => {
-  let p;
-  const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open('wongrove-check', 2);
-    r.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('items'))  d.createObjectStore('items', { keyPath:'id' });
-      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos');
-      if (!d.objectStoreNames.contains('kv'))     d.createObjectStore('kv');
-    };
-    r.onsuccess = () => res(r.result);
-    r.onerror   = () => rej(r.error);
-  }));
-  const tx = async (store, mode, fn) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const t = d.transaction(store, mode), s = t.objectStore(store);
-      const out = fn(s); t.oncomplete = () => res(out?.result ?? out);
-      t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+/* ---------- 음향송출줄 ----------
+   자동 송출 : 주경종(mbell) · 지구경종(bell) · 싸이렌(sir) · 비상방송(pag)
+              비상방송(화재시)은 audio/pa-fire.* (싸이렌 5초+멘트+싸이렌 5초)을 반복 송출한다.
+              연동정지가 걸린 설비는 live[]에서 빠지므로 그대로 송출이 멈춘다.
+   수동 송출 : 비화재 안내 / 비화재보 복구안내 / 화재시 안내 — [송출] 버튼으로만 재생.
+   음원 교체 : audio/ 폴더의 같은 이름 파일을 바꾸면 그대로 반영된다.
+               (bell=주경종·지구경종, siren=싸이렌, pa-fire=화재시 안내방송)
+   iOS 대응 : iOS Safari는 audio.volume 설정을 무시하므로 Web Audio GainNode를 거쳐
+              음량을 제어한다. Web Audio를 못 쓰는 환경에서는 element.volume으로 자동 대체. */
+let soundOn=true, volume=0.60;   /* 기본 음량 — 교육장 노트북·태블릿 스피커 기준 상향 */
+const bellAudio=document.getElementById("bellAudio");
+const sirenAudio=document.getElementById("sirenAudio");
+const paAudio=document.getElementById("paAudio");
+const paSiren=document.getElementById("paSiren");
+const MEDIA=[bellAudio,sirenAudio,paAudio,paSiren].filter(Boolean);
+
+/* 음량 보정 계수 ----------------------------------------------------------
+   음원마다 정규화 레벨과 남은 피크 여유가 달라, 같은 음량 설정에서도 체감
+   크기가 다르다. 아래 계수는 각 음원의 실측값(적분 라우드니스 / 최대피크)을
+   기준으로 체감 음량을 맞추되, 음량 100%에서도 클리핑되지 않는 선으로 잡았다.
+     bell.mp3      -14.6 LUFS / peak -7.7dBFS  → ×1.35 (peak -5.1dBFS)
+     siren.mp3     -16.6 LUFS / peak -7.3dBFS  → ×1.55 (peak -3.5dBFS)
+     pa-fire.mp3   -17.1 LUFS / peak -2.1dBFS  → ×1.25 (peak -0.2dBFS, 한계)
+   특히 예비경보 단계는 주경종 하나만 단독으로 울려 체감이 크게 떨어지므로
+   경종 보정(BELL_GAIN)이 반드시 필요하다. */
+const FIRE_GAIN=1.25, BELL_GAIN=1.35, SIREN_GAIN=1.55;
+let curLoud=false;
+const gain=loud=>volume*(loud?FIRE_GAIN:1);
+const bellVol =()=>volume*BELL_GAIN;
+const sirenVol=()=>volume*SIREN_GAIN;
+
+/* --- Web Audio 라우팅 (iOS 음량 제어용) --- */
+let AC=null, webAudioOK=false;
+const NODE=new Map();          /* audio element -> GainNode */
+function buildGraph(){
+  if(AC) return;
+  const C=window.AudioContext||window.webkitAudioContext;
+  if(!C) return;
+  try{
+    AC=new C();
+    MEDIA.forEach(a=>{
+      const src=AC.createMediaElementSource(a);
+      const g=AC.createGain();
+      g.gain.value = a===bellAudio ? bellVol() : a===sirenAudio ? sirenVol() : gain(true);
+      src.connect(g); g.connect(AC.destination);
+      NODE.set(a,g);
+      a.volume=1;              /* 실제 음량은 GainNode가 결정 */
     });
-  };
-  return {
-    all:      ()        => tx('items','readonly',  s => s.getAll()),
-    put:      r         => tx('items','readwrite', s => s.put(r)),
-    putMany:  rs        => tx('items','readwrite', s => { rs.forEach(r => s.put(r)); }),
-    del:      id        => tx('items','readwrite', s => s.delete(id)),
-    clear:    ()        => tx('items','readwrite', s => s.clear()),
-    photoPut: (k,b)     => tx('photos','readwrite',s => s.put(b,k)),
-    photoGet: k         => tx('photos','readonly', s => s.get(k)),
-    photoDel: k         => tx('photos','readwrite',s => s.delete(k)),
-    photoKeys:()        => tx('photos','readonly', s => s.getAllKeys())
-  };
-})();
+    webAudioOK=true;
+  }catch(e){ webAudioOK=false; }
+}
+/* Web Audio 경로(GainNode)는 1.0 을 넘는 증폭이 가능하지만,
+   audio 엘리먼트의 volume 은 1.0 이 상한이라 넘기면 예외가 난다. */
+function setVol(a,v){
+  const g=NODE.get(a);
+  if(webAudioOK&&g){ g.gain.value=Math.min(2,v); }
+  else { try{ a.volume=Math.min(1,v); }catch(e){} }
+}
+function applyVolumes(){
+  setVol(bellAudio,bellVol()); setVol(sirenAudio,sirenVol());
+  setVol(paAudio,gain(true)); setVol(paSiren,gain(true));
+}
+MEDIA.forEach(a=>{ try{ a.volume=Math.min(1,a===bellAudio?bellVol():a===sirenAudio?sirenVol():volume); }catch(e){} });
 
-/* 사진 URL 캐시 — 'idb:key' 는 blob URL 로, 그 외는 원격 URL 그대로 */
-const urlCache = new Map();
-async function photoURL(ref){
-  if (!ref) return '';
-  if (!ref.startsWith('idb:')) return ref;
-  if (urlCache.has(ref)) return urlCache.get(ref);
-  try {
-    const b = await IDB.photoGet(ref.slice(4));
-    if (!b) return '';
-    const u = URL.createObjectURL(b); urlCache.set(ref, u); return u;
-  } catch(e){ return ''; }
+/* --- 오디오 언락 --------------------------------------------------------
+   브라우저는 사용자가 페이지를 직접 조작하기 전에는 소리 재생을 막는다.
+   첫 조작이 감지기 슬라이더 드래그인 경우(예비경보 15% 도달)에도 소리가
+   나야 하므로, click·touchend·keydown 뿐 아니라 pointerdown·touchstart·
+   input 까지 언락 제스처로 받는다. 언락 시점에 모든 음원을 한 번씩
+   무음 재생→즉시 정지시켜 재생 권한을 확보하고, 그 사이 차단됐던 음향은
+   retryAudio() 로 즉시 다시 송출한다. */
+const UNLOCK_EV=["pointerdown","touchstart","touchend","click","keydown","input"];
+let unlocked=false, audioBlocked=false;
+function unlockAudio(){
+  if(unlocked) return; unlocked=true;
+  buildGraph();
+  if(AC&&AC.state==="suspended"){ AC.resume().catch(()=>{}); }
+  MEDIA.forEach(a=>{
+    const wasMuted=a.muted;
+    a.muted=true;
+    const p=a.play();
+    if(p&&p.then) p.then(()=>{ a.pause(); a.currentTime=0; a.muted=wasMuted; })
+                   .catch(()=>{ a.muted=wasMuted; });
+    else { try{a.pause();a.currentTime=0;}catch(e){} a.muted=wasMuted; }
+  });
+  applyVolumes();
+  UNLOCK_EV.forEach(ev=>document.removeEventListener(ev,unlockAudio,true));
+  retryAudio();
+}
+UNLOCK_EV.forEach(ev=>document.addEventListener(ev,unlockAudio,true));
+
+/* 자동재생이 막혀 소리가 안 나간 경우 음향송출줄에 안내를 띄운다 */
+function markBlocked(on){
+  if(audioBlocked===on) return;
+  audioBlocked=on;
+  const w=document.getElementById("sndwarn");
+  if(w) w.hidden=!on;
+}
+/* 언락 직후, 차단됐던 음향을 현재 연동상태 기준으로 다시 송출한다 */
+function retryAudio(){
+  if(!audioBlocked) return;
+  markBlocked(false);
+  if(typeof render==="function") render();
 }
 
-/* ═══ 사진 압축 ════════════════════════════════════════════════ */
-async function shrink(blob, maxPx){
-  if (!maxPx) return blob;
-  try {
-    const bmp = await createImageBitmap(blob);
-    if (Math.max(bmp.width, bmp.height) <= maxPx && blob.size < 180e3){ bmp.close?.(); return blob; }
-    const sc = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
-    const w = Math.max(1, Math.round(bmp.width*sc)), h = Math.max(1, Math.round(bmp.height*sc));
-    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-    cv.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close?.();
-    const out = await new Promise(r => cv.toBlob(r, 'image/webp', 0.82));
-    return (out && out.size < blob.size) ? out : blob;
-  } catch(e){ return blob; }
-}
-
-/* 사진 저장 — 설정에 따라 로컬 / Storage / Drive */
-async function savePhoto(blob, itemId, kind){
-  const maxPx = +($('#maxPx').value || 1200);
-  const b = await shrink(blob, maxPx);
-  const dst = $('#photoDst').value;
-  const name = `${itemId}-${kind}-${Math.random().toString(36).slice(2,7)}.webp`;
-  if (dst === 'storage' && S.fb?.storage){
-    const r = S.fb.storage().ref(`photos/${S.half}/${name}`);
-    await r.put(b); return await r.getDownloadURL();
+/* 연동 출력에 따라 자동으로 울리는 음향 — 해당 설비에 연동정지가 걸리면 송출이 멈춘다 */
+function ring(a,on){
+  if(!a) return;
+  if(on&&soundOn){
+    if(AC&&AC.state==="suspended") AC.resume().catch(()=>{});
+    const p=a.play();
+    /* 재생 실패(자동재생 차단) 시 안내를 띄우고, 다음 조작에서 자동 재시도한다.
+       빠른 슬라이더 조작으로 pause() 가 끼어들어 생긴 AbortError 는 차단이 아니다. */
+    if(p&&p.then) p.then(()=>markBlocked(false),
+                         err=>{ if(!err||err.name!=="AbortError") markBlocked(true); });
+  }else{
+    try{ a.pause(); if(!on) a.currentTime=0; }catch(e){}
   }
-  if (dst === 'drive'){
-    const u = await driveUpload(b, name); if (u) return u;
-    toast('Drive 업로드에 실패해 이 기기에 저장했습니다', true);
+}
+
+/* 비화재 안내·비화재보 복구안내는 실제 녹음이 없어 음성합성으로 낭독한다.
+   녹음 파일을 쓰려면 아래에 audio/ 경로를 넣으면 그 파일이 대신 재생된다. */
+const ANNOUNCE_FILES={ nonfire:"", recover:"" };   /* 예: nonfire:"audio/pa-nonfire.mp3" */
+let extAudio=null, paActive=false, paTimer=null, paBroken=false;
+let paGen=0;          /* 비상방송 송출 세대 — paStop() 마다 증가, 이전 세대 콜백은 실행하지 않는다 */
+
+function floorKo(f){ return f[0]==="B" ? "지하 "+f.slice(1)+"층" : "지상 "+parseInt(f)+"층"; }
+/* 비화재 안내방송 문안 — 종합방재실 표준 문안.
+   본문(머리말 포함)을 2회 반복한 뒤 "감사합니다."로 맺는다.
+   음성합성은 긴 문장을 한 번에 읽으면 일부 브라우저(크롬)에서 도중에 끊기므로
+   문장 단위로 나눠 차례로 읽고, 반복 사이에는 짧게 쉰다(PA_PAUSE). */
+const PA_PAUSE="__pause__";
+function nonfireParts(f,d){
+  const loc=d+"동 "+floorKo(f);                                   /* 예: A동 지상 3층 */
+  const dev=(st.input==="call")?"발신기가":"화재 감지기가";          /* 발신기 동작 시 문안 구분 */
+  const body=[
+    "종합방재실에서 알려드립니다.",
+    "현재 "+loc+"에 "+dev+" 동작하여 출동 중입니다.",
+    "소방직원이 현장출동 후 확인할 예정이니, 안내방송에 주의를 기울여 주시고, 안내에 따라 행동하여 주시기 바랍니다."
+  ];
+  return body.concat([PA_PAUSE],body,[PA_PAUSE,"감사합니다."]);   /* 2회 반복 */
+}
+function scriptText(f,d,type){
+  const loc=floorKo(f)+" "+d+"동";
+  if(type==="nonfire"){
+    return nonfireParts(f,d).filter(t=>t!==PA_PAUSE).join(" ");
   }
-  const key = 'p' + uid(); await IDB.photoPut(key, b); return 'idb:' + key;
+  if(type==="recover"){
+    return "안내 말씀드립니다. 조금 전 "+loc+"에서 발생한 경보는 확인 결과 비화재보로 판명되어 "+
+           "정상으로 복구되었습니다. 이용에 불편을 드려 죄송합니다. 안심하시고 정상적인 활동을 계속하여 주시기 바랍니다.";
+  }
+  return "화재발생, 화재발생. 현재 "+loc+"에서 화재가 발생하였습니다. "+
+         "엘리베이터를 이용하지 마시고, 가까운 비상구와 계단을 이용하여 "+
+         "안전한 장소로 신속히 대피하여 주시기 바랍니다.";
 }
-
-/* ═══ Google Drive 업로드 (Firebase Google 로그인 토큰 사용) ════ */
-let driveToken = null;
-async function driveUpload(blob, name){
-  const folder = ($('#driveFolder').value || '').trim();
-  if (!folder || !S.fb) return null;
-  try {
-    if (!driveToken){
-      const pv = new S.fb.auth.GoogleAuthProvider();
-      pv.addScope('https://www.googleapis.com/auth/drive.file');
-      const res = await S.fb.auth().signInWithPopup(pv);
-      driveToken = res.credential?.accessToken; if (!driveToken) return null;
-    }
-    const meta = { name, parents:[folder] };
-    const fd = new FormData();
-    fd.append('metadata', new Blob([JSON.stringify(meta)], { type:'application/json' }));
-    fd.append('file', blob);
-    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-      { method:'POST', headers:{ Authorization:'Bearer ' + driveToken }, body:fd });
-    if (!r.ok) throw new Error(await r.text());
-    const { id } = await r.json();
-    await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`, {
-      method:'POST', headers:{ Authorization:'Bearer '+driveToken, 'Content-Type':'application/json' },
-      body: JSON.stringify({ role:'reader', type:'anyone' })
-    }).catch(()=>{});
-    return `https://drive.google.com/thumbnail?id=${id}&sz=w1200`;
-  } catch(e){ console.warn('drive', e); driveToken = null; return null; }
+/* 합성 음성은 한국어 남성 목소리를 우선 선택하고, 없으면 톤을 낮춰 대체한다 */
+const MALE_HINT=/male|man\b|injoon|인준|민준|준서|시우|ko-kr-x-kod|ko-kr-x-kob|jinho/i;
+const FEMALE_HINT=/female|woman|yuna|유나|수진|지은|ko-kr-x-koc/i;
+function pickKoVoice(){
+  if(!("speechSynthesis" in window)) return null;
+  const vs=(window.speechSynthesis.getVoices()||[]).filter(v=>v.lang&&v.lang.toLowerCase().indexOf("ko")===0);
+  if(!vs.length) return null;
+  const male=vs.find(v=>MALE_HINT.test(v.name));
+  if(male) return {voice:male,pitch:1.0};
+  const notFemale=vs.find(v=>!FEMALE_HINT.test(v.name));
+  return {voice:(notFemale||vs[0]),pitch:0.72};
 }
+function makeUtt(text,loud){
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ko-KR"; u.rate=0.97; u.volume=Math.min(1,gain(loud)*1.9);
+  const p=pickKoVoice();
+  if(p){ u.voice=p.voice; u.pitch=p.pitch; }
+  return u;
+}
+function speak(text,onend,loud){
+  curLoud=!!loud;
+  if(!soundOn||!("speechSynthesis" in window)){ if(onend) onend(); return; }
+  try{
+    window.speechSynthesis.cancel();
+    const u=makeUtt(text,loud);
+    if(onend) u.onend=onend;
+    window.speechSynthesis.speak(u);
+  }catch(e){ if(onend) onend(); }
+}
+/* 여러 문장을 차례로 낭독 — PA_PAUSE 자리에서는 잠시 쉰다.
+   [음향 정지]·[복구]·다른 방송 송출로 paStop() 이 호출되면 송출 세대(paGen)가
+   바뀌므로 남은 문장은 읽지 않고 멈춘다. */
+function speakSeq(parts,onend,loud){
+  curLoud=!!loud;
+  if(!soundOn||!("speechSynthesis" in window)){ if(onend) onend(); return; }
+  const gen=paGen, alive=()=>gen===paGen;
+  try{ window.speechSynthesis.cancel(); }catch(e){}
+  let i=0;
+  const next=()=>{
+    if(!alive()) return;
+    if(i>=parts.length){ if(onend) onend(); return; }
+    const t=parts[i++];
+    if(t===PA_PAUSE){ setTimeout(next,900); return; }
+    try{
+      const u=makeUtt(t,loud);
+      u.onend=next; u.onerror=next;
+      window.speechSynthesis.speak(u);
+    }catch(e){ next(); }
+  };
+  setTimeout(next,80);            /* cancel() 직후 곧바로 speak() 하면 크롬에서 씹히는 문제 회피 */
+}
+/* 외부 녹음 파일(비화재·복구용)이 지정된 경우 재생 */
+function playExtFile(src,onend,loud){
+  curLoud=!!loud;
+  if(!extAudio){ extAudio=new Audio(); extAudio.setAttribute("playsinline",""); }
+  if(extAudio.src!==src){ extAudio.src=src; }
+  try{ extAudio.volume=Math.min(1,gain(loud)); }catch(e){}
+  extAudio.currentTime=0;
+  extAudio.onended=onend||null;
+  const p=extAudio.play();
+  if(p&&p.catch) p.catch(err=>{ if(err&&err.name==="AbortError") return; if(onend) onend(); });
+}
+function sayScript(type,onend){
+  const src=ANNOUNCE_FILES[type];
+  if(src){ playExtFile(src,onend,false); return; }       /* 녹음 파일은 2회 반복을 녹음에 포함해 둘 것 */
+  if(type==="nonfire") speakSeq(nonfireParts(st.f,st.d),onend,false);
+  else speak(scriptText(st.f,st.d,type),onend,false);
+}
+/* 화재시 안내방송 — audio/pa-fire.* 를 높은 음량으로 재생.
+   파일을 못 읽으면 짧은 싸이렌 + 음성합성 낭독으로 자동 대체한다.
 
-/* ═══ Firebase ═════════════════════════════════════════════════ */
-function loadScript(src){
-  return new Promise((res, rej) => {
-    if ([...document.scripts].some(s => s.src === src)) return res();
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s);
+   ※ 송출 세대(paGen) 검사가 반드시 필요하다.
+   감지기 슬라이더가 화재점을 스치고 예비경보 구간으로 다시 내려오면
+   paStart() 직후 paStop() 이 호출되는데, 이때 아직 대기중이던 play() 가
+   pause() 때문에 AbortError 로 거부된다. 세대 검사가 없으면 그 거부가
+   "파일 재생 불가"로 오인되어 폴백(싸이렌 + 화재 음성낭독)이 실행되고,
+   예비경보 구간인데 화재방송이 흘러나온다. paStop() 이 세대를 올려
+   이전 세대의 콜백을 모두 무효화한다. */
+function playFire(onend){
+  const gen=paGen, alive=()=>gen===paGen;
+  if(!paBroken&&paAudio){
+    if(AC&&AC.state==="suspended") AC.resume().catch(()=>{});
+    setVol(paAudio,gain(true));
+    try{ paAudio.currentTime=0; }catch(e){}
+    paAudio.onended=()=>{ if(alive()&&onend) onend(); };
+    const p=paAudio.play();
+    if(p&&p.catch) p.catch(err=>{
+      if(!alive()) return;                                  /* 정지 뒤 도착한 거부 — 무시 */
+      if(err&&(err.name==="AbortError")) return;             /* pause() 로 중단된 재생 */
+      paBroken=true;                                         /* 실제 재생 불가일 때만 폴백 */
+      fireFallback(onend,gen);
+    });
+    return;
+  }
+  fireFallback(onend,gen);
+}
+function fireFallback(onend,gen){
+  if(gen===undefined) gen=paGen;
+  const alive=()=>gen===paGen;
+  if(!alive()) return;
+  const go=()=>{ if(alive()) speak(scriptText(st.f,st.d,"fire"),onend,true); };
+  if(!paSiren){ go(); return; }
+  setVol(paSiren,gain(true));
+  paSiren.onended=()=>{ paSiren.onended=null; go(); };
+  try{ paSiren.currentTime=0; }catch(e){}
+  const p=paSiren.play();
+  if(p&&p.catch) p.catch(err=>{
+    paSiren.onended=null;
+    if(err&&err.name==="AbortError") return;
+    go();
   });
 }
-async function loadSDK(){
-  let last;
-  for (const src of FB_SOURCES){
-    try {
-      await loadScript(src.base + 'firebase-app-compat.js');
-      await Promise.all(['auth','firestore','storage'].map(m =>
-        loadScript(`${src.base}firebase-${m}-compat.js`)));
-      if (window.firebase?.firestore){ S.cdn = src.name; return window.firebase; }
-      throw new Error('SDK 미완성');
-    } catch(e){ last = e; }
-  }
-  throw new Error('SDK를 불러오지 못했습니다 (' + (last?.message||'') + ')');
+function playAnnounce(type){
+  paStop();
+  if(type==="fire") playFire(); else sayScript(type);
 }
-async function fbConnect(cfg, quiet){
-  try {
-    const fb = await loadSDK();
-    if (!fb) throw new Error('SDK 로드 실패');
-    if (!fb.apps.length) fb.initializeApp(cfg);
-    S.fb = fb;
-    await Promise.race([
-      fb.auth().signInAnonymously(),
-      new Promise((_, rj) => setTimeout(() => rj(new Error('연결 시간 초과')), 9000))
-    ]);
-    S.db = fb.firestore();
-    S.mode = 'cloud';
-    ls('wg_fbcfg', JSON.stringify(cfg));
-    subscribe();
-    setMode();
-    if (!quiet) toast('Firebase에 연결되었습니다');
-    return true;
-  } catch(e){
-    console.warn('firebase', e);
-    S.mode = 'local'; S.fbErr = fbReason(e); setMode();
-    if (!quiet) toast('연결 실패 — 이 기기 저장으로 계속합니다', true);
-    return false;
-  }
+/* 비상방송 자동송출 — 연동이 살아있는 동안 반복 */
+function paStart(){ if(paActive) return; paActive=true; paCycle(); }
+function paCycle(){
+  if(!paActive||!soundOn) return;
+  playFire(()=>{ if(paActive) paTimer=setTimeout(paCycle,2600); });
 }
-/* 실패 원인을 콘솔에서 고칠 항목으로 바꿔 줍니다 */
-function fbReason(e){
-  const c = String(e?.code || ''), m = String(e?.message || '');
-  const sandbox = !!window.claude;
-  if (sandbox)
-    return '미리보기 화면에서는 외부 접속이 막혀 Firebase에 연결할 수 없습니다. GitHub Pages 주소에서 열면 연결됩니다.';
-  if (/SDK를 불러오지/.test(m))
-    return 'Firebase 스크립트를 내려받지 못했습니다. 사내망에서 cdn.jsdelivr.net 과 gstatic.com 이 막혀 있는지 확인해 주세요.';
-  if (/operation-not-allowed|admin-restricted-operation|configuration-not-found/.test(c))
-    return '콘솔 → Authentication → Sign-in method 에서 [익명] 로그인을 사용 설정해 주세요.';
-  if (/unauthorized-domain/.test(c))
-    return `콘솔 → Authentication → Settings → 승인된 도메인 에 "${location.hostname}" 을 추가해 주세요.`;
-  if (/api-key-not-valid|invalid-api-key/.test(c))
-    return 'apiKey 가 올바르지 않습니다. 콘솔 → 프로젝트 설정 → 내 앱 의 값과 대조해 주세요.';
-  if (/network-request-failed|시간 초과/.test(c + m))
-    return '네트워크 응답이 없습니다. 인터넷 연결이나 사내 방화벽을 확인해 주세요.';
-  return (c ? c + ' — ' : '') + (m || '알 수 없는 오류');
+function paStop(){
+  paGen++;              /* 진행중이던 송출 체인(대기중인 play·onended·폴백)을 모두 무효화 */
+  paActive=false;
+  if(paTimer){ clearTimeout(paTimer); paTimer=null; }
+  [paAudio,paSiren].forEach(a=>{ if(a){ a.onended=null; try{a.pause();a.currentTime=0;}catch(e){} } });
+  if(extAudio){ extAudio.onended=null; try{extAudio.pause();}catch(e){} }
+  if("speechSynthesis" in window){ try{window.speechSynthesis.cancel();}catch(e){} }
 }
-let seeded = false;
-function subscribe(){
-  if (!S.db) return;
-  S.unsub?.();
-  S.unsub = S.db.collection('items').onSnapshot(
-    async snap => {
-      /* 클라우드가 비어 있고 이 기기에 자료가 있으면 한 번만 올려 둔다 */
-      if (snap.empty && !seeded && S.rows.length){
-        seeded = true; await saveMany(S.rows); return;
-      }
-      seeded = true;
-      S.rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      afterLoad();
-    },
-    err => {
-      console.warn(err);
-      const c = String(err?.code || '');
-      S.fbErr = /permission-denied/.test(c)
-        ? 'Firestore 규칙이 막고 있습니다. 콘솔 → Firestore → 규칙 에 firestore.rules 를 붙여넣고 [게시] 해 주세요.'
-        : /not-found|failed-precondition|unavailable/.test(c)
-        ? 'Firestore 데이터베이스가 아직 없습니다. 콘솔 → Firestore Database → 데이터베이스 만들기 (위치: asia-northeast3 서울)'
-        : '동기화 오류: ' + (err?.message || c);
-      S.mode = 'local'; setMode();
-      toast('자료를 읽지 못했습니다 — 설정 탭에서 원인을 확인하세요', true);
-    }
-  );
-}
-function setMode(){
-  const b = $('#modeBadge'), t = $('#modeText');
-  b.className = 'badge ' + (S.mode === 'cloud' ? 'live' : 'local');
-  t.textContent = S.mode === 'cloud' ? 'Firebase 연결됨' : '이 기기에 저장';
-  $('#stMode').textContent = S.mode === 'cloud' ? 'Firestore (실시간 공유)' : '브라우저 (IndexedDB)';
-  $('#fbState').textContent = S.mode === 'cloud'
-    ? `연결됨 · 프로젝트 ${S.fb.app().options.projectId} · SDK ${S.cdn} · 수정 내용이 모든 기기에 즉시 반영됩니다.`
-    : (S.fbErr || '연결 전에는 이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.');
+if("speechSynthesis" in window){ window.speechSynthesis.onvoiceschanged=()=>{}; }
+
+function silence(){
+  ring(bellAudio,false); ring(sirenAudio,false);
+  paStop();
 }
 
-/* ═══ 저장 / 삭제 ══════════════════════════════════════════════ */
-async function saveRow(r){
-  r.updatedAt = Date.now();
-  if (S.mode === 'cloud'){
-    const { id, ...d } = r;
-    await S.db.collection('items').doc(id).set(d, { merge:false });
-  } else {
-    await IDB.put(r);
-    const i = S.rows.findIndex(x => x.id === r.id);
-    i < 0 ? S.rows.push(r) : (S.rows[i] = r);
-    afterLoad();
-  }
+/* 출력 목록에서 실제 동작 중인 음향설비를 읽어 재생 상태를 맞춘다.
+   live[] 에는 연동정지가 걸린 설비가 들어오지 않으므로, 연동정지를 잡으면 그대로 송출이 멈춘다.
+   안내방송 3종은 자동 재생하지 않고 음향송출줄의 [송출] 버튼으로만 내보낸다. */
+function syncAudio(live){
+  if(!soundOn){ silence(); return; }
+  const sirOn=live.indexOf("sir")>=0;
+  /* 주경종·지구경종은 같은 음원(bellAudio) 하나를 공유한다.
+     "소방설비 연동설정"에서 주경종(mbell)·지구경종(bell) 중 하나만 연동정지해도
+     나머지 하나가 살아있으면 계속 울려야 하므로 OR 조건이며,
+     따라서 이 mp3 출력이 멈추려면 mbell·bell 둘 다 연동정지로 선택되어 있어야 한다
+     (싸이렌 연동에 따른 지구경종 동반명동은 별개 규칙이라 sirOn이면 항상 울린다). */
+  ring(bellAudio,  live.indexOf("mbell")>=0 || live.indexOf("bell")>=0 || sirOn);
+  ring(sirenAudio, sirOn);
+  live.indexOf("pag")>=0 ? paStart() : paStop();
 }
-async function saveMany(rs){
-  if (S.mode === 'cloud'){
-    for (let i = 0; i < rs.length; i += 400){
-      const b = S.db.batch();
-      rs.slice(i, i+400).forEach(r => { const { id, ...d } = r; b.set(S.db.collection('items').doc(id), d); });
-      await b.commit();
-    }
-  } else {
-    await IDB.putMany(rs);
-    rs.forEach(r => { const i = S.rows.findIndex(x => x.id === r.id); i < 0 ? S.rows.push(r) : (S.rows[i] = r); });
-    afterLoad();
-  }
-}
-async function delRow(id){
-  const r = S.rows.find(x => x.id === id);
-  for (const k of ['before','map','after'])
-    for (const ref of (r?.photos?.[k] || []))
-      if (ref.startsWith('idb:')) await IDB.photoDel(ref.slice(4)).catch(()=>{});
-  if (S.mode === 'cloud') await S.db.collection('items').doc(id).delete();
-  else { await IDB.del(id); S.rows = S.rows.filter(x => x.id !== id); afterLoad(); }
-}
+/* ---------- 상태 ---------- */
+let st={f:"B1",d:"C",input:"smk",val:0,fired:false};
+/* halted = 연동정지 걸린 설비. 기본값은 비어 있음 = 전 설비 정상 */
+let halted=new Set(), revealed=Infinity, timer=null;
+const $=s=>document.querySelector(s);
 
-/* ═══ 엑셀 파서 (JSZip · 시트 + 셀 앵커 사진) ══════════════════ */
-const NS = {
-  s:'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
-  xdr:'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing',
-  a:'http://schemas.openxmlformats.org/drawingml/2006/main',
-  r:'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-  pr:'http://schemas.openxmlformats.org/package/2006/relationships'
-};
-const parseXML = t => new DOMParser().parseFromString(t, 'application/xml');
-const el = (p, ns, n) => p.getElementsByTagNameNS(ns, n);
-const el1 = (p, ns, n) => el(p, ns, n)[0];
-const colNum = ref => { let n = 0; for (const c of ref.replace(/\d+/g,'')) n = n*26 + (c.charCodeAt(0)-64); return n; };
-const EMU_PT = 12700, EMU_PX = 9525;
+const stack=$("#stack");
+FLOORS.forEach(f=>{
+  const r=document.createElement("div");r.className="frow";
+  const l=document.createElement("div");l.className="flab";l.textContent=f;r.appendChild(l);
+  DONGS.forEach(d=>{
+    const b=document.createElement("button");b.className="cell";b.dataset.k=f+d;
+    b.setAttribute("aria-label",f+" "+d+"동");
+    b.innerHTML='<span class="shtbar" aria-hidden="true"></span>';
+    b.addEventListener("click",()=>{st.f=f;st.d=d;resetInput();render();});
+    r.appendChild(b);
+  });
+  stack.appendChild(r);
+});
 
-function excelDate(v){
-  const d = new Date(Date.UTC(1899,11,30) + v*86400000);
-  return isNaN(d) ? '' : d.toISOString().slice(0,10);
-}
-function normDate(v, yearHint){
-  if (v == null || v === '') return '';
-  if (typeof v === 'number') return (v > 20000 && v < 80000) ? excelDate(v) : '';
-  let s = String(v).trim();
-  let m = s.match(/(\d{4})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{1,2})/);
-  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
-  m = s.match(/^(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\.?$/);
-  if (m) return `${yearHint||new Date().getFullYear()}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
-  return s;
-}
-/* 머리글 이름 → 내부 필드 (열 순서가 바뀌어도 인식) */
-const HEAD = [
-  [/^no\.?$/i,'no'], [/점검\s*일자|점검일/,'date'], [/시설\s*구분/,'fac'], [/상세\s*구분/,'detail'],
-  [/동\s*별|동$/,'dong'], [/층.*구역|구역/,'loc'], [/문제점|점검\s*결과/,'problem'], [/개선\s*대책|조치\s*방법/,'action'],
-  [/(지적|문제점).*사진/,'ph_before'], [/관련\s*법규|법규/,'law'], [/위치\s*표기|위치도/,'ph_map'],
-  [/처리\s*방안|처리\s*주체/,'handler'], [/조치\s*후.*사진/,'ph_after'], [/완료\s*일/,'done'],
-  [/소방서\s*제출|제출/,'submit'], [/비고/,'note']
+const inlist=$("#inlist");
+let lastG=null;
+INPUTS.forEach(I=>{
+  if(I.g!==lastG){
+    const h=document.createElement("div");h.className="ingrp";h.textContent=I.g;
+    inlist.appendChild(h);
+    const wrap=document.createElement("div");wrap.className="inlist";wrap.dataset.g=I.g;
+    inlist.appendChild(wrap);
+    lastG=I.g;
+  }
+  const wrap=inlist.querySelector('.inlist[data-g="'+I.g+'"]');
+  const b=document.createElement("button");
+  b.dataset.id=I.id;b.setAttribute("aria-pressed","false");
+  b.innerHTML='<span>'+I.name+'</span><span class="kind">'+I.kind+'</span>';
+  b.addEventListener("click",()=>{ if(!avail(I,st.f,st.d))return; st.input=I.id;resetInput();render(); });
+  wrap.appendChild(b);
+});
+
+/* ---------- 방재실 수신기 연동정지(출력차단) 조작반 ----------
+   버튼 명칭과 배열 순서는 현장 수신기 조작반 실물 기준(행 단위로 끊어 적었다).
+   ids[] = 그 버튼 하나로 함께 잡히는 시뮬레이터 출력설비.
+   ids 가 비어 있으면 실제 수신기에는 있으나 이 시뮬레이터의 연동로직에
+   포함하지 않은 출력이며 회색으로 비활성 표시한다.
+   lock:1 = 연동정지를 걸 수 없는 설비 — 소화설비(소화펌프)는 연동정지를
+   이미 해제해 상시 정상운영 중이므로 조작 대상에서 제외한다. */
+const PANEL=[
+ [{n:"비상방송",  ids:["pag"]},
+  {n:"지구벨",    ids:["bell"],  sub:"지구경종"},
+  {n:"싸이렌",    ids:["sir"],   sub:"유수검지·가스계"},
+  {n:"프리액션",  ids:PD_GROUP,  sub:"드렌처 공통"},
+  {n:"배연창",    ids:["swin"],  sub:"3F 이상 오피스"},
+  {n:"방화문",    ids:["fdoor"]},
+  {n:"방화셧터",  ids:["sht1","sht2"], sub:"1·2차 공통"}],
+
+ [{n:"제연댐퍼",  ids:["rdmp"],  sub:"거실제연"},
+  {n:"제연급기휀",ids:["rsup"],  sub:"거실제연"},
+  {n:"제연배기휀",ids:["rexh"],  sub:"거실제연"},
+  {n:"소화설비",  ids:["pump"],  sub:"소화펌프", lock:1},
+  {n:"전실댐퍼",  ids:["vdmp"],  sub:"전실제연 급기"},
+  {n:"유도등정지",ids:["exit"],  sub:"유도등 비상점등"},
+  {n:"시각경보",  ids:["vis"],   sub:"음성점멸"}],
+
+ [{n:"가스출력",  ids:["gasrel","gasdmp"], sub:"가스계 방출"},
+  {n:"제연커텐",  ids:[]},
+  {n:"전실급기휀",ids:["vfan"],  sub:"전실제연"},
+  {n:"전실배기휀",ids:["vexh"],  sub:"전실제연"},
+  {n:"자동문",    ids:[]},
+  {n:"미사용",    ids:[]}],
+
+ [{n:"대표화재",  ids:[]},
+  {n:"미사용",    ids:[]},
+  {n:"미사용",    ids:[]},
+  {n:"공조대표화재",ids:["ahu"], sub:"AHU 정지"},
+  {n:"조명제어",  ids:[]},
+  {n:"출입통제",  ids:[]},
+  {n:"패시브휀",  ids:["pfan"],  sub:"주차장"}],
+
+ [{n:"속보기",    ids:[]},
+  {n:"에어컨정지",ids:[]},
+  {n:"엘리베이터",ids:["elev"],  sub:"기준층 리콜"},
+  {n:"미디어",    ids:[]},
+  {n:"A출력",     ids:[]},
+  {n:"B출력",     ids:[]}]
 ];
-function mapHead(cells){
-  const m = {};
-  for (const [c, v] of Object.entries(cells)){
-    const t = String(v).replace(/\s+/g,' ').trim(); if (!t) continue;
-    for (const [re, f] of HEAD) if (re.test(t) && !Object.values(m).includes(f)){ m[c] = f; break; }
+/* 조작반 우측의 별도 스위치 계통 */
+const PANEL2=[
+ [{n:"주경종",    ids:["mbell"], sub:"수신기 내장"},
+  {n:"부저",      ids:[]}]
+];
+const COLS=7;                                   /* 실물 조작반 한 행의 버튼 수 */
+/* 조작반에서 실제로 연동정지를 걸 수 있는 설비 전체(소화펌프 제외) */
+const HALTABLE=[].concat.apply([],PANEL.concat(PANEL2))
+                 .filter(b=>!b.lock)
+                 .reduce((a,b)=>a.concat(b.ids),[]);
+/* 현행(야간 1단계) = 위 LIVE_NOW 를 제외한 나머지가 모두 연동정지 상태 */
+const HALT_NOW=HALTABLE.filter(id=>LIVE_NOW.indexOf(id)<0);
+
+function panelBtn(b){
+  const real=b.ids.length>0, lock=!!b.lock;
+  const el=document.createElement("button");
+  el.type="button";
+  el.className="rbtn"+(real?"":" na")+(lock?" lock":"")+
+               (b.ids.some(x=>KEY4.includes(x))?" key":"");
+  if(real&&!lock){
+    el.dataset.ids=b.ids.join(",");
+    el.setAttribute("aria-pressed","false");
+    el.title="누르면 연동정지 · 다시 누르면 정상연동";
+  }else{
+    el.disabled=true;
+    el.title = lock ? "소화펌프는 연동정지를 해제해 상시 정상운영 중입니다 — 정지할 수 없습니다"
+                    : "실제 수신기에는 있으나 이 시뮬레이터의 연동로직에는 포함하지 않은 출력입니다";
   }
-  return m;
+  el.innerHTML='<span class="rled"></span><span class="rname">'+b.n+'</span>'+
+    (b.sub?'<span class="rsub">'+b.sub+'</span>':'')+
+    '<span class="rstate">'+(lock?"상시연동":real?"연동":"미반영")+'</span>';
+  return el;
+}
+function buildPanel(el,rows){
+  rows.forEach(row=>{
+    row.forEach(b=>el.appendChild(panelBtn(b)));
+    for(let i=row.length;i<COLS;i++){            /* 실물 조작반의 빈 자리 */
+      const f=document.createElement("div"); f.className="rfill"; el.appendChild(f);
+    }
+  });
+}
+const cfg=$("#cfg");
+buildPanel(cfg,PANEL);
+buildPanel($("#cfg2"),PANEL2);
+
+/* 버튼 하나가 여러 설비를 잡는 경우(프리액션·방화셔터·가스출력)는
+   묶인 설비가 모두 연동정지일 때만 '정지'로 표시한다. */
+function syncPanel(){
+  document.querySelectorAll(".rbtn[data-ids]").forEach(el=>{
+    const off=el.dataset.ids.split(",").every(x=>halted.has(x));
+    el.setAttribute("aria-pressed",off);
+    el.querySelector(".rstate").textContent = off?"정지":"연동";
+  });
+}
+document.querySelectorAll("#cfg,#cfg2").forEach(p=>p.addEventListener("click",e=>{
+  const el=e.target.closest(".rbtn[data-ids]");
+  if(!el||el.disabled) return;
+  const ids=el.dataset.ids.split(",");
+  const off=ids.every(x=>halted.has(x));
+  ids.forEach(x=> off ? halted.delete(x) : halted.add(x));   /* 누를 때마다 정지 ↔ 연동 */
+  setMode("custom",true);syncPanel();render();
+}));
+
+function resetInput(){
+  let I=INPUTS.find(x=>x.id===st.input);
+  if(!I||!avail(I,st.f,st.d)){ st.input="smk"; I=INPUTS[0]; }
+  st.val=I.mode==="analog"?I.init:0; st.fired=false; revealed=Infinity; stop();
 }
 
-async function parseXlsx(file, onProg){
-  const zip = await JSZip.loadAsync(file);
-  const rd = async p => { const f = zip.file(p); return f ? await f.async('text') : null; };
+function render(){
+  const I=INPUTS.find(x=>x.id===st.input);
+  const R=compute(st);
+  const u=useOf(st.f);
 
-  /* 공유 문자열 */
-  const sst = [];
-  const sstX = await rd('xl/sharedStrings.xml');
-  if (sstX){
-    const doc = parseXML(sstX);
-    for (const si of el(doc, NS.s, 'si')){
-      let s = ''; for (const t of el(si, NS.s, 't')) s += t.textContent;
-      sst.push(s);
-    }
-  }
-  /* 시트 목록 */
-  const wbX = parseXML(await rd('xl/workbook.xml'));
-  const relX = parseXML(await rd('xl/_rels/workbook.xml.rels'));
-  const relMap = {};
-  for (const r of el(relX, NS.pr, 'Relationship')) relMap[r.getAttribute('Id')] = r.getAttribute('Target');
-  const sheets = [...el(wbX, NS.s, 'sheet')].map(s => {
-    let t = relMap[s.getAttributeNS(NS.r, 'id')] || '';
-    t = t.replace(/^\/?xl\//,'').replace(/^\.\.\//,'');
-    return { name: s.getAttribute('name'), path: 'xl/' + t };
+  $("#here").innerHTML="<b>"+st.f+" · "+st.d+"동</b><small>"+USE_KO[u]+"</small>";
+  document.querySelectorAll("#inlist button").forEach(b=>{
+    const J=INPUTS.find(x=>x.id===b.dataset.id);
+    const ok=avail(J,st.f,st.d);
+    b.setAttribute("aria-pressed", b.dataset.id===st.input);
+    b.classList.toggle("na",!ok);
+    b.disabled=!ok;
+    b.title = ok?"설치: "+J.where:"이 위치에는 미설치 — 설치 위치: "+J.where;
+    b.querySelector(".kind").textContent = ok?J.kind:"미설치";
   });
 
-  const out = []; const media = new Map();
-  let si = 0;
-  for (const sh of sheets){
-    si++; onProg?.(si / sheets.length * 0.65, `${sh.name} 읽는 중`);
-    const sx = await rd(sh.path); if (!sx) continue;
-    const doc = parseXML(sx);
-
-    /* 기본 행높이 / 열너비 */
-    const fmt = el1(doc, NS.s, 'sheetFormatPr');
-    const defH = +(fmt?.getAttribute('defaultRowHeight') || 15);
-    const defW = +(fmt?.getAttribute('defaultColWidth') || fmt?.getAttribute('baseColWidth') || 8.43);
-    const colW = {};
-    for (const c of el(doc, NS.s, 'col')){
-      const a = +c.getAttribute('min'), b = +c.getAttribute('max'), w = +c.getAttribute('width');
-      for (let i = a; i <= b && i <= 80; i++) colW[i] = w;
-    }
-    /* 셀 값 */
-    const rows = {}, rowH = {};
-    for (const rEl of el(doc, NS.s, 'row')){
-      const rn = +rEl.getAttribute('r');
-      const h = rEl.getAttribute('ht'); if (h) rowH[rn] = +h;
-      const cells = {};
-      for (const c of el(rEl, NS.s, 'c')){
-        const ref = c.getAttribute('r'); if (!ref) continue;
-        const t = c.getAttribute('t');
-        let v = '';
-        if (t === 'inlineStr'){ for (const x of el(c, NS.s,'t')) v += x.textContent; }
-        else {
-          const vN = el1(c, NS.s, 'v'); if (!vN) continue;
-          v = vN.textContent;
-          if (t === 's') v = sst[+v] ?? '';
-          else if (t === 'b') v = v === '1' ? 'O' : '';
-          else if (t !== 'str') v = +v;
-        }
-        if (v !== '' && v != null) cells[colNum(ref)] = v;
-      }
-      if (Object.keys(cells).length) rows[rn] = cells;
-    }
-    const rowNums = Object.keys(rows).map(Number).sort((a,b) => a-b);
-    if (!rowNums.length) continue;
-
-    /* 머리글 행 찾기 */
-    let hRow = 0, head = null;
-    for (const rn of rowNums.slice(0, 12)){
-      const m = mapHead(rows[rn]);
-      const f = Object.values(m);
-      if (f.includes('no') && (f.includes('problem') || f.includes('fac'))){ hRow = rn; head = m; break; }
-    }
-    if (!head) continue;
-    const colOf = {}; for (const [c, f] of Object.entries(head)) colOf[f] = +c;
-
-    /* 사진 앵커 → 셀 */
-    const imgAt = {};
-    const drNode = el1(doc, NS.s, 'drawing');
-    if (drNode){
-      const shRel = await rd(sh.path.replace(/([^/]+)$/, '_rels/$1.rels'));
-      if (shRel){
-        const m2 = {};
-        for (const r of el(parseXML(shRel), NS.pr, 'Relationship')) m2[r.getAttribute('Id')] = r.getAttribute('Target');
-        let dp = m2[drNode.getAttributeNS(NS.r,'id')] || '';
-        dp = 'xl/' + dp.replace(/^\.\.\//,'').replace(/^\/?xl\//,'');
-        const dx = await rd(dp);
-        if (dx){
-          const dRel = await rd(dp.replace(/([^/]+)$/, '_rels/$1.rels'));
-          const rm = {};
-          if (dRel) for (const r of el(parseXML(dRel), NS.pr,'Relationship'))
-            rm[r.getAttribute('Id')] = 'xl/' + r.getAttribute('Target').replace(/^\.\.\//,'');
-          /* 누적 좌표 */
-          const maxR = Math.max(...rowNums) + 4;
-          const tops = [0]; for (let i = 1; i <= maxR + 2; i++) tops[i] = tops[i-1] + (rowH[i] || defH) * EMU_PT;
-          const lefts = [0]; for (let i = 1; i <= 80; i++) lefts[i] = lefts[i-1] + ((colW[i] || defW) * 7 + 5) * EMU_PX;
-          const find = (arr, v) => { let i = 1; while (i < arr.length && arr[i] <= v) i++; return i - 1; };
-          const dDoc = parseXML(dx);
-          for (const anc of [...el(dDoc, NS.xdr,'oneCellAnchor'), ...el(dDoc, NS.xdr,'twoCellAnchor')]){
-            const from = el1(anc, NS.xdr,'from'); if (!from) continue;
-            const cN = +el1(from, NS.xdr,'col')?.textContent || 0;
-            const cO = +el1(from, NS.xdr,'colOff')?.textContent || 0;
-            const rN = +el1(from, NS.xdr,'row')?.textContent || 0;
-            const rO = +el1(from, NS.xdr,'rowOff')?.textContent || 0;
-            const blip = el1(anc, NS.a,'blip'); if (!blip) continue;
-            const path = rm[blip.getAttributeNS(NS.r,'embed')]; if (!path) continue;
-            const rr = find(tops, tops[rN] + rO) + 1;
-            const cc = find(lefts, lefts[cN] + cO) + 1;
-            (imgAt[rr] ||= {}); (imgAt[rr][cc] ||= []).push(path);
-            if (!media.has(path)) media.set(path, null);
-          }
-        }
-      }
-    }
-
-    /* 데이터 행 */
-    const yearHint = 2026;
-    for (const rn of rowNums){
-      if (rn <= hRow) continue;
-      const c = rows[rn];
-      const get = f => colOf[f] ? c[colOf[f]] : '';
-      const txt = f => String(get(f) ?? '').replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{2,}/g,'\n').trim();
-      if (!get('no') && !txt('problem') && !txt('fac')) continue;
-      const photos = {};
-      for (const [f, k] of [['ph_before','before'],['ph_map','map'],['ph_after','after']]){
-        const cc = colOf[f]; const a = cc && imgAt[rn]?.[cc];
-        if (a?.length) photos[k] = a.slice();
-      }
-      out.push({
-        sheet: sh.name, no: get('no') || '', date: normDate(get('date'), yearHint),
-        fac: txt('fac').replace(/\s/g,''), detail: txt('detail').replace(/\n/g,' '),
-        dong: txt('dong').replace(/\n/g,''), loc: txt('loc'),
-        problem: txt('problem'), action: txt('action').replace(/\n/g,' '),
-        law: txt('law').replace(/\n/g,' '), handler: txt('handler'),
-        done: normDate(get('done'), yearHint), submit: /^o$/i.test(txt('submit')),
-        note: txt('note'), _photos: photos
-      });
-    }
+  const op=$("#opbox");
+  const wl='<p class="wline">설치 위치 · '+I.where+'</p>';
+  if(I.mode==="analog"){
+    const pct=v=>((v-I.min)/(I.max-I.min)*100);
+    op.innerHTML=wl+'<div class="gauge"><div class="rowtop"><span class="nm">'+I.name+' 측정값</span>'+
+      '<span class="val num">'+st.val.toFixed(I.step<1?1:0)+'<span style="font-size:13px">'+I.unit+'</span></span></div>'+
+      '<div class="track">'+
+      '<div class="band b1" style="left:'+pct(I.pre)+'%;width:'+(pct(I.fire)-pct(I.pre))+'%"></div>'+
+      '<div class="band b2" style="left:'+pct(I.fire)+'%;width:'+(100-pct(I.fire))+'%"></div>'+
+      '<div class="tick t1" style="left:'+pct(I.pre)+'%"><span>'+I.pre+' 예비</span></div>'+
+      '<div class="tick t2" style="left:'+pct(I.fire)+'%"><span>'+I.fire+' 화재</span></div>'+
+      '<div class="needle" style="left:'+pct(st.val)+'%"></div></div>'+
+      '<input type="range" id="rng" min="'+I.min+'" max="'+I.max+'" step="'+I.step+'" value="'+st.val+'" aria-label="측정값"></div>'+
+      (I.desc?'<p class="bigdesc" style="margin-top:10px">'+I.desc+'</p>':'');
+    $("#rng").addEventListener("input",e=>{st.val=+e.target.value;revealed=Infinity;stop();render();});
+  }else{
+    op.innerHTML=wl+'<p class="bigdesc">'+I.desc+'</p>'+
+      '<button class="bigbtn" id="fire" aria-pressed="'+st.fired+'">'+(st.fired?"동작 중 — 누르면 복구":"동작시키기")+'</button>';
+    $("#fire").addEventListener("click",()=>{st.fired=!st.fired;revealed=Infinity;stop();render();});
   }
-  /* 이미지 바이너리 */
-  const keys = [...media.keys()]; let k = 0;
-  for (const p of keys){
-    k++; if (k % 25 === 0) onProg?.(0.65 + k/keys.length*0.3, `사진 ${k}/${keys.length}장`);
-    const f = zip.file(p); if (f) media.set(p, await f.async('blob'));
+
+  const v=$("#verdict");
+  v.className="verdict "+(R.lv===2?"s-fire":R.lv===1?"s-pre":"");
+  if(R.lv===0){
+    $("#vtext").textContent=I.mode==="analog"?"정상 감시":"대기";
+    $("#vnote").textContent=I.mode==="analog"
+      ?"임계값 미만입니다. 수신기는 감시상태를 유지하며 출력 연동은 없습니다."
+      :"입력설비를 동작시키면 출력 연동이 표시됩니다.";
+  }else if(R.lv===1){
+    $("#vtext").textContent="예비경보";
+    $("#vnote").textContent="수신기에 예비경보가 표시되고 주경종이 단독으로 명동합니다. 지구경종·비상방송·설비 연동은 아직 없습니다. 화재점까지 "+
+      (I.unit==="%"?"2%p":"20℃")+" 남았습니다. 이 구간에서 현장을 확인하면 연동 전에 상황을 종료할 수 있습니다.";
+  }else{
+    $("#vtext").textContent=R.alarm?"화재신호 성립":"설비 동작";
+    $("#vnote").textContent=R.alarm
+      ?(I.mode==="binary"?"예비경보 구간 없이 즉시 화재신호가 성립했습니다. 확인할 시간 없이 연동이 출력됩니다."
+                         :"연동 출력이 개시됩니다. 복구 조작으로만 해제됩니다.")
+      :"자동화재탐지 화재경보와는 별개로 해당 설비 계통만 동작합니다.";
   }
-  return { rows: out, media };
+
+  const cells=(R.lv>0&&R.alarm)?alarmCells(st.f,st.d):[];
+  const shtCells=(R.sht&&R.lv===2)?R.sht.cells:[];
+  const shtStage=(R.sht&&R.lv===2)?(R.sht.stage||1):0;
+  const origin=st.f+st.d;
+  document.querySelectorAll(".cell").forEach(c=>{
+    c.className="cell";
+    const k=c.dataset.k;
+    if(cells.includes(k)&&k!==origin) c.classList.add(R.lv===2?"alarm":"prealarm");
+    if(shtCells.includes(k)) c.classList.add("sht");
+    if(k===origin) c.classList.add((R.lv===2&&R.alarm)?"origin":"sel");
+    /* 방화셔터 하강 표시 — 1차(부분)는 중간까지, 2차(완전폐쇄)는 끝까지 채워
+       내려온다. 대상에서 빠지면 0%로 되돌아가 셔터가 열려 있음을 보여준다. */
+    const bar=c.querySelector(".shtbar");
+    if(bar){
+      const on=shtCells.includes(k);
+      bar.style.height = on ? (shtStage===2 ? "100%" : "52%") : "0%";
+      if(on) bar.dataset.stage=shtStage; else delete bar.dataset.stage;
+    }
+  });
+
+  let sc = R.alarm ? "경보 출력범위: <b>"+scopeText(st.f,st.d)+"</b>"
+        : (R.lv===2 ? "자탐 경보 출력 없음 — 해당 설비 계통만 동작합니다."
+                    : "화재신호 성립 시 출력범위: <b>"+scopeText(st.f,st.d)+"</b>");
+  if(R.sht&&R.lv===2) sc += '<span class="shtline">방화셔터 출력범위: '+R.sht.label+'</span>';
+  $("#scope").innerHTML=sc;
+
+  const list=$("#out");list.innerHTML="";
+  const live=[];
+  if(!R.list.length){
+    const li=document.createElement("li");li.className="empty";
+    li.textContent=R.lv===1?"예비경보 단계 — 출력 연동 없음":"입력설비 동작 시 출력 연동이 표시됩니다.";
+    list.appendChild(li);
+  }else{
+    R.list.forEach((o,i)=>{
+      const D=OUT[o.id];
+      const isHalted=halted.has(o.id)&&!D.fixed&&!D.always;   /* 소화펌프는 상시 정상연동 */
+      const li=document.createElement("li");
+      li.classList.add(isHalted?"off":"on");
+      if(KEY4.includes(o.id)) li.classList.add("key4");
+      if(i>=revealed) li.classList.add("pending");
+      li.innerHTML='<span class="led"></span>'+
+        '<span class="stepno">'+String(i+1).padStart(2,"0")+'</span>'+
+        '<span class="dev">'+D.n+
+          (KEY4.includes(o.id)?'<span class="k4">검토대상</span>':'')+
+          (o.vq?'<span class="vq" title="연동 규칙 확인 필요">확인요</span>':'')+
+          (o.note?'<small>'+o.note+'</small>':'')+'</span>'+
+        '<span class="tag">'+(isHalted?"연동정지":"동작")+'</span>';
+      list.appendChild(li);
+      if(!isHalted && i<revealed) live.push(o.id);
+    });
+  }
+  syncAudio(live);
 }
+
+function setMode(m,silent){
+  document.querySelectorAll(".modes button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===m));
+  if(!silent){
+    if(m==="now")    halted=new Set(HALT_NOW);   /* 1단계 — 수신기 현재 상태(야간) */
+    if(m==="night2") halted=new Set(HALT_4);     /* 2단계 — 야간 확대, 4대설비만 정지 */
+    if(m==="day")    halted=new Set(HALT_4);     /* 3단계 — 같은 구성을 주간 영업시간까지 확대 */
+    if(m==="normal") halted=new Set();           /* 4단계 — 전 설비 정상화 */
+  }
+  syncPanel();
+}
+document.querySelectorAll(".modes button").forEach(b=>b.addEventListener("click",()=>{setMode(b.dataset.mode);render();}));
+
+/* 음향 컨트롤 */
+$("#sndBtn").addEventListener("click",()=>{
+  soundOn=!soundOn;
+  const b=$("#sndBtn");
+  b.setAttribute("aria-pressed",soundOn);
+  b.textContent = soundOn ? "🔊 음향 켜짐" : "🔇 음향 꺼짐";
+  if(!soundOn) silence();
+  render();
+});
+$("#vol").addEventListener("input",e=>{
+  volume=(+e.target.value)/100;
+  applyVolumes();
+  if(extAudio){ try{ extAudio.volume=Math.min(1,gain(curLoud)); }catch(err){} }
+});
+$("#broadcastBtn").addEventListener("click",()=>{
+  if(!soundOn) return;
+  playAnnounce($("#script").value);
+});
+$("#stopSnd").addEventListener("click",silence);
+/* 복구 — 수신기 화재신호를 화재발생 전 평상시 감시상태로 초기화 (소방설비 연동설정은 유지) */
+$("#recoverBtn").addEventListener("click",()=>{silence();resetInput();render();});
+
+function stop(){if(timer){clearInterval(timer);timer=null;}const p=$("#play");if(p){p.disabled=false;p.textContent="순차 재생";}}
+$("#play").addEventListener("click",()=>{
+  const n=compute(st).list.length; if(!n)return;
+  stop();revealed=0;render();
+  $("#play").disabled=true;$("#play").textContent="재생 중…";
+  timer=setInterval(()=>{revealed++;if(revealed>=n){revealed=n;render();stop();return;}render();},620);
+});
+$("#reset").addEventListener("click",()=>{silence();resetInput();render();});
+
+setMode("normal");resetInput();render();
 </script>
-
-<script>
-/* ═══ 값 정규화 ════════════════════════════════════════════════
-   점검업체 양식에는 '활동설비', '소화기구/소화설비', 'A, B,\nC, D' 처럼
-   표기가 섞여 들어옵니다. 통계·필터는 대표값으로 묶고 원본은 보존합니다. */
-const FAC_ALIAS = { '활동설비':'소화활동설비', '소화용수설비':'소화활동설비', '자동화재탐지설비':'경보설비',
-                    '피난구조설비':'피난설비', '소화기':'소화기구' };
-function normFac(v){
-  const first = String(v||'').replace(/\s/g,'').split(/[\/,]/)[0];
-  const f = FAC_ALIAS[first] || first;
-  return OPT.fac.includes(f) ? f : (f || '');
-}
-function normDong(v){
-  const first = String(v||'').replace(/\s/g,'').split(/[\/,]/)[0];
-  return first;
-}
-function normalize(r){
-  const f = normFac(r.fac);
-  if (f && f !== r.fac){ r.facRaw ||= r.fac; r.fac = f; }
-  const d = normDong(r.dong);
-  if (d && d !== r.dong){ r.dongRaw ||= r.dong; r.dong = d; }
-  r.date = normDate(r.date, 2026);
-  r.done = normDate(r.done, 2026);
-  if (!r.floor && r.loc){ const s = splitFloor(r.loc); if (s.floor){ r.floor = s.floor; r.loc = s.rest; } }
-  return r;
-}
-
-/* ═══ 파생값 ═══════════════════════════════════════════════════ */
-function deriveStatus(r){
-  if (r.status && OPT.status.includes(r.status)) return r.status;
-  if (r.done) return '조치완료';
-  if (/^보류/.test(r.handler||'')) return '보류';
-  if (/권장|제외/.test(r.handler||'')) return '제외';
-  return '미조치';
-}
-function splitFloor(loc){
-  const m = String(loc||'').match(/^\s*(옥상|지하\s*\d+층|B\s*\d+|\d+\s*층)\s*(.*)$/s);
-  if (!m) return { floor:'', rest: loc||'' };
-  let f = m[1].replace(/\s/g,'');
-  const d = f.match(/^지하(\d+)층$/); if (d) f = 'B' + d[1];
-  return { floor:f, rest:(m[2]||'').trim() };
-}
-const fullLoc = r => [r.floor, r.loc].filter(Boolean).join(' ');
-
-/* ── 동별 표기 ───────────────────────────────────────────────────
-   점검일보(엑셀)는 'No.'와 '동별'이 서로 다른 칸입니다. 현황판도 같은 방식으로
-   번호 열과 동별 열을 나눠 쓰고, 동별 칸이 비어 있을 때만 시트(구역)명에서
-   유추합니다. ('업무 A동' 시트 → A) */
-function dongOf(r){
-  if (r.dong) return r.dong;
-  const m = String(r.sheet||'').match(/([A-Da-d])\s*동/);
-  return m ? m[1].toUpperCase() : '';
-}
-const dongLabel = d => /^[A-D]$/i.test(d||'') ? String(d).toUpperCase() + '동' : (d || '—');
-const zoneLabel = r => String(r.sheet||'').replace(/^업무\s+/,'');
-
-/* ═══ 필터 ═════════════════════════════════════════════════════ */
-function inHalf(){ return S.rows.filter(r => (r.half || '2026H1') === S.half); }
-function current(){
-  const f = S.filters, q = S.q.trim().toLowerCase();
-  let out = inHalf().filter(r => {
-    if (f.status.size && !f.status.has(deriveStatus(r))) return false;
-    if (f.fac.size && !f.fac.has(r.fac)) return false;
-    if (f.dong.size && !f.dong.has(dongOf(r))) return false;
-    if (f.handler.size && !f.handler.has(r.handler)) return false;
-    if (q){
-      const hay = [r.loc,r.floor,r.problem,r.action,r.law,r.note,r.detail,r.fac,r.sheet,
-                   dongOf(r),dongLabel(dongOf(r))].join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-  const zi = z => { const i = OPT.zone.indexOf(z); return i < 0 ? 99 : i; };
-  const so = { '미조치':0, '진행중':1, '보류':2, '제외':3, '조치완료':4 };
-  if (S.sort === 'date')        out.sort((a,b) => String(b.date).localeCompare(String(a.date)));
-  else if (S.sort === 'status') out.sort((a,b) => so[deriveStatus(a)] - so[deriveStatus(b)] || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
-  else if (S.sort === 'fac')    out.sort((a,b) => OPT.fac.indexOf(a.fac)-OPT.fac.indexOf(b.fac) || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
-  else                          out.sort((a,b) => zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
-  return out;
-}
-
-/* ═══ 현황판 ═══════════════════════════════════════════════════ */
-function tally(rows){
-  const t = { 미조치:0, 진행중:0, 조치완료:0, 보류:0, 제외:0 };
-  rows.forEach(r => t[deriveStatus(r)]++);
-  return t;
-}
-function stack(rows){
-  const t = tally(rows), n = rows.length || 1;
-  return OPT.status.filter(s => t[s]).map(s => ({ s, n:t[s], pct: t[s]/n*100 }));
-}
-function barBlock(groups, total){
-  return groups.map(g => {
-    const segs = stack(g.rows).map(x =>
-      `<span class="bar-seg" style="width:${(x.n/total*100).toFixed(2)}%;background:${SC[x.s]}"
-        data-tip="${esc(g.name)} · ${x.s} ${x.n}건"></span>`).join('');
-    const und = g.rows.filter(r => deriveStatus(r) === '미조치').length;
-    return `<div class="bar-row"><span class="nm" title="${esc(g.name)}">${esc(g.name)}</span>
-      <span class="bar-track">${segs}</span>
-      <span class="vv">${g.rows.length}<em> / 미 ${und}</em></span></div>`;
-  }).join('');
-}
-function groupBy(rows, key){
-  const m = new Map();
-  rows.forEach(r => { const k = (r[key]||'미지정'); (m.get(k) || m.set(k,[]).get(k)).push(r); });
-  return [...m].map(([name, rs]) => ({ name, rows: rs }));
-}
-function renderBoard(){
-  const rows = inHalf(), t = tally(rows), n = rows.length;
-  const done = t.조치완료, active = n - t.보류 - t.제외;
-  const pct = active ? Math.round(done/active*100) : 0;
-
-  $('#kAll').innerHTML = n + '<small>건</small>';
-  $('#kUndone').innerHTML = t.미조치 + '<small>건</small>';
-  $('#kDoing').innerHTML = t.진행중 + '<small>건</small>';
-  $('#kDone').innerHTML = done + '<small>건</small>';
-  $('#kHold').innerHTML = (t.보류 + t.제외) + '<small>건</small>';
-  $('#kAllSub').textContent = HALF_LABEL[S.half] + (n ? ` · ${new Set(rows.map(r=>r.sheet)).size}개 구역` : '');
-  $('#kUndoneSub').textContent = n ? `전체의 ${Math.round(t.미조치/n*100)}%` : '—';
-  $('#kDoingSub').textContent = t.진행중 ? '보수 진행 중' : '—';
-  $('#kDoneSub').textContent = active ? `조치대상 ${active}건 중` : '—';
-  $('#kHoldSub').textContent = `보류 ${t.보류} · 제외 ${t.제외}`;
-
-  const C = 2 * Math.PI * 50;
-  $('#ringArc').setAttribute('stroke-dasharray', `${(C*pct/100).toFixed(1)} ${C.toFixed(1)}`);
-  $('#ringArc').setAttribute('stroke', pct >= 90 ? SC.조치완료 : pct >= 60 ? SC.진행중 : SC.미조치);
-  $('#ringPct').textContent = pct + '%';
-  $('#rateSub').textContent = `보류·제외 제외 ${active}건 기준`;
-  $('#rateLegend').innerHTML = OPT.status.map(s =>
-    `<div class="lg-row"><i class="sw" style="background:${SC[s]}"></i>
-      <span class="nm">${s}</span><span class="vv">${t[s]}건</span></div>`).join('');
-
-  $('#statusLegend').innerHTML = OPT.status.map(s =>
-    `<span><i style="background:${SC[s]}"></i>${s}</span>`).join('');
-
-  if (!n){
-    ['#barHandler','#barFac','#barDong','#barDetail'].forEach(id =>
-      $(id).innerHTML = '<p style="color:var(--faint);font-size:12.5px;margin:0">자료가 없습니다. 점검표를 업로드해 주세요.</p>');
-    return;
-  }
-  const max = g => Math.max(...g.map(x => x.rows.length), 1);
-  const undo = g => g.rows.filter(r => deriveStatus(r) === '미조치').length;
-
-  const gh = OPT.handler.map(h => ({ name:h, rows: rows.filter(r => r.handler === h) })).filter(g => g.rows.length);
-  $('#barHandler').innerHTML = barBlock(gh, max(gh));
-
-  const gf = groupBy(rows,'fac').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
-  $('#barFac').innerHTML = barBlock(gf, max(gf));
-
-  const gd = groupBy(rows,'sheet').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
-  $('#barDong').innerHTML = barBlock(gd, max(gd));
-
-  const gx = groupBy(rows,'detail').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length).slice(0,10);
-  $('#barDetail').innerHTML = barBlock(gx, max(gx));
-}
-
-/* 막대 툴팁 */
-let tipEl;
-document.addEventListener('mouseover', e => {
-  const s = e.target.closest?.('[data-tip]'); if (!s) return;
-  tipEl ||= Object.assign(document.createElement('div'), { className:'toast' });
-  tipEl.style.cssText = 'position:fixed;z-index:97;pointer-events:none;padding:5px 11px;font-size:12px';
-  tipEl.textContent = s.dataset.tip; document.body.appendChild(tipEl);
-  const r = s.getBoundingClientRect();
-  tipEl.style.left = Math.min(window.innerWidth - 140, Math.max(10, r.left)) + 'px';
-  tipEl.style.top = (r.top - 34) + 'px'; tipEl.style.bottom = 'auto'; tipEl.style.transform = 'none';
-});
-document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-tip]')) tipEl?.remove(); });
-
-/* ═══ 필터 칩 ══════════════════════════════════════════════════ */
-function renderFilters(){
-  const rows = inHalf();
-  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : r[k];
-  const cnt = (k, v) => rows.filter(r => val(r, k) === v).length;
-  const build = (box, key, vals, lab) => $(box).innerHTML = vals.map(v => {
-    const c = cnt(key, v); if (!c && !S.filters[key].has(v)) return '';
-    return `<button class="chip" data-k="${key}" data-v="${esc(v)}" aria-pressed="${S.filters[key].has(v)}">
-      ${esc(lab ? lab(v) : v)}<span class="n">${c}</span></button>`;
-  }).join('');
-  build('#fStatus','status', OPT.status);
-  build('#fFac','fac', OPT.fac);
-  build('#fDong','dong', [...new Set(rows.map(dongOf).filter(Boolean))].sort(), dongLabel);
-  build('#fHandler','handler', OPT.handler);
-}
-
-/* ═══ 목록 ═════════════════════════════════════════════════════ */
-async function renderList(){
-  const rows = current(), tb = $('#tbody');
-  $('#tabCnt').textContent = inHalf().length;
-  $('#listEmpty').hidden = rows.length > 0;
-  $('#tableWrap').hidden = rows.length === 0;
-  $('#listFoot').textContent = rows.length
-    ? `${rows.length}건 표시 · 전체 ${inHalf().length}건 (${HALF_LABEL[S.half]})` : '';
-  $('#printHead').innerHTML = `원그로브 소방시설 법정점검 지적내역 · ${esc(HALF_LABEL[S.half])}
-    <span>${rows.length}건 표시 / 전체 ${inHalf().length}건 · 출력일 ${new Date().toISOString().slice(0,10)}</span>`;
-  if (!rows.length){ tb.innerHTML = ''; return; }
-
-  tb.innerHTML = rows.map((r, i) => {
-    const st = deriveStatus(r);
-    const seq = i + 1;                       /* 표시용 연번 : 현재 정렬·필터 기준 1,2,3… */
-    const np = (r.photos?.before?.length||0) + (r.photos?.map?.length||0) + (r.photos?.after?.length||0);
-    const dl = dongLabel(dongOf(r)), zl = zoneLabel(r);
-    const zs = (zl && zl !== dl) ? `<span class="zone-s" title="${esc(zl)}">${esc(zl)}</span>` : '';
-    /* 모바일에서는 이 칸들이 카드의 각 줄이 됩니다 (c-* 클래스로 자리를 잡습니다).
-       값이 없는 완료일·처리주체·사진 칸에는 .none 을 붙여 카드에서만 숨깁니다 */
-    return `<tr class="row" data-id="${r.id}">
-      <td class="c-no"><span class="seq">${seq}</span>${r.no !== '' && r.no != null
-        ? `<span class="src" title="점검표 원본 No.">${esc(r.no)}</span>` : ''}</td>
-      <td class="c-date">${esc((r.date||'').slice(5))}</td>
-      <td class="c-fac">${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
-      <td class="c-detail"><span class="tag">${esc(r.detail||'—')}</span></td>
-      <td class="c-dong"><span class="dong-b">${esc(dl)}</span>${zs}</td>
-      <td class="c-loc">${esc(fullLoc(r))}</td>
-      <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
-      ${isAdmin() ? `<td class="c-handler${r.handler?'':' none'}">${esc(r.handler||'—')}</td>` : ''}
-      <td class="c-status"><span class="pill p-${st}"><i></i>${st}</span></td>
-      <td class="c-date c-done${r.done?'':' none'}">${esc((r.done||'').slice(5)||'—')}</td>
-      <td class="c-photo${np?'':' none'}" data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
-    </tr>`;
-  }).join('');
-
-  /* 썸네일 비동기 로드 (화면은 상위 120건, 인쇄 직전에는 전체를 채웁니다) */
-  await loadThumbs(rows.slice(0, 120));
-}
-
-async function loadThumbs(rows){
-  const tb = $('#tbody');
-  for (const r of rows){
-    const refs = [...(r.photos?.before||[]), ...(r.photos?.map||[]), ...(r.photos?.after||[])];
-    if (!refs.length) continue;
-    const cell = tb.querySelector(`[data-ph="${r.id}"]`); if (!cell) continue;
-    if (cell.querySelector('.thumbs')) continue;
-    const urls = (await Promise.all(refs.slice(0,3).map(photoURL))).filter(Boolean);
-    if (!urls.length) continue;
-    cell.innerHTML = `<div class="thumbs">${urls.map(u => `<img src="${u}" alt="" loading="lazy">`).join('')}
-      ${refs.length > 3 ? `<span class="more">+${refs.length-3}</span>` : ''}</div>`;
-  }
-}
-
-/* ═══ 드로어 (상세 · 편집) ═════════════════════════════════════ */
-function selOpts(list, cur, ph){
-  const has = !cur || list.includes(cur);
-  return `<option value="">${ph||'선택'}</option>` +
-    list.map(v => `<option${v===cur?' selected':''}>${esc(v)}</option>`).join('') +
-    (has ? '' : `<option selected>${esc(cur)}</option>`);
-}
-async function openDrawer(r){
-  S.cur = JSON.parse(JSON.stringify(r));
-  S.dirtyPhotos = { before:[], map:[], after:[] };
-  const c = S.cur, ed = canEdit(c), ro = !ed, adm = isAdmin();
-  $('#dTitle').textContent = c.id ? `${c.sheet||''} ${c.no||''}번 지적` : '새 지적사항';
-  $('#dKey').textContent = c.id ? HALF_LABEL[c.half||S.half] : HALF_LABEL[S.half];
-  document.body.classList.toggle('can-edit', ed);
-  $('#dSave').hidden = ro;
-  $('#dDelete').hidden = !adm || !c.id;
-  $('#dLocked').hidden = ed;
-  $('#dLocked').innerHTML = S.role === 'inspector'
-    ? '이미 등록된 건은 수정할 수 없습니다.<br>처리 관련 항목은 관리자가 입력합니다.'
-    : '보기 전용 · 입력하려면 상단 <b>관리자</b>';
-
-  const d = m => ro ? ' disabled' : '';
-  $('#dBody').innerHTML = `
-    <div class="fld-3">
-      <div class="fld"><label for="f_sheet">구역(시트)</label><select id="f_sheet"${d()}>${selOpts(OPT.zone, c.sheet)}</select></div>
-      <div class="fld"><label for="f_no">No.</label><input type="text" id="f_no" value="${esc(c.no)}"${d()}></div>
-      <div class="fld"><label for="f_date">점검일자</label><input type="date" id="f_date" value="${esc(c.date)}"${d()}></div>
-    </div>
-    <div class="fld-2">
-      <div class="fld"><label for="f_fac">시설구분</label><select id="f_fac"${d()}>${selOpts(OPT.fac, c.fac)}</select></div>
-      <div class="fld"><label for="f_detail">상세구분</label><select id="f_detail"${d()}>${selOpts(OPT.detail[c.fac]||[], c.detail)}</select></div>
-    </div>
-    <div class="${adm ? 'fld-3' : 'fld-2'}">
-      <div class="fld"><label for="f_dong">동별</label><select id="f_dong"${d()}>${selOpts(OPT.dong, c.dong)}</select></div>
-      <div class="fld"><label for="f_floor">층</label><select id="f_floor"${d()}>${selOpts(OPT.floor, c.floor)}</select></div>
-      <div class="fld"${adm ? '' : ' hidden'}><label for="f_handler">처리주체</label>
-        <select id="f_handler"${d()}>${selOpts(OPT.handler, c.handler)}</select></div>
-    </div>
-    <div class="fld"><label for="f_loc">구역 상세</label>
-      <input type="text" id="f_loc" value="${esc(c.loc)}" placeholder="예: 4번 계단 앞 여자화장실"${d()}>
-      ${(c.facRaw || c.dongRaw) ? `<div class="hint">점검표 원본 표기: ${esc([c.facRaw, c.dongRaw].filter(Boolean).join(' · '))}</div>` : ''}</div>
-    <div class="fld"><label for="f_problem">점검결과 문제점</label>
-      <textarea id="f_problem" placeholder="현상을 그대로 적습니다"${d()}>${esc(c.problem)}</textarea>
-      <div class="hint" id="h_problem"></div></div>
-    <div class="fld"><label for="f_action">개선 대책</label>
-      <input type="text" id="f_action" list="l_action" value="${esc(c.action)}"${d()}>
-      <datalist id="l_action"></datalist>
-      <div class="hint">상세구분을 고르면 자주 쓰는 대책이 자동으로 채워집니다.</div></div>
-    <div class="fld"><label for="f_law">관련 법규</label>
-      <input type="text" id="f_law" list="l_law" value="${esc(c.law)}"${d()}>
-      <datalist id="l_law"></datalist></div>
-    <div class="${adm ? 'fld-3' : 'fld'}">
-      <div class="fld"${adm ? '' : ' hidden'}><label for="f_status">처리 상태</label>
-        <select id="f_status"${d()}>${selOpts(OPT.status, deriveStatus(c),'')}</select></div>
-      <div class="fld"${adm ? '' : ' hidden'}><label for="f_done">완료일</label>
-        <input type="date" id="f_done" value="${esc(c.done)}"${d()}></div>
-      <div class="fld"><label for="f_note">비고</label><input type="text" id="f_note" value="${esc(c.note)}"${d()}></div>
-    </div>
-    <div class="fld"${adm ? '' : ' hidden'}><label class="chk">
-      <input type="checkbox" id="f_submit"${c.submit?' checked':''}${d()}> 소방서 제출 대상</label></div>
-    <div id="phWrap"></div>`;
-
-  /* 연동: 시설구분 → 상세구분 → 법규·대책·문구 */
-  const syncDetail = () => {
-    const f = $('#f_fac').value, cur = $('#f_detail').value;
-    $('#f_detail').innerHTML = selOpts(OPT.detail[f] || [], (OPT.detail[f]||[]).includes(cur) ? cur : '');
-    syncLaw();
-  };
-  const syncLaw = () => {
-    const dt = $('#f_detail').value;
-    $('#l_law').innerHTML  = (OPT.law[dt]    || Object.values(OPT.law).flat()).slice(0,12).map(v=>`<option value="${esc(v)}">`).join('');
-    $('#l_action').innerHTML = (OPT.action[dt] || []).map(v=>`<option value="${esc(v)}">`).join('');
-    const p = OPT.problem[dt];
-    $('#h_problem').textContent = p ? '자주 쓰는 문구: ' + p.slice(0,3).join(' · ') : '';
-    if (!ro && !$('#f_law').value && OPT.law[dt]) $('#f_law').value = OPT.law[dt][0];
-  };
-  $('#f_fac').addEventListener('change', syncDetail);
-  $('#f_detail').addEventListener('change', syncLaw);
-  $('#f_done').addEventListener('change', e => { if (e.target.value) $('#f_status').value = '조치완료'; });
-  $('#f_status').addEventListener('change', e => {
-    if (e.target.value === '조치완료' && !$('#f_done').value) $('#f_done').value = new Date().toISOString().slice(0,10);
-  });
-  syncLaw();
-  await renderPhotos();
-  $('#scrim').hidden = false; $('#drawer').hidden = false;
-}
-async function renderPhotos(){
-  const c = S.cur, kinds = [['before','문제점 사진'],['map','위치표기'],['after','조치후 사진']];
-  const blocks = await Promise.all(kinds.map(async ([k, label]) => {
-    /* 조치후 사진은 처리 결과이므로 관리자만 올리고 지웁니다 */
-    const may = canEdit(c) && (isAdmin() || k !== 'after');
-    const refs = c.photos?.[k] || [];
-    const items = await Promise.all(refs.map(async (ref, i) => {
-      const u = await photoURL(ref);
-      return u ? `<div class="ph"><img src="${u}" alt="${label} ${i+1}" data-lb="${esc(u)}" data-cap="${label}">
-        ${may ? `<button class="del" data-del="${k}:${i}" title="사진 삭제" aria-label="사진 삭제">✕</button>` : ''}</div>` : '';
-    }));
-    const add = may ? `<button class="ph-add" data-add="${k}">＋ 사진 추가</button>` : '';
-    const body = items.filter(Boolean).join('') + add;
-    return `<div class="photoset"><div class="ph-h"><span>${label}</span>
-      <span style="color:var(--faint);font-size:11px;font-family:var(--mono)">${refs.length}장</span></div>
-      ${body ? `<div class="ph-grid">${body}</div>` : '<p class="ph-none">없음</p>'}</div>`;
-  }));
-  $('#phWrap').innerHTML = blocks.join('');
-}
-function collect(){
-  const c = S.cur;
-  const g = id => $(id)?.value?.trim() ?? '';
-  Object.assign(c, {
-    sheet:g('#f_sheet'), no:g('#f_no'), date:g('#f_date'), fac:g('#f_fac'), detail:g('#f_detail'),
-    dong:g('#f_dong'), floor:g('#f_floor'), loc:g('#f_loc'), problem:g('#f_problem'),
-    action:g('#f_action'), law:g('#f_law'), handler:g('#f_handler'), status:g('#f_status'),
-    done:g('#f_done'), note:g('#f_note'), submit:$('#f_submit').checked, half:c.half||S.half
-  });
-  if (!c.id) c.id = uid();
-  c.sample = false;
-  return c;
-}
-function closeDrawer(){ $('#scrim').hidden = true; $('#drawer').hidden = true; S.cur = null; }
-
-/* ═══ 업로드 처리 ══════════════════════════════════════════════ */
-async function handleFile(file){
-  const log = $('#log'), bar = $('#prog');
-  log.hidden = false; bar.hidden = false; log.textContent = `${file.name}\n`;
-  const p = (v, m) => { bar.firstElementChild.style.width = (v*100).toFixed(0)+'%'; if (m) log.textContent += m + '\n'; log.scrollTop = 1e6; };
-  try {
-    const { rows, media } = await parseXlsx(file, (v, m) => bar.firstElementChild.style.width = (v*100).toFixed(0)+'%');
-    p(0.95, `읽은 지적사항 ${rows.length}건 · 사진 ${media.size}장`);
-
-    const existing = new Map(inHalf().map(r => [`${r.sheet}|${r.no}`, r]));
-    const save = [], maxPx = +($('#maxPx').value || 1200), adm = isAdmin();
-    let add = 0, upd = 0, ph = 0;
-
-    for (const nr of rows){
-      const key = `${nr.sheet}|${nr.no}`;
-      let rec = existing.get(key);
-      const isNew = !rec;
-      let touched = false;
-      if (isNew){
-        const fl = splitFloor(nr.loc);
-        rec = { id:uid(), half:S.half, floor:fl.floor, ...nr, loc:fl.rest, photos:{} };
-        delete rec._photos;
-        /* 점검업체가 올린 파일에서는 처리 관련 값을 가져오지 않습니다 */
-        if (!adm){ rec.handler = ''; rec.done = ''; rec.submit = false; }
-        rec.status = deriveStatus(rec);
-        add++;
-      } else {
-        /* 기존 건은 덮어쓰지 않고 빈 칸만 채움 */
-        const fields = ['date','fac','detail','dong','problem','action','law','note'];
-        if (adm) fields.push('handler');
-        for (const k of fields){
-          if (!rec[k] && nr[k]){ rec[k] = nr[k]; touched = true; }
-        }
-        if (adm && nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
-        if (touched) upd++;
-        rec.photos ||= {};
-      }
-      /* 사진 첨부 — 이미 있는 종류는 건너뜀 */
-      for (const [k, paths] of Object.entries(nr._photos || {})){
-        if (!adm && k === 'after') continue;   /* 조치후 사진은 관리자만 */
-        rec.photos[k] ||= [];
-        if (rec.photos[k].length) continue;
-        for (const pth of paths){
-          const blob = media.get(pth); if (!blob) continue;
-          const small = await shrink(blob, maxPx);
-          const kk = 'p' + uid(); await IDB.photoPut(kk, small);
-          rec.photos[k].push('idb:' + kk); ph++; touched = true;
-        }
-      }
-      if (!isNew && !touched) continue;
-      save.push(rec);
-    }
-    p(1, `신규 ${add}건 · 보완 ${upd}건 · 사진 ${ph}장 저장`);
-    await saveMany(save);
-    log.innerHTML += `<b>완료 — ${HALF_LABEL[S.half]}에 반영되었습니다.</b>\n`;
-    if ($('#photoDst').value !== 'local')
-      log.innerHTML += `<em>사진은 이 기기에 저장했습니다. 설정에서 Drive/Storage를 연결하면 이후 추가분부터 그쪽으로 올라갑니다.</em>\n`;
-    toast(`${add + upd}건 반영 · 사진 ${ph}장`);
-    setView('list');
-  } catch(e){
-    console.error(e);
-    log.innerHTML += `<em>읽기 실패: ${esc(e.message)}</em>\n양식(머리글 행)이 맞는지 확인해 주세요.\n`;
-    toast('엑셀을 읽지 못했습니다', true);
-  } finally { setTimeout(() => { bar.hidden = true; }, 900); }
-}
-
-/* ═══ 내보내기 ═════════════════════════════════════════════════ */
-function download(name, blob){
-  /* 미리보기 화면은 페이지가 시작하는 내려받기를 막습니다. GitHub 주소에서는 정상 동작합니다. */
-  if (window.claude){
-    toast('미리보기 화면에서는 내려받기가 막혀 있습니다. GitHub 주소에서 받아 주세요.', true);
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-function toCSV(){
-  /* 연번(표시 순번)과 점검표 원본 No.를 모두 내보냅니다 — 원본 대조용 */
-  const H = ['연번','구역','점검표 No.','점검일자','시설구분','상세구분','동별','층','구역상세','점검결과 문제점','개선 대책','관련법규','처리방안','처리상태','완료일','소방서제출','비고'];
-  const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const body = current().map((r, i) => [i+1,r.sheet,r.no,r.date,r.fac,r.detail,r.dong,r.floor,r.loc,
-    r.problem,r.action,r.law,r.handler,deriveStatus(r),r.done,r.submit?'O':'',r.note].map(q).join(','));
-  download(`원그로브_${HALF_LABEL[S.half]}_지적현황_${new Date().toISOString().slice(0,10)}.csv`,
-    new Blob(['﻿' + [H.map(q).join(','), ...body].join('\r\n')], { type:'text/csv;charset=utf-8' }));
-}
-
-/* ═══ 관리자 잠금 ══════════════════════════════════════════════ */
-async function sha(s){
-  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('wg:' + s));
-  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
-}
-async function pinHash(kind){
-  return ls(kind === 'admin' ? 'wg_pin' : 'wg_pin_staff')
-      || await sha(kind === 'admin' ? '0000' : '1111');
-}
-const ROLE_LABEL = { admin:'관리자', inspector:'점검업체', viewer:'보기 전용' };
-const isAdmin = () => S.role === 'admin';
-const isStaff = () => S.role === 'admin' || S.role === 'inspector';
-/* 점검업체는 새로 쓰는 건만 입력할 수 있고, 이미 등록된 건은 읽기 전용입니다 */
-const canEdit = rec => isAdmin() || (S.role === 'inspector' && !rec?.id);
-
-function applyRole(){
-  const b = document.body;
-  b.classList.toggle('role-admin', isAdmin());
-  b.classList.toggle('role-inspector', S.role === 'inspector');
-  $$('[data-need]').forEach(el => {
-    el.hidden = el.dataset.need === 'admin' ? !isAdmin() : !isStaff();
-  });
-  const btn = $('#adminBtn');
-  btn.textContent = S.role === 'viewer' ? '관리자' : ROLE_LABEL[S.role] + ' 모드 해제';
-  btn.setAttribute('aria-pressed', S.role !== 'viewer');
-  /* 권한이 낮아지면 보고 있던 탭에서 현황판으로 되돌립니다
-     설정 탭은 관리자 전용 — 비밀번호·연결정보가 들어 있습니다 */
-  if (S.view === 'upload' && !isStaff()) setView('board');
-  if (S.view === 'settings' && !isAdmin()) setView('board');
-}
-function setRole(role){
-  S.role = role;
-  if (role !== 'admin') S.filters.handler.clear();
-  applyRole();
-  try { role === 'viewer' ? sessionStorage.removeItem('wg_role') : sessionStorage.setItem('wg_role', role); } catch(e){}
-  afterLoad();
-  if (S.cur) openDrawer(S.cur);
-}
-function askPin(){
-  const m = document.createElement('div');
-  m.className = 'modal';
-  m.innerHTML = `<h3>권한 확인</h3>
-    <p>비밀번호에 따라 <b>점검업체</b> 또는 <b>관리자</b> 모드로 들어갑니다.</p>
-    <input type="password" id="pinIn" inputmode="numeric" autocomplete="off" placeholder="● ● ● ●">
-    <div class="err" id="pinErr"></div>
-    <div class="modal-row"><button class="btn" id="pinCancel">취소</button>
-      <button class="btn primary" id="pinOk">확인</button></div>`;
-  const sc = document.createElement('div'); sc.className = 'scrim';
-  document.body.append(sc, m);
-  const close = () => { m.remove(); sc.remove(); };
-  const go = async () => {
-    const h = await sha(m.querySelector('#pinIn').value);
-    const role = h === await pinHash('admin') ? 'admin'
-               : h === await pinHash('staff') ? 'inspector' : null;
-    if (role){ close(); setRole(role); toast(ROLE_LABEL[role] + ' 모드입니다'); }
-    else { m.querySelector('#pinErr').textContent = '비밀번호가 맞지 않습니다.'; m.querySelector('#pinIn').select(); }
-  };
-  m.querySelector('#pinOk').onclick = go;
-  m.querySelector('#pinCancel').onclick = close;
-  sc.onclick = close;
-  m.querySelector('#pinIn').onkeydown = e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); };
-  setTimeout(() => m.querySelector('#pinIn').focus(), 30);
-}
-
-/* ═══ 화면 전환 ════════════════════════════════════════════════ */
-function setView(v){
-  /* 권한 없는 탭은 현황판으로 (설정 = 관리자, 업로드 = 관리자·점검업체) */
-  if (v === 'settings' && !isAdmin()) v = 'board';
-  if (v === 'upload' && !isStaff()) v = 'board';
-  S.view = v;
-  $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
-  ['board','list','upload','settings'].forEach(k => $('#view-' + k).hidden = k !== v);
-  if (v === 'board') renderBoard();
-  if (v === 'list'){ renderFilters(); renderList(); }
-  if (v === 'settings') renderStats();
-}
-function renderStats(){
-  const h1 = S.rows.filter(r => (r.half||'2026H1') === '2026H1').length;
-  const h2 = S.rows.filter(r => r.half === '2026H2').length;
-  $('#stCount').textContent = S.rows.length;
-  $('#stH1').textContent = h1 + '건'; $('#stH2').textContent = h2 + '건';
-  IDB.photoKeys().then(k => $('#stPhoto').textContent = k.length).catch(()=>{});
-  $('#oFac').textContent = OPT.fac.length + '종';
-  $('#oDet').textContent = Object.values(OPT.detail).flat().length + '종';
-  $('#oLaw').textContent = new Set(Object.values(OPT.law).flat()).size + '종';
-  $('#oAct').textContent = new Set(Object.values(OPT.action).flat()).size + '종';
-}
-function afterLoad(){
-  S.rows.forEach(normalize);
-  if (S.view === 'board') renderBoard();
-  if (S.view === 'list'){ renderFilters(); renderList(); }
-  if (S.view === 'settings') renderStats();
-  $('#tabCnt').textContent = inHalf().length;
-}
-
-/* ═══ 이벤트 ═══════════════════════════════════════════════════ */
-$$('.tab').forEach(t => t.onclick = () => setView(t.dataset.view));
-$('#halfSel').onchange = e => { S.half = e.target.value; Object.values(S.filters).forEach(s => s.clear()); afterLoad(); };
-$('#adminBtn').onclick = () => S.role !== 'viewer'
-  ? (setRole('viewer'), toast('보기 전용으로 돌아갑니다')) : askPin();
-$('#q').oninput = e => { S.q = e.target.value; renderList(); };
-$('#sortSel').onchange = e => { S.sort = e.target.value; renderList(); };
-$('#resetFilter').onclick = () => { Object.values(S.filters).forEach(s => s.clear()); S.q = ''; $('#q').value = ''; renderFilters(); renderList(); };
-$('#filterBox').onclick = e => {
-  const c = e.target.closest('.chip'); if (!c) return;
-  const set = S.filters[c.dataset.k];
-  set.has(c.dataset.v) ? set.delete(c.dataset.v) : set.add(c.dataset.v);
-  renderFilters(); renderList();
-};
-$('#tbody').onclick = e => {
-  const tr = e.target.closest('tr.row'); if (!tr) return;
-  $$('#tbody tr').forEach(x => x.classList.remove('sel')); tr.classList.add('sel');
-  const r = S.rows.find(x => x.id === tr.dataset.id); if (r) openDrawer(r);
-};
-$('#newBtn').onclick = () => isStaff() && openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
-  sheet:'', no:'', fac:'', detail:'', dong:'', floor:'', loc:'', problem:'', action:'', law:'',
-  handler:'', status:'미조치', done:'', submit:false, note:'', photos:{} });
-$('#toUpload').onclick = () => setView('upload');
-/* 인쇄 전에 남은 썸네일까지 모두 채운 뒤 인쇄창을 엽니다
-   (화면은 120건까지만 미리 불러오므로 그대로 인쇄하면 뒤쪽 행의 사진이 비어 나옵니다) */
-$('#printBtn').onclick = async () => {
-  const rows = current(), rest = rows.slice(120);
-  if (rest.length){
-    toast(`사진 ${rest.length}건을 불러온 뒤 인쇄합니다`);
-    await loadThumbs(rest);
-  }
-  window.print();
-};
-$('#csvBtn').onclick = toCSV;
-$('#dClose').onclick = $('#dCancel').onclick = closeDrawer;
-$('#scrim').onclick = closeDrawer;
-$('#dSave').onclick = async () => {
-  if (!canEdit(S.cur)) return toast('수정 권한이 없습니다', true);
-  await saveRow(collect()); toast('저장했습니다'); closeDrawer();
-};
-$('#dDelete').onclick = async () => {
-  if (!isAdmin()) return toast('삭제는 관리자만 가능합니다', true);
-  if (!S.cur?.id) return closeDrawer();
-  if (!confirm(`${S.cur.sheet} ${S.cur.no}번 지적사항을 삭제합니다. 되돌릴 수 없습니다.`)) return;
-  await delRow(S.cur.id); toast('삭제했습니다'); closeDrawer();
-};
-$('#dBody').onclick = async e => {
-  const add = e.target.closest('[data-add]');
-  if (add){
-    const inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true; inp.capture = 'environment';
-    inp.onchange = async () => {
-      const c = S.cur; c.photos ||= {}; c.photos[add.dataset.add] ||= [];
-      for (const f of inp.files) c.photos[add.dataset.add].push(await savePhoto(f, c.id || 'new', add.dataset.add));
-      await renderPhotos(); toast(`사진 ${inp.files.length}장 추가`);
-    };
-    inp.click(); return;
-  }
-  const del = e.target.closest('[data-del]');
-  if (del){
-    const [k, i] = del.dataset.del.split(':');
-    const ref = S.cur.photos[k][+i];
-    if (ref?.startsWith('idb:')) await IDB.photoDel(ref.slice(4)).catch(()=>{});
-    S.cur.photos[k].splice(+i, 1); await renderPhotos(); return;
-  }
-  const lb = e.target.closest('[data-lb]');
-  if (lb){ $('#lbImg').src = lb.dataset.lb; $('#lbCap').textContent = lb.dataset.cap || ''; $('#lightbox').hidden = false; }
-};
-$('#lightbox').onclick = () => $('#lightbox').hidden = true;
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
-  if (!$('#lightbox').hidden) $('#lightbox').hidden = true;
-  else if (!$('#drawer').hidden) closeDrawer();
-});
-
-/* 업로드 */
-$('#pickBtn').onclick = () => isStaff() ? $('#file').click() : (toast('업로드하려면 권한 확인이 필요합니다', true), askPin());
-$('#file').onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; };
-const dz = $('#drop');
-['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
-['dragleave','drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
-dz.addEventListener('drop', e => {
-  const f = e.dataTransfer.files[0]; if (!f) return;
-  if (!isStaff()) return (toast('업로드하려면 권한 확인이 필요합니다', true), askPin());
-  handleFile(f);
-});
-
-/* 설정 */
-$('#photoDst').onchange = e => { $('#driveBox').hidden = e.target.value !== 'drive'; ls('wg_dst', e.target.value); };
-$('#maxPx').onchange = e => ls('wg_maxpx', e.target.value);
-$('#driveFolder').onchange = e => ls('wg_drive', e.target.value.trim());
-$('#pinSave').onclick = async () => {
-  if (!isAdmin()) return toast('관리자만 바꿀 수 있습니다', true);
-  const a = $('#pinNew').value.trim(), b = $('#pinStaff').value.trim();
-  if (!a && !b) return toast('바꿀 비밀번호를 입력해 주세요', true);
-  if ((a && a.length < 4) || (b && b.length < 4)) return toast('4자리 이상 입력해 주세요', true);
-  if (a && b && a === b) return toast('두 비밀번호를 다르게 정해 주세요', true);
-  const done = [];
-  if (a){ ls('wg_pin', await sha(a)); $('#pinNew').value=''; done.push('관리자'); }
-  if (b){ ls('wg_pin_staff', await sha(b)); $('#pinStaff').value=''; done.push('점검업체'); }
-  toast(done.join(' · ') + ' 비밀번호를 바꿨습니다');
-};
-/* firebaseConfig 읽기 — 키를 하나씩 찾아냅니다.
-   따옴표 없는 키, 홑따옴표, 끝의 세미콜론, import 문이 붙은 통째 복사본,
-   그리고 값 안에 콜론이 들어 있는 appId 까지 모두 그대로 받습니다. */
-const CFG_KEYS = ['apiKey','authDomain','projectId','storageBucket',
-                  'messagingSenderId','appId','measurementId','databaseURL'];
-function parseCfg(t){
-  const out = {};
-  for (const k of CFG_KEYS){
-    const m = t.match(new RegExp('["\']?' + k + '["\']?\\s*:\\s*["\']([^"\']+)["\']'));
-    if (m) out[k] = m[1];
-  }
-  return out;
-}
-$('#fbConnect').onclick = async () => {
-  if (!isAdmin()) return toast('연결 설정은 관리자만 바꿀 수 있습니다', true);
-  let cfg = FB_DEFAULT;
-  const t = $('#fbCfg').value.trim();
-  if (t){
-    const got = parseCfg(t);
-    const miss = ['apiKey','projectId','appId'].filter(k => !got[k]);
-    if (miss.length){
-      $('#fbState').textContent = `설정에서 ${miss.join(', ')} 를 찾지 못했습니다. 콘솔의 firebaseConfig 를 그대로 붙여넣거나, 칸을 비우고 누르면 내장된 fire-inspection-dash 설정으로 연결합니다.`;
-      return toast('설정에서 ' + miss.join(', ') + ' 를 찾지 못했습니다', true);
-    }
-    cfg = got;
-  }
-  $('#fbConnect').disabled = true;
-  $('#fbState').textContent = '연결하는 중…';
-  await fbConnect(cfg); renderStats();
-  $('#fbConnect').disabled = false;
-};
-$('#fbOff').onclick = () => { S.unsub?.(); ls('wg_fbcfg',''); S.mode='local'; S.db=null; setMode(); boot(true); toast('연결을 해제했습니다'); };
-$('#fbPush').onclick = async () => {
-  if (S.mode !== 'cloud') return toast('먼저 Firebase에 연결해 주세요', true);
-  const local = await IDB.all();
-  if (!local.length) return toast('이 기기에 올릴 자료가 없습니다');
-  if (!confirm(`이 기기의 ${local.length}건을 Firebase로 올립니다.`)) return;
-  await saveMany(local); toast(`${local.length}건 업로드 완료`);
-};
-$('#expJson').onclick = () => download(`원그로브_점검현황_백업_${new Date().toISOString().slice(0,10)}.json`,
-  new Blob([JSON.stringify(S.rows, null, 1)], { type:'application/json' }));
-$('#impJsonBtn').onclick = () => $('#impJson').click();
-$('#impJson').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  if (!isAdmin()){ e.target.value=''; return toast('불러오기는 관리자만 가능합니다', true); }
-  try {
-    const rs = JSON.parse(await f.text());
-    if (!Array.isArray(rs)) throw new Error();
-    rs.forEach(r => r.id ||= uid());
-    await saveMany(rs); toast(`${rs.length}건 불러왔습니다`);
-  } catch(err){ toast('백업 파일을 읽지 못했습니다', true); }
-  e.target.value = '';
-};
-$('#wipeBtn').onclick = async () => {
-  if (!isAdmin()) return toast('삭제는 관리자만 가능합니다', true);
-  const t = inHalf();
-  if (!t.length) return toast('삭제할 자료가 없습니다');
-  if (!confirm(`${HALF_LABEL[S.half]} ${t.length}건을 모두 삭제합니다. 되돌릴 수 없습니다.`)) return;
-  for (const r of t) await delRow(r.id);
-  toast('삭제했습니다');
-};
-
-/* ═══ 시작 ═════════════════════════════════════════════════════ */
-async function boot(localOnly){
-  try {
-    const local = await IDB.all();
-    S.rows = local;
-    if (!local.length){
-      const seed = SAMPLE.map(s => ({ id:uid(), photos:{}, ...s }));
-      await IDB.putMany(seed); S.rows = seed;
-    }
-  } catch(e){ S.rows = SAMPLE.map(s => ({ id:uid(), photos:{}, ...s })); }
-  afterLoad();
-  if (localOnly) return;
-  const saved = ls('wg_fbcfg');
-  const cfg = saved ? (()=>{ try { return JSON.parse(saved); } catch(e){ return FB_DEFAULT; } })() : FB_DEFAULT;
-  fbConnect(cfg, true);
-}
-(function init(){
-  $('#photoDst').value = ls('wg_dst') || 'local';
-  $('#driveBox').hidden = $('#photoDst').value !== 'drive';
-  $('#driveFolder').value = ls('wg_drive') || '';
-  $('#maxPx').value = ls('wg_maxpx') || '1200';
-  const sv = ls('wg_fbcfg');
-  if (sv) { try { $('#fbCfg').value = JSON.stringify(JSON.parse(sv), null, 2); } catch(e){} }
-  try {
-    const r = sessionStorage.getItem('wg_role');
-    if (r === 'admin' || r === 'inspector') S.role = r;
-  } catch(e){}
-  applyRole();
-  setMode(); setView('board'); boot();
-})();
-</script>
-
 </body>
 </html>
