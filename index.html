@@ -115,7 +115,7 @@ body.role-admin .staff-only,body.role-inspector .staff-only{display:inline-flex}
 .panel-h .sub{font-size:12px;color:var(--faint);margin-left:auto}
 
 /* ── KPI ──────────────────────────────────────────────────────────── */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px;margin-bottom:14px}
 .kpi{
   background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);
   padding:14px 16px;position:relative;overflow:hidden;
@@ -153,7 +153,7 @@ body.role-admin .staff-only,body.role-inspector .staff-only{display:inline-flex}
 .bar-seg:only-child{border-radius:3px}
 .bar-row .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);font-size:12px;min-width:56px;text-align:right}
 .bar-row .vv em{font-style:normal;color:var(--faint)}
-.bars.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:9px 30px}
+.bars.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:9px 30px}
 .chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
 .chart-legend span{display:inline-flex;align-items:center;gap:6px}
 .chart-legend i{width:10px;height:10px;border-radius:2px;display:block}
@@ -325,7 +325,7 @@ body.can-edit .ph .del{display:grid}
 .log em{color:var(--undone-t);font-style:normal}
 
 /* ── 설정 ─────────────────────────────────────────────────────────── */
-.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px}
+.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr));gap:14px}
 .set-card h3{font-size:13.5px;margin-bottom:5px}
 .set-card>p{font-size:12.5px;color:var(--faint);margin:0 0 14px;line-height:1.6}
 .set-card textarea{
@@ -354,13 +354,133 @@ body.can-edit .ph .del{display:grid}
 }
 .toast.bad{border-color:var(--crit);color:var(--crit-t)}
 
-/* ── 반응형 ───────────────────────────────────────────────────────── */
-@media (max-width:720px){
-  .kpi .val{font-size:24px}
-  .fld-2,.fld-3{grid-template-columns:1fr}
-  .drawer{width:100%}
-  .brand small{display:none}
+/* ── 반응형 : 태블릿 ─────────────────────────────────────────────── */
+@media screen and (max-width:980px){
+  .bars.split{grid-template-columns:1fr}
 }
+
+/* ── 반응형 : 모바일 (휴대폰 세로) ───────────────────────────────────
+   표를 가로 스크롤 대신 '카드' 형태로 바꿔 한 손으로 보게 합니다.     */
+@media screen and (max-width:760px){
+  body{padding-inline:12px;font-size:13.5px}
+  .wrap{padding-block:0 56px}
+  .topbar{margin-inline:-12px;padding:8px 12px}
+  .tabs{margin:0 -12px 16px;padding:0 12px}
+
+  /* 상단바 : 1행 제목 / 2행 회차·저장상태·권한버튼 */
+  .topbar-in{gap:8px 10px}
+  .spacer{display:none}
+  .brand{flex:1 1 100%}
+  .brand .mark{width:24px;height:24px;font-size:11px}
+  .brand b{font-size:14px}
+  .brand small{font-size:11px}
+  #halfBadge{order:8}
+  #halfBadge .lbl{display:none}            /* 좁은 화면에서는 회차만 (26년 하반기) */
+  #modeBadge{order:9}
+  #adminBtn{order:10;margin-left:auto}
+
+  /* 탭 : 좌우 스와이프 */
+  .tabs{-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:10px 11px;font-size:13px}
+
+  /* KPI : 2열 */
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+  .kpi{padding:11px 12px}
+  .kpi .lab{font-size:11px}
+  .kpi .val{font-size:22px}
+  .kpi .delta{font-size:11px;line-height:1.45}
+  .kpi.k-hold{grid-column:1/-1}
+
+  .panel{padding:14px 13px}
+  .rate{gap:14px}
+  .ring{width:92px;height:92px}
+  .rate-legend{min-width:0}
+  .bar-row{grid-template-columns:minmax(62px,34%) 1fr auto;font-size:12px;gap:8px}
+  .bar-row .vv{min-width:0;font-size:11.5px}
+
+  /* 도구줄 · 필터 */
+  .toolbar{gap:7px}
+  .search{flex:1 1 100%;min-width:0}
+  #sortSel{flex:1 1 100%}
+  .filter-group{flex-direction:column;gap:3px;margin-bottom:11px}
+  .filter-group>.gl{padding-top:0;min-width:0}
+  .chips{margin-bottom:8px}
+
+  /* iOS 확대 방지 : 입력칸은 16px */
+  .search,.sel,.fld input,.fld select,.fld textarea,.set-card textarea,.modal input{font-size:16px}
+  #halfSel{font-size:13px}
+
+  /* ── 지적내역 표 → 카드 ─────────────────────────────────────── */
+  #tableWrap{overflow:visible;border:none;background:none;border-radius:0}
+  #tableWrap table{display:block;min-width:0;width:100%}
+  #tableWrap thead{display:none}
+  #tableWrap tbody{display:block}
+  #tableWrap tbody tr.row{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--rl);
+    padding:11px 12px;margin-bottom:9px;
+  }
+  #tableWrap tbody tr.row.sel{border-color:var(--dim);background:var(--panel2)}
+  #tableWrap tbody tr.row:hover td,#tableWrap tbody tr.row.sel td{background:none}
+  #tableWrap tbody td{display:block;border:none;padding:0;vertical-align:baseline}
+
+  /* 1행 : 연번 · 동 · 상태 */
+  #tableWrap td.c-no{order:1;text-align:left;padding-right:0;display:flex;align-items:baseline;gap:5px}
+  #tableWrap td.c-no .seq{font-size:14px;font-weight:600}
+  #tableWrap td.c-no .src{display:inline;margin:0}
+  #tableWrap td.c-no .src::before{content:"No."}
+  #tableWrap td.c-dong{order:2}
+  #tableWrap td.c-dong .zone-s{display:inline;margin:0 0 0 5px;max-width:none}
+  #tableWrap td.c-status{order:3;margin-left:auto}
+
+  /* 2행 : 위치 */
+  #tableWrap td.c-loc{order:4;flex:1 0 100%;max-width:none;font-size:12.5px;color:var(--dim)}
+  /* 3행 : 문제점 · 개선대책 */
+  #tableWrap td.c-prob{order:5;flex:1 0 100%;max-width:none;min-width:0;
+    border-top:1px solid var(--line);padding-top:8px;font-size:13px}
+  /* 4행 : 시설·상세·일자·완료·처리주체·사진 */
+  #tableWrap td.c-fac{order:6;font-size:12px;color:var(--dim)}
+  #tableWrap td.c-detail{order:7}
+  #tableWrap td.c-date{order:8;font-size:11.5px}
+  #tableWrap td.c-date::before{content:"점검 ";color:var(--faint)}
+  #tableWrap td.c-done{order:9;font-size:11.5px}
+  #tableWrap td.c-done::before{content:"완료 ";color:var(--faint)}
+  #tableWrap td.c-handler{order:10;font-size:12px;color:var(--dim)}
+  #tableWrap td.c-handler::before{content:"처리 ";color:var(--faint)}
+  #tableWrap td.c-photo{order:11;margin-left:auto}
+  /* 값이 없는 칸은 카드에서 숨겨 줄을 아끼도록 */
+  #tableWrap td.none{display:none}
+  .thumbs img{width:30px;height:24px}
+
+  /* 드로어 */
+  .drawer{width:100%}
+  .fld-2,.fld-3{grid-template-columns:1fr 1fr;gap:8px}   /* 짧은 칸은 2열로 묶어 스크롤을 줄입니다 */
+  .fld{margin-bottom:11px}
+  .fld>label{font-size:11px}
+  .fld textarea{min-height:86px}
+  .drawer-b{padding:14px 13px}
+  .drawer-f{padding:11px 13px;flex-wrap:wrap}
+  .drawer-f .btn{flex:1 1 auto;justify-content:center}
+  .drawer-f .role-note{flex:1 1 100%;order:9}
+  .ph-grid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
+
+  /* 설정 · 업로드 */
+  .set-grid{grid-template-columns:1fr}
+  .set-grid>*{min-width:0}                 /* 안쪽 표가 카드를 밀어내지 않도록 */
+  .set-card .table-wrap table{min-width:480px}
+  .set-card textarea{min-height:110px}
+  .drop{padding:22px 14px}
+  .steps li{font-size:12px}
+  .kv{font-size:12px}
+}
+
+@media screen and (max-width:400px){
+  .kpi .val{font-size:20px}
+  .tab{padding:10px 9px;font-size:12.5px}
+  .chip{font-size:11.5px;padding:4px 9px}
+}
+
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
 }
@@ -433,8 +553,8 @@ body.can-edit .ph .del{display:grid}
       </span>
     </div>
     <div class="spacer"></div>
-    <label class="badge" style="gap:8px">
-      점검회차
+    <label class="badge" id="halfBadge" style="gap:8px">
+      <span class="lbl">점검회차</span>
       <select id="halfSel" class="sel" style="padding:2px 6px;font-size:12px;border:none;background:transparent">
         <option value="2026H2">26년 하반기</option>
         <option value="2026H1">26년 상반기</option>
@@ -450,7 +570,7 @@ body.can-edit .ph .del{display:grid}
     <button class="tab" role="tab" aria-selected="true" data-view="board">현황판</button>
     <button class="tab" role="tab" aria-selected="false" data-view="list">지적내역<span class="cnt" id="tabCnt">0</span></button>
     <button class="tab" role="tab" aria-selected="false" data-view="upload" data-need="staff">점검표 업로드</button>
-    <button class="tab" role="tab" aria-selected="false" data-view="settings">설정</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="settings" data-need="admin">설정</button>
   </nav>
 
   <!-- ══ 현황판 ═══════════════════════════════════════════════════ -->
@@ -463,7 +583,7 @@ body.can-edit .ph .del{display:grid}
       <div class="kpi k-hold"><div class="lab">보류 · 제외</div><div class="val num" id="kHold">0<small>건</small></div><div class="delta" id="kHoldSub">—</div></div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px">
       <div class="panel">
         <div class="panel-h"><h2>조치 완료율</h2><span class="sub" id="rateSub"></span></div>
         <div class="rate">
@@ -559,7 +679,7 @@ body.can-edit .ph .del{display:grid}
 
   <!-- ══ 업로드 ═══════════════════════════════════════════════════ -->
   <section id="view-upload" role="tabpanel" hidden>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:14px">
       <div>
         <div class="drop" id="drop">
           <h3>점검업체 엑셀 파일 올리기</h3>
@@ -627,8 +747,10 @@ body.can-edit .ph .del{display:grid}
         </div>
         <button class="btn admin-only" id="pinSave">비밀번호 저장</button>
         <p style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6">
-          비밀번호는 원문이 아니라 해시로만 이 기기에 보관합니다. 기본값 <b>0000 / 1111</b>은 반드시 바꾸세요.
-          잊으셨다면 브라우저 사이트 데이터를 지우면 기본값으로 돌아갑니다.
+          비밀번호는 원문이 아니라 해시로만 보관합니다. Firebase에 연결된 상태에서 바꾸면
+          <b>모든 기기·브라우저에 동일하게 적용</b>됩니다. 기본값 <b>0000 / 1111</b>은 반드시 바꾸세요.
+          연결 전(이 기기 저장 상태)에 바꾼 비밀번호는 그 기기에만 적용되며, 그 경우에 한해 브라우저
+          사이트 데이터를 지우면 기본값으로 돌아갑니다.
         </p>
       </div>
 
@@ -656,13 +778,16 @@ body.can-edit .ph .del{display:grid}
 
       <div class="panel set-card" data-need="admin">
         <h3>사진 저장 위치</h3>
-        <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.</p>
+        <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.
+           <b>「이 기기」는 사진 파일이 업로드한 그 기기의 브라우저 안에만 저장되어 다른 컴퓨터·휴대폰에서는
+           보이지 않습니다.</b> 여러 사람이 함께 보려면 <b>Firebase Storage</b>(기본값)나 Google Drive처럼
+           공유되는 위치를 선택하세요.</p>
         <div class="fld">
           <label for="photoDst">저장 위치</label>
           <select id="photoDst">
-            <option value="local">이 기기 (브라우저 저장소)</option>
+            <option value="storage">Firebase Storage (권장 · 모든 기기 공유)</option>
             <option value="drive">Google Drive 폴더</option>
-            <option value="storage">Firebase Storage</option>
+            <option value="local">이 기기 (브라우저 저장소 — 이 기기에서만 보임)</option>
           </select>
         </div>
         <div class="fld" id="driveBox" hidden>
@@ -940,6 +1065,7 @@ const HALF_LABEL = { '2026H1':'26년 상반기', '2026H2':'26년 하반기' };
 const S = {
   rows: [], half: '2026H2', view: 'board', role: 'viewer',
   mode: 'local', fb: null, db: null, unsub: null,
+  pinsCloud: null, unsubPins: null,
   filters: { status:new Set(), fac:new Set(), dong:new Set(), handler:new Set() },
   q: '', sort: 'def', cur: null, dirtyPhotos: null
 };
@@ -1027,9 +1153,12 @@ async function savePhoto(blob, itemId, kind){
   const b = await shrink(blob, maxPx);
   const dst = $('#photoDst').value;
   const name = `${itemId}-${kind}-${Math.random().toString(36).slice(2,7)}.webp`;
-  if (dst === 'storage' && S.fb?.storage){
-    const r = S.fb.storage().ref(`photos/${S.half}/${name}`);
-    await r.put(b); return await r.getDownloadURL();
+  if (dst === 'storage'){
+    if (S.fb?.storage){
+      const r = S.fb.storage().ref(`photos/${S.half}/${name}`);
+      await r.put(b); return await r.getDownloadURL();
+    }
+    toast('Firebase 연결 전이라 이 기기에만 저장했습니다 — 연결 후 다시 올려주세요', true);
   }
   if (dst === 'drive'){
     const u = await driveUpload(b, name); if (u) return u;
@@ -1101,6 +1230,7 @@ async function fbConnect(cfg, quiet){
     S.mode = 'cloud';
     ls('wg_fbcfg', JSON.stringify(cfg));
     subscribe();
+    subscribePins();
     setMode();
     if (!quiet) toast('Firebase에 연결되었습니다');
     return true;
@@ -1154,6 +1284,15 @@ function subscribe(){
       S.mode = 'local'; setMode();
       toast('자료를 읽지 못했습니다 — 설정 탭에서 원인을 확인하세요', true);
     }
+  );
+}
+/* 관리자·점검업체 비밀번호 — 연결되면 meta/pins 문서로 모든 기기가 공유합니다 */
+function subscribePins(){
+  if (!S.db) return;
+  S.unsubPins?.();
+  S.unsubPins = S.db.collection('meta').doc('pins').onSnapshot(
+    snap => { S.pinsCloud = snap.exists ? snap.data() : {}; },
+    err => { console.warn('pins', err); S.pinsCloud = null; }
   );
 }
 function setMode(){
@@ -1597,19 +1736,21 @@ async function renderList(){
     const np = (r.photos?.before?.length||0) + (r.photos?.map?.length||0) + (r.photos?.after?.length||0);
     const dl = dongLabel(dongOf(r)), zl = zoneLabel(r);
     const zs = (zl && zl !== dl) ? `<span class="zone-s" title="${esc(zl)}">${esc(zl)}</span>` : '';
+    /* 모바일에서는 이 칸들이 카드의 각 줄이 됩니다 (c-* 클래스로 자리를 잡습니다).
+       값이 없는 완료일·처리주체·사진 칸에는 .none 을 붙여 카드에서만 숨깁니다 */
     return `<tr class="row" data-id="${r.id}">
       <td class="c-no"><span class="seq">${seq}</span>${r.no !== '' && r.no != null
         ? `<span class="src" title="점검표 원본 No.">${esc(r.no)}</span>` : ''}</td>
       <td class="c-date">${esc((r.date||'').slice(5))}</td>
-      <td>${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
-      <td><span class="tag">${esc(r.detail||'—')}</span></td>
+      <td class="c-fac">${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
+      <td class="c-detail"><span class="tag">${esc(r.detail||'—')}</span></td>
       <td class="c-dong"><span class="dong-b">${esc(dl)}</span>${zs}</td>
       <td class="c-loc">${esc(fullLoc(r))}</td>
       <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
-      ${isAdmin() ? `<td>${esc(r.handler||'—')}</td>` : ''}
-      <td><span class="pill p-${st}"><i></i>${st}</span></td>
-      <td class="c-date">${esc((r.done||'').slice(5)||'—')}</td>
-      <td data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
+      ${isAdmin() ? `<td class="c-handler${r.handler?'':' none'}">${esc(r.handler||'—')}</td>` : ''}
+      <td class="c-status"><span class="pill p-${st}"><i></i>${st}</span></td>
+      <td class="c-date c-done${r.done?'':' none'}">${esc((r.done||'').slice(5)||'—')}</td>
+      <td class="c-photo${np?'':' none'}" data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
     </tr>`;
   }).join('');
 
@@ -1845,6 +1986,12 @@ async function sha(s){
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
 }
 async function pinHash(kind){
+  /* Firebase에 연결되어 있으면 meta/pins 문서(모든 기기 공용)를 우선 사용하고,
+     연결 전이거나 아직 클라우드에 저장된 적이 없으면 이 기기의 값 → 기본값 순으로 씁니다. */
+  if (S.mode === 'cloud' && S.pinsCloud){
+    const v = S.pinsCloud[kind === 'admin' ? 'adminHash' : 'staffHash'];
+    if (v) return v;
+  }
   return ls(kind === 'admin' ? 'wg_pin' : 'wg_pin_staff')
       || await sha(kind === 'admin' ? '0000' : '1111');
 }
@@ -1864,7 +2011,10 @@ function applyRole(){
   const btn = $('#adminBtn');
   btn.textContent = S.role === 'viewer' ? '관리자' : ROLE_LABEL[S.role] + ' 모드 해제';
   btn.setAttribute('aria-pressed', S.role !== 'viewer');
+  /* 권한이 낮아지면 보고 있던 탭에서 현황판으로 되돌립니다
+     설정 탭은 관리자 전용 — 비밀번호·연결정보가 들어 있습니다 */
   if (S.view === 'upload' && !isStaff()) setView('board');
+  if (S.view === 'settings' && !isAdmin()) setView('board');
 }
 function setRole(role){
   S.role = role;
@@ -1902,6 +2052,9 @@ function askPin(){
 
 /* ═══ 화면 전환 ════════════════════════════════════════════════ */
 function setView(v){
+  /* 권한 없는 탭은 현황판으로 (설정 = 관리자, 업로드 = 관리자·점검업체) */
+  if (v === 'settings' && !isAdmin()) v = 'board';
+  if (v === 'upload' && !isStaff()) v = 'board';
   S.view = v;
   $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
   ['board','list','upload','settings'].forEach(k => $('#view-' + k).hidden = k !== v);
@@ -2026,9 +2179,21 @@ $('#pinSave').onclick = async () => {
   if ((a && a.length < 4) || (b && b.length < 4)) return toast('4자리 이상 입력해 주세요', true);
   if (a && b && a === b) return toast('두 비밀번호를 다르게 정해 주세요', true);
   const done = [];
-  if (a){ ls('wg_pin', await sha(a)); $('#pinNew').value=''; done.push('관리자'); }
-  if (b){ ls('wg_pin_staff', await sha(b)); $('#pinStaff').value=''; done.push('점검업체'); }
-  toast(done.join(' · ') + ' 비밀번호를 바꿨습니다');
+  const upd = {};
+  if (a){ upd.adminHash = await sha(a); ls('wg_pin', upd.adminHash); $('#pinNew').value=''; done.push('관리자'); }
+  if (b){ upd.staffHash = await sha(b); ls('wg_pin_staff', upd.staffHash); $('#pinStaff').value=''; done.push('점검업체'); }
+  if (S.mode === 'cloud'){
+    try {
+      await S.db.collection('meta').doc('pins').set(upd, { merge:true });
+      S.pinsCloud = { ...(S.pinsCloud||{}), ...upd };
+      toast(done.join(' · ') + ' 비밀번호를 바꿨습니다 — 모든 기기에 적용됩니다');
+    } catch(e){
+      console.warn('pins save', e);
+      toast(done.join(' · ') + ' 비밀번호를 이 기기에만 바꿨습니다 (다른 기기 공유 실패)', true);
+    }
+  } else {
+    toast(done.join(' · ') + ' 비밀번호를 바꿨습니다 — Firebase 연결 전이라 이 기기에만 적용됩니다', true);
+  }
 };
 /* firebaseConfig 읽기 — 키를 하나씩 찾아냅니다.
    따옴표 없는 키, 홑따옴표, 끝의 세미콜론, import 문이 붙은 통째 복사본,
@@ -2061,7 +2226,7 @@ $('#fbConnect').onclick = async () => {
   await fbConnect(cfg); renderStats();
   $('#fbConnect').disabled = false;
 };
-$('#fbOff').onclick = () => { S.unsub?.(); ls('wg_fbcfg',''); S.mode='local'; S.db=null; setMode(); boot(true); toast('연결을 해제했습니다'); };
+$('#fbOff').onclick = () => { S.unsub?.(); S.unsubPins?.(); S.pinsCloud=null; ls('wg_fbcfg',''); S.mode='local'; S.db=null; setMode(); boot(true); toast('연결을 해제했습니다'); };
 $('#fbPush').onclick = async () => {
   if (S.mode !== 'cloud') return toast('먼저 Firebase에 연결해 주세요', true);
   const local = await IDB.all();
@@ -2109,7 +2274,7 @@ async function boot(localOnly){
   fbConnect(cfg, true);
 }
 (function init(){
-  $('#photoDst').value = ls('wg_dst') || 'local';
+  $('#photoDst').value = ls('wg_dst') || 'storage';
   $('#driveBox').hidden = $('#photoDst').value !== 'drive';
   $('#driveFolder').value = ls('wg_drive') || '';
   $('#maxPx').value = ls('wg_maxpx') || '1200';
