@@ -780,15 +780,22 @@ body.can-edit .ph .del{display:grid}
         <h3>사진 저장 위치</h3>
         <p>사진은 용량이 커서 문서와 따로 보관합니다. 상반기 기준 1,228장이 압축 후 약 11MB입니다.
            <b>「이 기기」는 사진 파일이 업로드한 그 기기의 브라우저 안에만 저장되어 다른 컴퓨터·휴대폰에서는
-           보이지 않습니다.</b> 여러 사람이 함께 보려면 <b>Firebase Storage</b>(기본값)나 Google Drive처럼
-           공유되는 위치를 선택하세요.</p>
+           보이지 않습니다.</b> 여러 사람이 함께 보려면 <b>Cloudinary</b>(기본값 · 로그인·요금제 없이 바로 됨)나
+           Firebase Storage, Google Drive처럼 공유되는 위치를 선택하세요.</p>
         <div class="fld">
           <label for="photoDst">저장 위치</label>
           <select id="photoDst">
-            <option value="storage">Firebase Storage (권장 · 모든 기기 공유)</option>
-            <option value="drive">Google Drive 폴더</option>
+            <option value="cloudinary">Cloudinary (권장 · 로그인 없이 자동 공유)</option>
+            <option value="storage">Firebase Storage (Blaze 요금제 필요)</option>
+            <option value="drive">Google Drive 폴더 (업로드마다 구글 로그인 필요)</option>
             <option value="local">이 기기 (브라우저 저장소 — 이 기기에서만 보임)</option>
           </select>
+        </div>
+        <div class="fld-2" id="cloudinaryBox" hidden>
+          <div class="fld"><label for="cldCloud">Cloudinary Cloud name</label>
+            <input type="text" id="cldCloud" placeholder="예: zn0fjxq4" autocomplete="off"></div>
+          <div class="fld"><label for="cldPreset">Upload preset 이름</label>
+            <input type="text" id="cldPreset" placeholder="예: 26onegrove" autocomplete="off"></div>
         </div>
         <div class="fld" id="driveBox" hidden>
           <label for="driveFolder">Drive 폴더 ID</label>
@@ -881,6 +888,12 @@ body.can-edit .ph .del{display:grid}
    원그로브 종합점검 현황판
    ─ 단일 파일 · GitHub Pages 배포 · Firebase(Firestore/Storage) 연동
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 기본 Cloudinary 설정 (unsigned upload preset) ───────────────────
+   cloud name · preset 이름은 공개되어도 되는 값입니다(로그인 없이 업로드하는
+   방식이라 원래 그렇습니다). 업로드 preset 쪽에서 파일 크기·형식을 제한해
+   악용을 막습니다.                                                      */
+const CLD_DEFAULT = { cloud: 'zn0fjxq4', preset: '26onegrove' };
 
 /* ── 기본 Firebase 설정 (fire-inspection-dash) ──────────────────────
    웹 API 키는 클라이언트에 공개되는 값입니다. 실제 보호는 함께 제공한
@@ -1147,12 +1160,17 @@ async function shrink(blob, maxPx){
   } catch(e){ return blob; }
 }
 
-/* 사진 저장 — 설정에 따라 로컬 / Storage / Drive */
+/* 사진 저장 — 설정에 따라 로컬 / Cloudinary / Storage / Drive
+   엑셀 일괄 업로드와 드로어에서 1장씩 첨부하는 경우 모두 이 함수 하나를 거칩니다. */
 async function savePhoto(blob, itemId, kind){
   const maxPx = +($('#maxPx').value || 1200);
   const b = await shrink(blob, maxPx);
   const dst = $('#photoDst').value;
   const name = `${itemId}-${kind}-${Math.random().toString(36).slice(2,7)}.webp`;
+  if (dst === 'cloudinary'){
+    const u = await cloudinaryUpload(b, name); if (u) return u;
+    toast('Cloudinary 업로드에 실패해 이 기기에만 저장했습니다', true);
+  }
   if (dst === 'storage'){
     if (S.fb?.storage){
       const r = S.fb.storage().ref(`photos/${S.half}/${name}`);
@@ -1165,6 +1183,22 @@ async function savePhoto(blob, itemId, kind){
     toast('Drive 업로드에 실패해 이 기기에 저장했습니다', true);
   }
   const key = 'p' + uid(); await IDB.photoPut(key, b); return 'idb:' + key;
+}
+
+/* ═══ Cloudinary 업로드 (unsigned preset — 로그인 없이 브라우저에서 바로) ═══ */
+async function cloudinaryUpload(blob, name){
+  const cloud  = ($('#cldCloud').value  || '').trim();
+  const preset = ($('#cldPreset').value || '').trim();
+  if (!cloud || !preset) return null;
+  try {
+    const fd = new FormData();
+    fd.append('file', blob, name);
+    fd.append('upload_preset', preset);
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method:'POST', body:fd });
+    if (!r.ok) throw new Error(await r.text());
+    const { secure_url } = await r.json();
+    return secure_url || null;
+  } catch(e){ console.warn('cloudinary', e); return null; }
 }
 
 /* ═══ Google Drive 업로드 (Firebase Google 로그인 토큰 사용) ════ */
@@ -1902,8 +1936,8 @@ async function handleFile(file){
     p(0.95, `읽은 지적사항 ${rows.length}건 · 사진 ${media.size}장`);
 
     const existing = new Map(inHalf().map(r => [`${r.sheet}|${r.no}`, r]));
-    const save = [], maxPx = +($('#maxPx').value || 1200), adm = isAdmin();
-    let add = 0, upd = 0, ph = 0;
+    const save = [], adm = isAdmin();
+    let add = 0, upd = 0, ph = 0, phLocal = 0;
 
     for (const nr of rows){
       const key = `${nr.sheet}|${nr.no}`;
@@ -1936,9 +1970,9 @@ async function handleFile(file){
         if (rec.photos[k].length) continue;
         for (const pth of paths){
           const blob = media.get(pth); if (!blob) continue;
-          const small = await shrink(blob, maxPx);
-          const kk = 'p' + uid(); await IDB.photoPut(kk, small);
-          rec.photos[k].push('idb:' + kk); ph++; touched = true;
+          const url = await savePhoto(blob, rec.id, k);
+          rec.photos[k].push(url); ph++; touched = true;
+          if (url.startsWith('idb:')) phLocal++;
         }
       }
       if (!isNew && !touched) continue;
@@ -1947,8 +1981,8 @@ async function handleFile(file){
     p(1, `신규 ${add}건 · 보완 ${upd}건 · 사진 ${ph}장 저장`);
     await saveMany(save);
     log.innerHTML += `<b>완료 — ${HALF_LABEL[S.half]}에 반영되었습니다.</b>\n`;
-    if ($('#photoDst').value !== 'local')
-      log.innerHTML += `<em>사진은 이 기기에 저장했습니다. 설정에서 Drive/Storage를 연결하면 이후 추가분부터 그쪽으로 올라갑니다.</em>\n`;
+    if (phLocal)
+      log.innerHTML += `<em>사진 ${phLocal}장은 저장 위치 연결에 실패해 이 기기에만 저장됐습니다. 설정 탭에서 저장 위치(${$('#photoDst').value}) 설정을 확인한 뒤 다시 올려 주세요.</em>\n`;
     toast(`${add + upd}건 반영 · 사진 ${ph}장`);
     setView('list');
   } catch(e){
@@ -2169,9 +2203,15 @@ dz.addEventListener('drop', e => {
 });
 
 /* 설정 */
-$('#photoDst').onchange = e => { $('#driveBox').hidden = e.target.value !== 'drive'; ls('wg_dst', e.target.value); };
+$('#photoDst').onchange = e => {
+  $('#driveBox').hidden = e.target.value !== 'drive';
+  $('#cloudinaryBox').hidden = e.target.value !== 'cloudinary';
+  ls('wg_dst', e.target.value);
+};
 $('#maxPx').onchange = e => ls('wg_maxpx', e.target.value);
 $('#driveFolder').onchange = e => ls('wg_drive', e.target.value.trim());
+$('#cldCloud').onchange  = e => ls('wg_cld_cloud',  e.target.value.trim());
+$('#cldPreset').onchange = e => ls('wg_cld_preset', e.target.value.trim());
 $('#pinSave').onclick = async () => {
   if (!isAdmin()) return toast('관리자만 바꿀 수 있습니다', true);
   const a = $('#pinNew').value.trim(), b = $('#pinStaff').value.trim();
@@ -2274,8 +2314,11 @@ async function boot(localOnly){
   fbConnect(cfg, true);
 }
 (function init(){
-  $('#photoDst').value = ls('wg_dst') || 'storage';
+  $('#photoDst').value = ls('wg_dst') || 'cloudinary';
   $('#driveBox').hidden = $('#photoDst').value !== 'drive';
+  $('#cloudinaryBox').hidden = $('#photoDst').value !== 'cloudinary';
+  $('#cldCloud').value  = ls('wg_cld_cloud')  || CLD_DEFAULT.cloud;
+  $('#cldPreset').value = ls('wg_cld_preset') || CLD_DEFAULT.preset;
   $('#driveFolder').value = ls('wg_drive') || '';
   $('#maxPx').value = ls('wg_maxpx') || '1200';
   const sv = ls('wg_fbcfg');
