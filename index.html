@@ -843,6 +843,23 @@ body.can-edit .ph .del{display:grid}
         </dl>
       </div>
 
+      <div class="panel set-card" data-need="admin">
+        <h3>사진 재배정 복구</h3>
+        <p style="font-size:12.5px;color:var(--faint);line-height:1.7">
+          전에 쓰던 열(칸) 계산 방식이 서체 차이 때문에 간혹 <b>문제점 사진</b>·<b>위치표기 사진</b>을
+          다른 항목이나 다른 칸에 잘못 넣는 경우가 있었습니다(지금은 고쳐졌습니다).
+          이미 올라간 자료 중 그 버그로 잘못 들어간 건이 있는지는, <b>원본 엑셀 파일을 다시 선택</b>하면
+          새 방식으로 다시 계산해서 지금 저장된 내용과 다른 건만 찾아 보여줍니다.
+          확인 후 적용을 누르면 그 건의 <b>문제점 사진 · 위치표기 사진만</b> 다시 올려 바로잡습니다
+          (조치후 사진은 건드리지 않습니다).
+        </p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn" id="fixPick">원본 엑셀 다시 선택</button>
+          <input type="file" id="fixFiles" accept=".xlsx,.xlsm" multiple hidden>
+        </div>
+        <div id="fixLog" style="margin-top:12px;font-size:12.5px;line-height:1.8" hidden></div>
+      </div>
+
       <div class="panel set-card">
         <h3>선택 항목 기초자료</h3>
         <p>입력 칸의 선택지는 26년 상반기 종합점검 <b>479건</b>의 실제 지적내역과 소방시설법 시행령 별표1 분류를 합쳐 만들었습니다.</p>
@@ -1500,21 +1517,31 @@ async function parseXlsx(file, onProg){
           const rm = {};
           if (dRel) for (const r of el(parseXML(dRel), NS.pr,'Relationship'))
             rm[r.getAttribute('Id')] = 'xl/' + r.getAttribute('Target').replace(/^\.\.\//,'');
-          /* 그림이 어느 셀에 속하는지는 from.row/from.col 값을 그대로 믿습니다.
-             (예전에는 이 값을 픽셀로 환산해 열 너비로 역산했는데, 그 환산식이 기본
-             서체 Calibri 기준이라 맑은 고딕 등 다른 서체를 쓰는 파일에서는 열 폭이
-             실제보다 좁게 계산되어, colOff가 조금만 커도 사진이 옆 칸으로 밀려
-             들어가는 문제가 있었습니다. from.row/col은 엑셀이 이미 정확히 기록해
-             둔 값이라 다시 계산할 필요가 없습니다.) */
+          /* 그림이 어느 셀에 속하는지는 from.row(행)는 그대로 믿고, 열(cc)은
+             from~to 사이에 사진용으로 지정된 열(문제점 사진·위치표기·조치후사진)이
+             있으면 그 열로 잡습니다.
+             (예전에는 열 너비를 픽셀로 환산해 역산했는데, 그 환산식이 기본 서체
+             Calibri 기준이라 맑은 고딕 등 다른 서체를 쓰는 파일에서는 폭이 실제보다
+             좁게 계산됐습니다. 그래서 사람이 사진을 셀에 딱 맞춰 붙이지 못하고 옆
+             칸으로 살짝 걸치면, 엉뚱한 칸으로 잘못 인식되는 문제가 있었습니다.
+             지금은 사진이 실제로 걸쳐 있는 열 범위 안에 사진용 열이 있는지만
+             보므로, 서체나 폭 계산과 무관하게 정확합니다.) */
           const dDoc = parseXML(dx);
           for (const anc of [...el(dDoc, NS.xdr,'oneCellAnchor'), ...el(dDoc, NS.xdr,'twoCellAnchor')]){
             const from = el1(anc, NS.xdr,'from'); if (!from) continue;
-            const cN = +el1(from, NS.xdr,'col')?.textContent || 0;
-            const rN = +el1(from, NS.xdr,'row')?.textContent || 0;
+            const to = el1(anc, NS.xdr,'to');   /* twoCellAnchor에만 있음 */
+            const cN  = +el1(from, NS.xdr,'col')?.textContent || 0;
+            const rN  = +el1(from, NS.xdr,'row')?.textContent || 0;
+            const cN2 = to ? (+el1(to, NS.xdr,'col')?.textContent || cN) : cN;
             const blip = el1(anc, NS.a,'blip'); if (!blip) continue;
             const path = rm[blip.getAttributeNS(NS.r,'embed')]; if (!path) continue;
             const rr = rN + 1;
-            const cc = cN + 1;
+            const lo = Math.min(cN, cN2) + 1, hi = Math.max(cN, cN2) + 1;
+            let cc = cN + 1;
+            for (const f of ['ph_before','ph_map','ph_after']){
+              const pc = colOf[f];
+              if (pc && pc >= lo && pc <= hi){ cc = pc; break; }
+            }
             (imgAt[rr] ||= {}); (imgAt[rr][cc] ||= []).push(path);
             if (!media.has(path)) media.set(path, null);
           }
@@ -2284,6 +2311,68 @@ $('#wipeBtn').onclick = async () => {
   for (const r of t) await delRow(r.id);
   toast('삭제했습니다');
 };
+
+/* ═══ 사진 재배정 복구 ═════════════════════════════════════════
+   예전 열(칸) 계산 방식의 서체 버그로 문제점/위치표기 사진이 다른 항목이나
+   다른 칸에 잘못 들어간 건을, 원본 엑셀을 새 방식으로 다시 읽어 찾아내고
+   확인 후에만 그 건의 사진만 다시 올려 바로잡습니다. */
+$('#fixPick').onclick = () => $('#fixFiles').click();
+$('#fixFiles').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length) return;
+  if (!isAdmin()) return toast('복구는 관리자만 가능합니다', true);
+  await auditFix(files);
+};
+async function auditFix(files){
+  const log = $('#fixLog');
+  log.hidden = false; log.innerHTML = '원본 엑셀을 다시 읽어 비교하는 중…';
+  const plan = [];
+  try {
+    for (const file of files){
+      let parsed;
+      try { parsed = await parseXlsx(file, () => {}); }
+      catch(err){ log.innerHTML += `<br><em>${esc(file.name)}: 읽기 실패 — ${esc(err.message)}</em>`; continue; }
+      const { rows, media } = parsed;
+      for (const nr of rows){
+        const rec = inHalf().find(r => r.sheet === nr.sheet && String(r.no) === String(nr.no));
+        if (!rec) continue;   /* 이 회차에 없는 항목이면 비교하지 않음 */
+        const want = nr._photos || {};
+        const wantB = want.before?.length || 0, wantM = want.map?.length || 0;
+        const haveB = rec.photos?.before?.length || 0, haveM = rec.photos?.map?.length || 0;
+        if (wantB !== haveB || wantM !== haveM){
+          plan.push({ rec, nr, media, file: file.name, haveB, haveM, wantB, wantM });
+        }
+      }
+    }
+  } catch(err){
+    log.innerHTML += `<br><em>점검 중 오류: ${esc(err.message)}</em>`; return;
+  }
+  if (!plan.length){
+    log.innerHTML = '선택한 파일 범위에서 불일치 항목이 없습니다 — 모두 정상입니다.';
+    return;
+  }
+  log.innerHTML = `<b>${plan.length}건</b>에서 지금 저장된 사진 수와 원본을 다시 계산한 결과가 다릅니다:<br>` +
+    plan.map(p => `· [${esc(p.file)}] ${esc(p.rec.sheet)} No.${esc(String(p.rec.no))} — ` +
+      `현재 문제점 ${p.haveB}장/위치표기 ${p.haveM}장 → 다시 계산하면 ${p.wantB}장/${p.wantM}장`).join('<br>') +
+    `<br><br><button class="btn primary sm" id="fixApply">이 ${plan.length}건 문제점·위치표기 사진만 다시 올리기</button>`;
+  $('#fixApply').onclick = async () => {
+    if (!confirm(`${plan.length}건의 문제점 사진·위치표기 사진을 원본에서 다시 올려 바로잡습니다.\n조치후 사진 등 다른 내용은 건드리지 않습니다. 계속할까요?`)) return;
+    let done = 0;
+    for (const { rec, nr, media } of plan){
+      rec.photos ||= {};
+      for (const k of ['before','map']){
+        rec.photos[k] = [];
+        for (const pth of (nr._photos?.[k] || [])){
+          const blob = media.get(pth); if (!blob) continue;
+          rec.photos[k].push(await savePhoto(blob, rec.id, k));
+        }
+      }
+      await saveRow(rec); done++;
+    }
+    log.innerHTML += `<br><b>완료 — ${done}건을 바로잡았습니다.</b>`;
+    toast(`${done}건 사진을 바로잡았습니다`);
+  };
+}
 
 /* ═══ 시작 ═════════════════════════════════════════════════════ */
 async function boot(localOnly){
