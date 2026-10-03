@@ -989,11 +989,11 @@ const OPT = {
     '연결살수설비': ['NFPC503 제4조'],
     '무선통신보조설비': ['NFPC505 제5조'],
     '연소방지설비': ['NFPC506 제4조'],
-    '방화셔터': ['건축물의 피난∙방화구조 등의 기준에 관한 규칙 제14조','자동방화셔터 및 방화문의 기준 제3조'],
-    '방화문': ['건축물의 피난∙방화구조 등의 기준에 관한 규칙 제14조','소방시설 설치 및 관리에 관한 법률 제16조'],
-    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에 관한 규칙 제14조'],
-    '관통부': ['건축자재등 품질인정 및 관리기준 제33조 외','건축물의 피난∙방화구조 등의 기준에 관한 규칙 제14조'],
-    '슬라이딩도어': ['건축물의 피난∙방화구조 등의 기준에 관한 규칙 제14조'],
+    '방화셔터': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','자동방화셔터 및 방화문의 기준 제3조'],
+    '방화문': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','소방시설 설치 및 관리에 관한 법률 제16조'],
+    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '관통부': ['건축자재등 품질인정 및 관리기준 제33조 외','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '슬라이딩도어': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
     '출입통제': ['소방시설 설치 및 관리에 관한 법률 제16조'],
     '가연물': ['소방시설 설치 및 관리에 관한 법률 제16조'],
     '피난통로': ['소방시설 설치 및 관리에 관한 법률 제16조'],
@@ -1386,7 +1386,6 @@ const parseXML = t => new DOMParser().parseFromString(t, 'application/xml');
 const el = (p, ns, n) => p.getElementsByTagNameNS(ns, n);
 const el1 = (p, ns, n) => el(p, ns, n)[0];
 const colNum = ref => { let n = 0; for (const c of ref.replace(/\d+/g,'')) n = n*26 + (c.charCodeAt(0)-64); return n; };
-const EMU_PT = 12700, EMU_PX = 9525;
 
 function excelDate(v){
   const d = new Date(Date.UTC(1899,11,30) + v*86400000);
@@ -1451,20 +1450,10 @@ async function parseXlsx(file, onProg){
     const sx = await rd(sh.path); if (!sx) continue;
     const doc = parseXML(sx);
 
-    /* 기본 행높이 / 열너비 */
-    const fmt = el1(doc, NS.s, 'sheetFormatPr');
-    const defH = +(fmt?.getAttribute('defaultRowHeight') || 15);
-    const defW = +(fmt?.getAttribute('defaultColWidth') || fmt?.getAttribute('baseColWidth') || 8.43);
-    const colW = {};
-    for (const c of el(doc, NS.s, 'col')){
-      const a = +c.getAttribute('min'), b = +c.getAttribute('max'), w = +c.getAttribute('width');
-      for (let i = a; i <= b && i <= 80; i++) colW[i] = w;
-    }
     /* 셀 값 */
-    const rows = {}, rowH = {};
+    const rows = {};
     for (const rEl of el(doc, NS.s, 'row')){
       const rn = +rEl.getAttribute('r');
-      const h = rEl.getAttribute('ht'); if (h) rowH[rn] = +h;
       const cells = {};
       for (const c of el(rEl, NS.s, 'c')){
         const ref = c.getAttribute('r'); if (!ref) continue;
@@ -1511,22 +1500,21 @@ async function parseXlsx(file, onProg){
           const rm = {};
           if (dRel) for (const r of el(parseXML(dRel), NS.pr,'Relationship'))
             rm[r.getAttribute('Id')] = 'xl/' + r.getAttribute('Target').replace(/^\.\.\//,'');
-          /* 누적 좌표 */
-          const maxR = Math.max(...rowNums) + 4;
-          const tops = [0]; for (let i = 1; i <= maxR + 2; i++) tops[i] = tops[i-1] + (rowH[i] || defH) * EMU_PT;
-          const lefts = [0]; for (let i = 1; i <= 80; i++) lefts[i] = lefts[i-1] + ((colW[i] || defW) * 7 + 5) * EMU_PX;
-          const find = (arr, v) => { let i = 1; while (i < arr.length && arr[i] <= v) i++; return i - 1; };
+          /* 그림이 어느 셀에 속하는지는 from.row/from.col 값을 그대로 믿습니다.
+             (예전에는 이 값을 픽셀로 환산해 열 너비로 역산했는데, 그 환산식이 기본
+             서체 Calibri 기준이라 맑은 고딕 등 다른 서체를 쓰는 파일에서는 열 폭이
+             실제보다 좁게 계산되어, colOff가 조금만 커도 사진이 옆 칸으로 밀려
+             들어가는 문제가 있었습니다. from.row/col은 엑셀이 이미 정확히 기록해
+             둔 값이라 다시 계산할 필요가 없습니다.) */
           const dDoc = parseXML(dx);
           for (const anc of [...el(dDoc, NS.xdr,'oneCellAnchor'), ...el(dDoc, NS.xdr,'twoCellAnchor')]){
             const from = el1(anc, NS.xdr,'from'); if (!from) continue;
             const cN = +el1(from, NS.xdr,'col')?.textContent || 0;
-            const cO = +el1(from, NS.xdr,'colOff')?.textContent || 0;
             const rN = +el1(from, NS.xdr,'row')?.textContent || 0;
-            const rO = +el1(from, NS.xdr,'rowOff')?.textContent || 0;
             const blip = el1(anc, NS.a,'blip'); if (!blip) continue;
             const path = rm[blip.getAttributeNS(NS.r,'embed')]; if (!path) continue;
-            const rr = find(tops, tops[rN] + rO) + 1;
-            const cc = find(lefts, lefts[cN] + cO) + 1;
+            const rr = rN + 1;
+            const cc = cN + 1;
             (imgAt[rr] ||= {}); (imgAt[rr][cc] ||= []).push(path);
             if (!media.has(path)) media.set(path, null);
           }
