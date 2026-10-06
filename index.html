@@ -87,7 +87,8 @@ button{cursor:pointer}
 .date-range.on input{border-color:var(--accent)}
 td.c-del{text-align:center;vertical-align:middle}
 td.c-del input,#delAll{width:17px;height:17px;cursor:pointer;accent-color:var(--crit)}
-tr.row.del-on td{background:#2B1D1B}
+tr.row.pick-on td{background:var(--raise)}
+body.role-admin tr.row.pick-on td{background:#2B1D1B}
 .btn-admin{
   background:transparent;border:1px dashed var(--line2);color:var(--faint);
   border-radius:var(--r);padding:6px 11px;font-size:12px;letter-spacing:.02em;
@@ -95,13 +96,18 @@ tr.row.del-on td{background:#2B1D1B}
 .btn-admin:hover{color:var(--ink);border-color:var(--dim);border-style:solid}
 body.role-admin .btn-admin{background:#2B1D1B;border:1px solid var(--crit);border-style:solid;color:var(--crit-t);font-weight:600}
 body.role-inspector .btn-admin{background:#122430;border:1px solid var(--doing);border-style:solid;color:var(--doing-t);font-weight:600}
+body.role-fire .btn-admin{background:#1C2A17;border:1px solid #5E9B45;border-style:solid;color:#A9D68E;font-weight:600}
 
 /* ── 권한별 노출 ──────────────────────────────────────────────────
-   admin-only : 소방안전관리 책임자 전용 (처리 관련 · 수정 · 삭제)
-   staff-only : 책임자 + 점검업체 (지적 추가 · 점검표 업로드)      */
-.admin-only,.staff-only{display:none}
+   admin-only : 소방안전관리 책임자 전용 (삭제 · 설정 · 비밀번호)
+   staff-only : 책임자 + 점검업체 (점검표 업로드)
+   mgr-only   : 책임자 + 소방파트 직원 (처리 관련 입력 · 기존 지적 수정)
+   edit-only  : 책임자 + 소방파트 + 점검업체 (지적 추가)                */
+.admin-only,.staff-only,.mgr-only,.edit-only{display:none}
 body.role-admin .admin-only{display:inline-flex}
 body.role-admin .staff-only,body.role-inspector .staff-only{display:inline-flex}
+body.role-admin .mgr-only,body.role-fire .mgr-only{display:inline-flex}
+body.role-admin .edit-only,body.role-fire .edit-only,body.role-inspector .edit-only{display:inline-flex}
 .role-note{font-size:11.5px;color:var(--faint);align-self:center;line-height:1.5}
 
 /* ── 탭 ───────────────────────────────────────────────────────────── */
@@ -211,6 +217,17 @@ td.c-dong .dong-b{
 td.c-dong .zone-s{display:block;margin-top:3px;font-size:10.5px;color:var(--faint);
   max-width:110px;overflow:hidden;text-overflow:ellipsis}
 td.c-loc{max-width:210px;font-size:12.5px;color:var(--dim)}
+/* 공용부 / 입주사(전용부) 열 */
+td.c-space{white-space:nowrap}
+.sp{display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;
+  padding:1px 8px;border-radius:4px;font-size:11.5px;font-weight:500;border:1px solid}
+.sp-common{background:var(--panel2);border-color:var(--line2);color:var(--dim)}
+.sp-tenant{background:#1E1A2E;border-color:#4B3F72;color:#C9BCF2}
+.sp-tenant.sp-blank{color:var(--undone-t);border-style:dashed}
+.sp-none{background:transparent;border-color:var(--line);border-style:dashed;color:var(--faint);font-weight:400}
+.sp-g{display:block;font-size:10px;color:var(--faint);margin-top:2px}
+.bar-row[data-jk]{cursor:pointer}
+.bar-row[data-jk]:hover .nm{color:var(--ink);text-decoration:underline}
 td.c-prob{max-width:300px;min-width:180px}
 td.c-prob b{font-weight:400;display:block;white-space:pre-line}
 td.c-prob i{font-style:normal;display:block;color:var(--faint);font-size:11.5px;margin-top:3px}
@@ -437,6 +454,8 @@ body.can-edit .ph .del{display:grid}
   #tableWrap td.c-no .src{display:inline;margin:0}
   #tableWrap td.c-no .src::before{content:"No."}
   #tableWrap td.c-dong{order:2}
+  #tableWrap td.c-space{order:2}
+  #tableWrap td.c-space .sp-g{display:inline;margin-left:4px}
   #tableWrap td.c-dong .zone-s{display:inline;margin:0 0 0 5px;max-width:none}
   #tableWrap td.c-status{order:3;margin-left:auto}
 
@@ -456,8 +475,9 @@ body.can-edit .ph .del{display:grid}
   #tableWrap td.c-handler::before{content:"처리 ";color:var(--faint)}
   #tableWrap td.c-photo{order:11;margin-left:auto}
   #tableWrap td.c-del{order:12;display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--faint)}
-  #tableWrap td.c-del::before{content:"삭제"}
-  #tableWrap tbody tr.row.del-on{border-color:var(--crit)}
+  #tableWrap td.c-del::before{content:"선택"}
+  #tableWrap tbody tr.row.pick-on{border-color:var(--dim)}
+  body.role-admin #tableWrap tbody tr.row.pick-on{border-color:var(--crit)}
   .date-range{flex:1 1 100%}
   .date-range input{font-size:16px}
   /* 값이 없는 칸은 카드에서 숨겨 줄을 아끼도록 */
@@ -513,7 +533,7 @@ body.can-edit .ph .del{display:grid}
   body{background:#fff;color:#000;font-size:9pt;padding:0}
   .wrap{max-width:none;padding-block:0}
   /* 필터 칩 영역은 라벨까지 통째로 숨김 (라벨만 남아 빈 줄이 생기던 문제) */
-  .topbar,.tabs,.toolbar,.chips,#filterBox,.drawer,.scrim,.no-print,.btn,.kpi::before{display:none!important}
+  .topbar,.tabs,.toolbar,.chips,#filterBox,.drawer,.scrim,.no-print,.btn,.toast,.modal,.kpi::before{display:none!important}
   .panel{border:1px solid #999;break-inside:avoid;border-radius:0}
 
   .print-head{
@@ -536,8 +556,8 @@ body.can-edit .ph .del{display:grid}
   /* 인쇄 전용 열폭 (화면 px폭 대신 비율 — th의 인라인 width를 덮어야 하므로 !important)
      처리주체 열은 관리자 모드에서만 나오며, 빠진 폭은 나머지 열이 나눠 갖습니다 */
   .h-no{width:4.5%!important}  .h-date{width:6.5%!important} .h-fac{width:8%!important}
-  .h-detail{width:8%!important} .h-dong{width:8%!important}  .h-loc{width:16%!important}
-  .h-prob{width:30%!important}  .h-handler{width:6.5%!important}
+  .h-detail{width:8%!important} .h-dong{width:7%!important}  .h-space{width:8%!important}
+  .h-loc{width:14%!important}   .h-prob{width:26%!important}  .h-handler{width:6.5%!important}
   .h-status{width:7%!important} .h-done{width:6%!important}  .h-photo{width:7.5%!important}
 
   /* 배경 인쇄를 꺼도 구분되도록 테두리·굵기로 표현 */
@@ -547,6 +567,8 @@ body.can-edit .ph .del{display:grid}
   .tag,td.c-dong .dong-b{background:none!important;border:1px solid #777;color:#000}
   td.c-dong .dong-b{font-weight:700}
   td.c-dong .zone-s{color:#444}
+  .sp{background:none!important;color:#000!important;border-color:#777;max-width:none;white-space:normal}
+  .sp-common{border-style:dotted}
   .thumbs img{width:26px;height:20px}
 }
 </style>
@@ -572,7 +594,7 @@ body.can-edit .ph .del{display:grid}
       </select>
     </label>
     <span class="badge local" id="modeBadge"><span class="dot"></span><span id="modeText">로컬 저장</span></span>
-    <button class="btn-admin" id="adminBtn" aria-pressed="false">관리자</button>
+    <button class="btn-admin" id="adminBtn" aria-pressed="false" title="소방파트 · 관리자 · 점검업체 비밀번호로 로그인">권한 로그인</button>
   </div>
 </header>
 
@@ -611,7 +633,7 @@ body.can-edit .ph .del{display:grid}
         </div>
       </div>
 
-      <div class="panel" data-need="admin">
+      <div class="panel" data-need="mgr">
         <div class="panel-h"><h2>처리주체별 진척</h2><span class="sub">건수 · 상태 구성</span></div>
         <div class="bars" id="barHandler"></div>
         <div class="chart-legend" id="statusLegend"></div>
@@ -625,6 +647,17 @@ body.can-edit .ph .del{display:grid}
       <div class="panel">
         <div class="panel-h"><h2>동·구역별 지적건수</h2><span class="sub">미조치 기준 정렬</span></div>
         <div class="bars" id="barDong"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>공용부 · 전용부</h2><span class="sub">누르면 해당 목록</span></div>
+        <div class="bars" id="barSpace"></div>
+        <p class="sub" id="spaceNote" style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6"></p>
+      </div>
+
+      <div class="panel" style="grid-column:1/-1">
+        <div class="panel-h"><h2>입주사별 지적현황</h2><span class="sub">전용부 · 미조치 많은 순 · 누르면 해당 입주사 목록</span></div>
+        <div class="bars split" id="barTenant"></div>
       </div>
 
       <div class="panel" style="grid-column:1/-1">
@@ -643,8 +676,9 @@ body.can-edit .ph .del{display:grid}
         <option value="date">점검일자 최신순</option>
         <option value="status">미조치 우선</option>
         <option value="fac">시설구분별</option>
+        <option value="tenant">입주사별 (전용 → 공용)</option>
       </select>
-      <span class="date-range" data-need="admin" title="점검일자 기간 검색 (관리자)">
+      <span class="date-range" data-need="mgr" title="점검일자 기간 검색 (관리자 · 소방파트)">
         <span class="gl">점검일자</span>
         <input type="date" id="dFrom" class="sel" aria-label="시작일">
         <span>~</span>
@@ -655,17 +689,20 @@ body.can-edit .ph .del{display:grid}
       </span>
       <button class="btn sm" id="resetFilter">필터 해제</button>
       <div class="spacer"></div>
+      <button class="btn sm no-print" id="bulkBtn" data-need="mgr" disabled title="체크한 항목의 공용부/전용부·입주사명을 한 번에 지정">공간·입주사 지정</button>
       <button class="btn sm danger no-print" id="delSelBtn" data-need="admin" disabled>선택 삭제</button>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
       <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
-      <button class="btn sm primary staff-only" id="newBtn">＋ 지적 추가</button>
+      <button class="btn sm primary edit-only" id="newBtn">＋ 지적 추가</button>
     </div>
 
     <div id="filterBox">
       <div class="filter-group"><span class="gl">상태</span><div class="chips" id="fStatus"></div></div>
       <div class="filter-group"><span class="gl">시설</span><div class="chips" id="fFac"></div></div>
       <div class="filter-group"><span class="gl">동·구역</span><div class="chips" id="fDong"></div></div>
-      <div class="filter-group" data-need="admin"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
+      <div class="filter-group"><span class="gl">공간</span><div class="chips" id="fSpace"></div></div>
+      <div class="filter-group" id="fTenantG"><span class="gl">입주사</span><div class="chips" id="fTenant"></div></div>
+      <div class="filter-group" data-need="mgr"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
     </div>
 
     <!-- 인쇄할 때만 나오는 제목줄 (화면 상단바가 인쇄에서 숨겨지므로 대체) -->
@@ -679,15 +716,16 @@ body.can-edit .ph .del{display:grid}
           <th class="h-date"   style="width:88px">점검일자</th>
           <th class="h-fac"    style="width:96px">시설구분</th>
           <th class="h-detail" style="width:86px">상세구분</th>
-          <th class="h-dong"   style="width:96px">동별</th>
+          <th class="h-dong"   style="width:86px">동별</th>
+          <th class="h-space"  style="width:112px" title="공용부 또는 입주사명(전용부)">공용 · 입주사</th>
           <th class="h-loc"    style="width:180px">층 및 구역</th>
           <th class="h-prob">점검결과 문제점 · 개선대책</th>
-          <th class="h-handler" style="width:74px" data-need="admin">처리주체</th>
+          <th class="h-handler" style="width:74px" data-need="mgr">처리주체</th>
           <th class="h-status" style="width:88px">상태</th>
           <th class="h-done"   style="width:78px">완료일</th>
           <th class="h-photo"  style="width:104px">사진</th>
-          <th class="h-del no-print" style="width:52px;text-align:center" data-need="admin">
-            <label title="보이는 항목 전체 선택">삭제<br><input type="checkbox" id="delAll"></label></th>
+          <th class="h-del no-print" style="width:52px;text-align:center" data-need="mgr">
+            <label title="보이는 항목 전체 선택">선택<br><input type="checkbox" id="delAll"></label></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -729,6 +767,7 @@ body.can-edit .ph .del{display:grid}
           <div class="kv"><dt>머리글 행</dt><dd>4행 (No. 로 시작)</dd></div>
           <div class="kv"><dt>필수 열</dt><dd>No. · 점검일자 · 시설구분</dd></div>
           <div class="kv"><dt>상세구분 · 동별</dt><dd>선택 항목 자동 매칭</dd></div>
+          <div class="kv"><dt>공간구분 · 입주사명</dt><dd>공용부 / 전용부 + 입주사</dd></div>
           <div class="kv"><dt>사진 열</dt><dd>문제점 사진 · 위치표기 · 조치후사진</dd></div>
           <div class="kv"><dt>처리방안</dt><dd>자체처리 · 건물분 · 입주사 · 보류</dd></div>
           <div class="kv"><dt>완료일</dt><dd>입력 시 조치완료로 판정</dd></div>
@@ -736,6 +775,11 @@ body.can-edit .ph .del{display:grid}
         <p style="font-size:12px;color:var(--faint);margin:14px 0 0;line-height:1.7">
           시트는 <b>업무 A~D동 · 판매시설층 · 트레이더스 · 지하주차장 · 소방펌프실 · 가스계소화설비 · 제연설비 · 경보설비</b> 순으로
           나누어 두면 동·구역 필터가 자동으로 잡힙니다.
+        </p>
+        <p style="font-size:12px;color:var(--faint);margin:10px 0 0;line-height:1.7">
+          <b>공간구분 · 입주사명</b> 열이 없는 예전 양식은 「미지정」으로 들어옵니다.
+          「층및 구역」에 등록된 입주사명이 적혀 있으면 <b>추정</b>으로 표시해 두니,
+          지적내역에서 확인 후 <b>공간·입주사 지정</b>으로 확정해 주세요.
         </p>
       </div>
     </div>
@@ -747,7 +791,7 @@ body.can-edit .ph .del{display:grid}
 
       <div class="panel set-card" style="grid-column:1/-1">
         <h3>접속 권한</h3>
-        <p>상단 <b>관리자</b> 버튼에 넣는 번호에 따라 할 수 있는 일이 달라집니다.</p>
+        <p>상단 <b>권한 로그인</b> 버튼에 넣는 번호에 따라 할 수 있는 일이 달라집니다.</p>
         <div class="table-wrap" style="margin-bottom:16px">
           <table style="min-width:640px">
             <thead><tr><th style="width:118px">구분</th><th style="width:84px">비밀번호</th><th>할 수 있는 일</th></tr></thead>
@@ -757,21 +801,27 @@ body.can-edit .ph .del{display:grid}
               <tr><td><b style="color:var(--doing-t)">점검업체</b></td><td class="c-date">1111</td>
                   <td>위의 모든 것 + <b>지적 추가 · 점검표 업로드</b><br>
                       <span style="color:var(--faint);font-size:11.5px">처리주체 · 처리상태 · 완료일 · 조치후 사진은 보이지 않습니다. 기존 건은 수정할 수 없습니다.</span></td></tr>
+              <tr><td><b style="color:#A9D68E">소방파트</b></td><td class="c-date">2222</td>
+                  <td>위의 모든 것 + <b>모든 지적사항 수정</b>(처리주체 · 처리상태 · 완료일 · 조치후 사진 · 공간구분 · 입주사명 포함),
+                      <b>지적 추가 · 공간·입주사 일괄 지정 · 기간 검색</b><br>
+                      <span style="color:var(--faint);font-size:11.5px">삭제 · 점검표 업로드 · 설정은 할 수 없습니다.</span></td></tr>
               <tr><td><b style="color:var(--crit-t)">관리자</b></td><td class="c-date">0000</td>
                   <td>위의 모든 것 + <b>모든 항목 수정 · 삭제 · 처리 관련 입력</b></td></tr>
             </tbody>
           </table>
         </div>
-        <div class="fld-2" data-need="admin">
+        <div class="fld-3" data-need="admin">
           <div class="fld"><label for="pinNew">관리자 비밀번호 변경</label>
             <input type="text" id="pinNew" placeholder="4자리 이상" autocomplete="off"></div>
+          <div class="fld"><label for="pinFire">소방파트 비밀번호 변경</label>
+            <input type="text" id="pinFire" placeholder="4자리 이상" autocomplete="off"></div>
           <div class="fld"><label for="pinStaff">점검업체 비밀번호 변경</label>
             <input type="text" id="pinStaff" placeholder="4자리 이상" autocomplete="off"></div>
         </div>
         <button class="btn admin-only" id="pinSave">비밀번호 저장</button>
         <p style="font-size:11.5px;color:var(--faint);margin:12px 0 0;line-height:1.6">
           비밀번호는 원문이 아니라 해시로만 보관합니다. Firebase에 연결된 상태에서 바꾸면
-          <b>모든 기기·브라우저에 동일하게 적용</b>됩니다. 기본값 <b>0000 / 1111</b>은 반드시 바꾸세요.
+          <b>모든 기기·브라우저에 동일하게 적용</b>됩니다. 기본값 <b>0000 / 2222 / 1111</b>은 반드시 바꾸세요.
           연결 전(이 기기 저장 상태)에 바꾼 비밀번호는 그 기기에만 적용되며, 그 경우에 한해 브라우저
           사이트 데이터를 지우면 기본값으로 돌아갑니다.
         </p>
@@ -839,10 +889,10 @@ body.can-edit .ph .del{display:grid}
 
       <div class="panel set-card">
         <h3>구축 절차</h3>
-        <p>GitHub Pages로 공개하고 Firebase로 자료를 공유하는 순서입니다.</p>
+        <p>Vercel(또는 GitHub Pages)로 공개하고 Firebase로 자료를 공유하는 순서입니다.</p>
         <ol class="steps">
-          <li>GitHub에 저장소를 만들고 이 <code>index.html</code>을 올립니다.</li>
-          <li>저장소 <code>Settings → Pages</code>에서 <code>main / root</code>를 선택해 공개합니다.</li>
+          <li>배포 저장소의 <code>index.html</code>을 이 파일로 교체합니다.</li>
+          <li>Vercel이 자동으로 다시 배포합니다(GitHub Pages는 <code>Settings → Pages</code>에서 <code>main / root</code>).</li>
           <li>Firebase 콘솔에서 프로젝트를 만들고 <code>Firestore</code>를 <b>asia-northeast3(서울)</b>로 생성합니다.</li>
           <li><code>프로젝트 설정 → 웹 앱 추가</code>에서 나온 <code>firebaseConfig</code>를 위 칸에 붙여넣고 연결합니다.</li>
           <li><code>Authentication → 익명</code>을 사용 설정하고, 보안 규칙을 함께 드린 <code>firestore.rules</code>로 교체합니다.</li>
@@ -961,6 +1011,9 @@ const OPT = {
   floor: ['옥상','11층','10층','9층','8층','7층','6층','5층','4층','3층','2층','1층','B1','B2','B3','B4','B5','B6','B7'],
   fac: ['소화설비','소화기구','경보설비','피난설비','소화활동설비','제연설비','기타설비'],
   handler: ['자체처리','건물분','입주사','보류','권장사항','제외'],
+  /* 공간구분 · 입주사 — 입주사 목록은 아래 기본값 + 실제 입력된 이름이 합쳐져 선택지가 됩니다 */
+  space: ['공용부','전용부'],
+  tenant: ['플래그원','LG이노텍','DL','트레이더스','뚝슐랭'],
   handlerNote: { '자체처리':'시설팀 자체 보수', '건물분':'시공사(태영건설) 하자', '입주사':'임차인 조치', '보류':'조치 보류', '권장사항':'권장 사항', '제외':'점검대상 제외' },
   status: ['미조치','진행중','조치완료','보류','제외'],
 
@@ -1119,7 +1172,8 @@ const S = {
   rows: [], half: '2026H2', view: 'board', role: 'viewer',
   mode: 'local', fb: null, db: null, unsub: null,
   pinsCloud: null, unsubPins: null,
-  filters: { status:new Set(), fac:new Set(), dong:new Set(), handler:new Set() },
+  filters: { status:new Set(), fac:new Set(), dong:new Set(), space:new Set(), tenant:new Set(), handler:new Set() },
+  tenants: [],
   q: '', sort: 'def', cur: null, dirtyPhotos: null,
   dFrom: '', dTo: '', delSel: new Set()
 };
@@ -1444,6 +1498,7 @@ function normDate(v, yearHint){
 }
 /* 머리글 이름 → 내부 필드 (열 순서가 바뀌어도 인식) */
 const HEAD = [
+  [/공간\s*구분|전용\s*[\/·]?\s*공용|공용\s*[\/·]?\s*전용/,'space'], [/입주사\s*명|^입주사$|임차인/,'tenant'],
   [/^no\.?$/i,'no'], [/점검\s*일자|점검일/,'date'], [/시설\s*구분/,'fac'], [/상세\s*구분/,'detail'],
   [/동\s*별|동$/,'dong'], [/층.*구역|구역/,'loc'], [/문제점|점검\s*결과/,'problem'], [/개선\s*대책|조치\s*방법/,'action'],
   [/(지적|문제점).*사진/,'ph_before'], [/관련\s*법규|법규/,'law'], [/위치\s*표기|위치도/,'ph_map'],
@@ -1631,7 +1686,8 @@ async function parseXlsx(file, onProg){
         problem: txt('problem'), action: txt('action').replace(/\n/g,' '),
         law: txt('law').replace(/\n/g,' '), handler: txt('handler'),
         done: normDate(get('done'), yearHint), submit: /^o$/i.test(txt('submit')),
-        note: txt('note'), _photos: photos
+        note: txt('note'), space: txt('space').replace(/\s/g,''), tenant: txt('tenant').replace(/\n/g,' '),
+        _photos: photos
       });
     }
   }
@@ -1660,6 +1716,43 @@ function normDong(v){
   const first = String(v||'').replace(/\s/g,'').split(/[\/,]/)[0];
   return first;
 }
+/* 공간구분 표기 통일 : '공용', '공용부(건물)', '전용(입주사)' 등 → 공용부 / 전용부 */
+function normSpace(v){
+  const s = String(v||'').replace(/\s/g,'');
+  if (!s) return '';
+  if (/공용|공통/.test(s)) return '공용부';
+  if (/전용|입주|임차/.test(s)) return '전용부';
+  return '';
+}
+/* 입주사 선택지 = 기본 목록 + 자료에 입력된 이름 (afterLoad 때 한 번 계산) */
+function buildTenants(){
+  const seen = new Map();
+  for (const t of [...OPT.tenant, ...S.rows.map(r => r.tenant)]){
+    const v = String(t||'').trim(); if (!v) continue;
+    const k = v.replace(/\s/g,'').toUpperCase();
+    if (!seen.has(k)) seen.set(k, v);
+  }
+  S.tenants = [...seen.values()];
+}
+/* 예전 양식(공간구분 열 없음) — 「층및 구역」에 입주사명이 적혀 있을 때만 추정합니다.
+   가장 앞에 나오는 이름을 고릅니다 (예: '플래그원 BASE 310 (LG 이노텍)' → 플래그원) */
+function guessTenant(loc){
+  const s = String(loc||'').replace(/\s/g,'').toUpperCase();
+  if (!s) return '';
+  let best = '', pos = Infinity;
+  for (const t of S.tenants){
+    const k = t.replace(/\(.*?\)|\s/g,'').toUpperCase();
+    if (k.length < 2) continue;
+    const ascii = /^[A-Z0-9&]+$/.test(k);
+    for (let i = s.indexOf(k); i >= 0; i = s.indexOf(k, i + 1)){
+      /* 영문 약칭(DL, LG 등)은 다른 영단어의 일부일 때 제외 */
+      if (ascii && (/[A-Z0-9]/.test(s[i-1]||'') || /[A-Z]/.test(s[i+k.length]||''))) continue;
+      if (i < pos){ pos = i; best = t; }
+      break;
+    }
+  }
+  return best;
+}
 function normalize(r){
   const f = normFac(r.fac);
   if (f && f !== r.fac){ r.facRaw ||= r.fac; r.fac = f; }
@@ -1668,6 +1761,14 @@ function normalize(r){
   r.date = normDate(r.date, 2026);
   r.done = normDate(r.done, 2026);
   if (!r.floor && r.loc){ const s = splitFloor(r.loc); if (s.floor){ r.floor = s.floor; r.loc = s.rest; } }
+  /* 공간구분 · 입주사 */
+  r.space = normSpace(r.space);
+  r.tenant = String(r.tenant||'').trim();
+  if (r.tenant && !r.space) r.space = '전용부';
+  if (!r.space && !r.spaceOk){
+    const t = guessTenant(fullLoc(r));
+    if (t){ r.space = '전용부'; r.tenant = t; r.spaceGuess = true; }
+  }
   return r;
 }
 
@@ -1702,15 +1803,22 @@ const zoneLabel = r => String(r.sheet||'').replace(/^업무\s+/,'');
 
 /* ═══ 필터 ═════════════════════════════════════════════════════ */
 function inHalf(){ return S.rows.filter(r => (r.half || '2026H1') === S.half); }
+const spaceKey = r => r.space || '미지정';
+/* 구역(시트) 순서 — OPT.zone 에 없는 시트명(예: 업무시설(A동))은 이름순으로 뒤에 둡니다.
+   (예전에는 모두 같은 순위로 처리돼 A·B·C·D동 항목이 번호순으로 뒤섞였습니다) */
+const zi = z => { const i = OPT.zone.indexOf(z); return i < 0 ? 50 : i; };
+const zc = (a, b) => zi(a.sheet) - zi(b.sheet) || String(a.sheet||'').localeCompare(String(b.sheet||''), 'ko');
 function current(){
   const f = S.filters, q = S.q.trim().toLowerCase();
   let out = inHalf().filter(r => {
     if (f.status.size && !f.status.has(deriveStatus(r))) return false;
     if (f.fac.size && !f.fac.has(r.fac)) return false;
     if (f.dong.size && !f.dong.has(dongOf(r))) return false;
+    if (f.space.size && !f.space.has(spaceKey(r))) return false;
+    if (f.tenant.size && !f.tenant.has(r.tenant || '')) return false;
     if (f.handler.size && !f.handler.has(r.handler)) return false;
-    /* 기간 검색 (관리자) — 점검일자 기준, 시작·끝 날짜 포함 */
-    if (isAdmin() && (S.dFrom || S.dTo)){
+    /* 기간 검색 (관리자·소방파트) — 점검일자 기준, 시작·끝 날짜 포함 */
+    if (isMgr() && (S.dFrom || S.dTo)){
       const d = String(r.date || '').slice(0, 10);
       if (!d) return false;
       if (S.dFrom && d < S.dFrom) return false;
@@ -1718,17 +1826,18 @@ function current(){
     }
     if (q){
       const hay = [r.loc,r.floor,r.problem,r.action,r.law,r.note,r.detail,r.fac,r.sheet,
-                   dongOf(r),dongLabel(dongOf(r))].join(' ').toLowerCase();
+                   dongOf(r),dongLabel(dongOf(r)),r.tenant,spaceKey(r)].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
-  const zi = z => { const i = OPT.zone.indexOf(z); return i < 0 ? 99 : i; };
   const so = { '미조치':0, '진행중':1, '보류':2, '제외':3, '조치완료':4 };
+  const spo = r => r.space === '전용부' ? 0 : r.space === '공용부' ? 1 : 2;
   if (S.sort === 'date')        out.sort((a,b) => String(b.date).localeCompare(String(a.date)));
-  else if (S.sort === 'status') out.sort((a,b) => so[deriveStatus(a)] - so[deriveStatus(b)] || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
-  else if (S.sort === 'fac')    out.sort((a,b) => OPT.fac.indexOf(a.fac)-OPT.fac.indexOf(b.fac) || zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
-  else                          out.sort((a,b) => zi(a.sheet)-zi(b.sheet) || (+a.no||0)-(+b.no||0));
+  else if (S.sort === 'status') out.sort((a,b) => so[deriveStatus(a)] - so[deriveStatus(b)] || zc(a,b) || (+a.no||0)-(+b.no||0));
+  else if (S.sort === 'fac')    out.sort((a,b) => OPT.fac.indexOf(a.fac)-OPT.fac.indexOf(b.fac) || zc(a,b) || (+a.no||0)-(+b.no||0));
+  else if (S.sort === 'tenant') out.sort((a,b) => spo(a)-spo(b) || String(a.tenant||'').localeCompare(String(b.tenant||''),'ko') || zc(a,b) || (+a.no||0)-(+b.no||0));
+  else                          out.sort((a,b) => zc(a,b) || (+a.no||0)-(+b.no||0));
   return out;
 }
 
@@ -1742,13 +1851,14 @@ function stack(rows){
   const t = tally(rows), n = rows.length || 1;
   return OPT.status.filter(s => t[s]).map(s => ({ s, n:t[s], pct: t[s]/n*100 }));
 }
-function barBlock(groups, total){
+function barBlock(groups, total, jk){
   return groups.map(g => {
+    const jump = jk && g.jv != null ? ` data-jk="${jk}" data-jv="${esc(g.jv)}" title="${esc(g.name)} 목록 보기"` : '';
     const segs = stack(g.rows).map(x =>
       `<span class="bar-seg" style="width:${(x.n/total*100).toFixed(2)}%;background:${SC[x.s]}"
         data-tip="${esc(g.name)} · ${x.s} ${x.n}건"></span>`).join('');
     const und = g.rows.filter(r => deriveStatus(r) === '미조치').length;
-    return `<div class="bar-row"><span class="nm" title="${esc(g.name)}">${esc(g.name)}</span>
+    return `<div class="bar-row"${jump}><span class="nm" title="${esc(g.name)}">${esc(g.name)}</span>
       <span class="bar-track">${segs}</span>
       <span class="vv">${g.rows.length}<em> / 미 ${und}</em></span></div>`;
   }).join('');
@@ -1787,18 +1897,37 @@ function renderBoard(){
     `<span><i style="background:${SC[s]}"></i>${s}</span>`).join('');
 
   if (!n){
-    ['#barHandler','#barFac','#barDong','#barDetail'].forEach(id =>
+    $('#spaceNote').textContent = '';
+    ['#barHandler','#barFac','#barDong','#barDetail','#barSpace','#barTenant'].forEach(id =>
       $(id).innerHTML = '<p style="color:var(--faint);font-size:12.5px;margin:0">자료가 없습니다. 점검표를 업로드해 주세요.</p>');
     return;
   }
   const max = g => Math.max(...g.map(x => x.rows.length), 1);
   const undo = g => g.rows.filter(r => deriveStatus(r) === '미조치').length;
 
-  const gh = OPT.handler.map(h => ({ name:h, rows: rows.filter(r => r.handler === h) })).filter(g => g.rows.length);
-  $('#barHandler').innerHTML = barBlock(gh, max(gh));
+  const gh = OPT.handler.map(h => ({ name:h, jv:h, rows: rows.filter(r => r.handler === h) })).filter(g => g.rows.length);
+  $('#barHandler').innerHTML = barBlock(gh, max(gh), 'handler');
 
   const gf = groupBy(rows,'fac').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
-  $('#barFac').innerHTML = barBlock(gf, max(gf));
+  gf.forEach(g => { if (g.name !== '미지정') g.jv = g.name; });
+  $('#barFac').innerHTML = barBlock(gf, max(gf), 'fac');
+
+  /* 공용부 · 전용부 · 미지정 */
+  const gs = ['전용부','공용부','미지정'].map(k => ({ name:k, jv:k, rows: rows.filter(r => spaceKey(r) === k) })).filter(g => g.rows.length);
+  $('#barSpace').innerHTML = barBlock(gs, max(gs), 'space');
+  const nGuess = rows.filter(r => r.spaceGuess).length, nNone = rows.filter(r => !r.space).length;
+  $('#spaceNote').textContent = (nNone || nGuess)
+    ? `미지정 ${nNone}건 · 자동추정 ${nGuess}건 — 지적내역에서 체크 후 「공간·입주사 지정」으로 확정하세요.` : '';
+
+  /* 입주사별 (전용부) */
+  const pr = rows.filter(r => r.space === '전용부');
+  const gt = groupBy(pr.filter(r => r.tenant), 'tenant');
+  gt.forEach(g => g.jv = g.name);
+  gt.sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
+  const blank = pr.filter(r => !r.tenant);
+  if (blank.length) gt.push({ name:'(입주사명 미기재)', rows: blank });
+  $('#barTenant').innerHTML = gt.length ? barBlock(gt, max(gt), 'tenant')
+    : '<p style="color:var(--faint);font-size:12.5px;margin:0">전용부로 지정된 지적이 아직 없습니다.</p>';
 
   const gd = groupBy(rows,'sheet').sort((a,b) => undo(b)-undo(a) || b.rows.length-a.rows.length);
   $('#barDong').innerHTML = barBlock(gd, max(gd));
@@ -1819,11 +1948,20 @@ document.addEventListener('mouseover', e => {
   tipEl.style.top = (r.top - 34) + 'px'; tipEl.style.bottom = 'auto'; tipEl.style.transform = 'none';
 });
 document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-tip]')) tipEl?.remove(); });
+/* 현황판 막대를 누르면 그 조건으로 지적내역 열기 */
+$('#view-board').addEventListener('click', e => {
+  const row = e.target.closest('.bar-row[data-jk]'); if (!row) return;
+  const k = row.dataset.jk; if (!S.filters[k]) return;
+  Object.values(S.filters).forEach(s => s.clear());
+  S.filters[k].add(row.dataset.jv);
+  tipEl?.remove();
+  setView('list');
+});
 
 /* ═══ 필터 칩 ══════════════════════════════════════════════════ */
 function renderFilters(){
   const rows = inHalf();
-  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : r[k];
+  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : k === 'space' ? spaceKey(r) : (r[k] ?? '');
   const cnt = (k, v) => rows.filter(r => val(r, k) === v).length;
   const build = (box, key, vals, lab) => $(box).innerHTML = vals.map(v => {
     const c = cnt(key, v); if (!c && !S.filters[key].has(v)) return '';
@@ -1833,6 +1971,12 @@ function renderFilters(){
   build('#fStatus','status', OPT.status);
   build('#fFac','fac', OPT.fac);
   build('#fDong','dong', [...new Set(rows.map(dongOf).filter(Boolean))].sort(), dongLabel);
+  build('#fSpace','space', ['전용부','공용부','미지정']);
+  const tc = new Map(); rows.forEach(r => r.tenant && tc.set(r.tenant, (tc.get(r.tenant)||0) + 1));
+  const tv = [...tc.keys()].sort((a,b) => tc.get(b)-tc.get(a) || a.localeCompare(b,'ko'));
+  for (const v of S.filters.tenant) if (!tv.includes(v)) tv.push(v);
+  build('#fTenant','tenant', tv);
+  $('#fTenantG').hidden = !tv.length;
   build('#fHandler','handler', OPT.handler);
 }
 
@@ -1864,14 +2008,15 @@ async function renderList(){
       <td class="c-fac">${esc(r.fac)}${r.sample?' <span class="tag">샘플</span>':''}</td>
       <td class="c-detail"><span class="tag">${esc(r.detail||'—')}</span></td>
       <td class="c-dong"><span class="dong-b">${esc(dl)}</span>${zs}</td>
+      <td class="c-space${r.space?'':' none'}">${spaceCell(r)}</td>
       <td class="c-loc">${esc(fullLoc(r))}</td>
       <td class="c-prob"><b>${esc(r.problem)}</b><i>→ ${esc(r.action||'개선대책 미기재')} · ${esc(r.law||'법규 미기재')}</i></td>
-      ${isAdmin() ? `<td class="c-handler${r.handler?'':' none'}">${esc(r.handler||'—')}</td>` : ''}
+      ${isMgr() ? `<td class="c-handler${r.handler?'':' none'}">${esc(r.handler||'—')}</td>` : ''}
       <td class="c-status"><span class="pill p-${st}"><i></i>${st}</span></td>
       <td class="c-date c-done${r.done?'':' none'}">${esc((r.done||'').slice(5)||'—')}</td>
       <td class="c-photo${np?'':' none'}" data-ph="${r.id}">${np ? `<span class="nophoto">${np}장</span>` : '<span class="nophoto">—</span>'}</td>
-      ${isAdmin() ? `<td class="c-del no-print"><input type="checkbox" class="delChk" data-id="${r.id}"
-        aria-label="${esc(r.sheet)} No.${esc(r.no)} 삭제 선택"${S.delSel.has(r.id) ? ' checked' : ''}></td>` : ''}
+      ${isMgr() ? `<td class="c-del no-print"><input type="checkbox" class="delChk" data-id="${r.id}"
+        aria-label="${esc(r.sheet)} No.${esc(r.no)} 선택"${S.delSel.has(r.id) ? ' checked' : ''}></td>` : ''}
     </tr>`;
   }).join('');
   syncDelSel(rows);
@@ -1881,15 +2026,27 @@ async function renderList(){
 }
 
 /* 삭제 선택 상태 — 화면에 보이는 항목만 선택 유지 */
+function spaceCell(r){
+  if (r.space === '공용부') return '<span class="sp sp-common">공용부</span>';
+  if (r.space === '전용부'){
+    const g = r.spaceGuess ? '<span class="sp-g">자동추정 · 확인 필요</span>' : '';
+    return r.tenant
+      ? `<span class="sp sp-tenant" title="전용부 · ${esc(r.tenant)}">${esc(r.tenant)}</span>${g}`
+      : `<span class="sp sp-tenant sp-blank" title="전용부 — 입주사명이 비어 있습니다">입주사 미기재</span>${g}`;
+  }
+  return '<span class="sp sp-none" title="공간구분이 지정되지 않았습니다">미지정</span>';
+}
 function syncDelSel(rows){
   const vis = new Set(rows.map(r => r.id));
   for (const id of [...S.delSel]) if (!vis.has(id)) S.delSel.delete(id);
-  const n = S.delSel.size, btn = $('#delSelBtn');
+  const n = S.delSel.size, btn = $('#delSelBtn'), bb = $('#bulkBtn');
   btn.disabled = !n;
   btn.textContent = n ? `선택 삭제 (${n})` : '선택 삭제';
+  bb.disabled = !n;
+  bb.textContent = n ? `공간·입주사 지정 (${n})` : '공간·입주사 지정';
   const all = $('#delAll');
   if (all){ all.checked = !!rows.length && n === rows.length; all.indeterminate = n > 0 && n < rows.length; }
-  $$('#tbody tr.row').forEach(tr => tr.classList.toggle('del-on', S.delSel.has(tr.dataset.id)));
+  $$('#tbody tr.row').forEach(tr => tr.classList.toggle('pick-on', S.delSel.has(tr.dataset.id)));
 }
 
 async function loadThumbs(rows){
@@ -1916,21 +2073,21 @@ function selOpts(list, cur, ph){
 async function openDrawer(r){
   S.cur = JSON.parse(JSON.stringify(r));
   S.dirtyPhotos = { before:[], map:[], after:[] };
-  const c = S.cur, ed = canEdit(c), ro = !ed, adm = isAdmin();
+  const c = S.cur, ed = canEdit(c), ro = !ed, adm = isMgr();   /* 처리 관련 칸 : 관리자 · 소방파트 */
   $('#dTitle').textContent = c.id ? `${c.sheet||''} ${c.no||''}번 지적` : '새 지적사항';
   $('#dKey').textContent = c.id ? HALF_LABEL[c.half||S.half] : HALF_LABEL[S.half];
   document.body.classList.toggle('can-edit', ed);
   $('#dSave').hidden = ro;
-  $('#dDelete').hidden = !adm || !c.id;
+  $('#dDelete').hidden = !isAdmin() || !c.id;
   $('#dLocked').hidden = ed;
   $('#dLocked').innerHTML = S.role === 'inspector'
     ? '이미 등록된 건은 수정할 수 없습니다.<br>처리 관련 항목은 관리자가 입력합니다.'
-    : '보기 전용 · 입력하려면 상단 <b>관리자</b>';
+    : '보기 전용 · 수정하려면 상단 <b>권한 로그인</b>';
 
   const d = m => ro ? ' disabled' : '';
   $('#dBody').innerHTML = `
     <div class="fld-3">
-      <div class="fld"><label for="f_sheet">구역(시트)</label><select id="f_sheet"${d()}>${selOpts(OPT.zone, c.sheet)}</select></div>
+      <div class="fld"><label for="f_sheet">구역(시트)</label><select id="f_sheet"${d()}>${selOpts(zoneList(), c.sheet)}</select></div>
       <div class="fld"><label for="f_no">No.</label><input type="text" id="f_no" value="${esc(c.no)}"${d()}></div>
       <div class="fld"><label for="f_date">점검일자</label><input type="date" id="f_date" value="${esc(c.date)}"${d()}></div>
     </div>
@@ -1944,6 +2101,15 @@ async function openDrawer(r){
       <div class="fld"${adm ? '' : ' hidden'}><label for="f_handler">처리주체</label>
         <select id="f_handler"${d()}>${selOpts(OPT.handler, c.handler)}</select></div>
     </div>
+    <div class="fld-2">
+      <div class="fld"><label for="f_space">공간구분</label>
+        <select id="f_space"${d()}>${selOpts(OPT.space, c.space, '미지정')}</select></div>
+      <div class="fld"><label for="f_tenant">입주사명</label>
+        <input type="text" id="f_tenant" list="l_tenant" value="${esc(c.tenant)}" placeholder="전용부일 때 입력"
+          autocomplete="off"${ro || c.space === '공용부' ? ' disabled' : ''}>
+        <datalist id="l_tenant">${S.tenants.map(v => `<option value="${esc(v)}">`).join('')}</datalist></div>
+    </div>
+    ${c.spaceGuess ? `<div class="hint" style="margin:-8px 0 12px;font-size:11px;color:var(--undone-t)">「층및 구역」 문구로 자동 추정한 값입니다. 맞으면 그대로 저장하면 확정됩니다.</div>` : ''}
     <div class="fld"><label for="f_loc">구역 상세</label>
       <input type="text" id="f_loc" value="${esc(c.loc)}" placeholder="예: 4번 계단 앞 여자화장실"${d()}>
       ${(c.facRaw || c.dongRaw) ? `<div class="hint">점검표 원본 표기: ${esc([c.facRaw, c.dongRaw].filter(Boolean).join(' · '))}</div>` : ''}</div>
@@ -1983,6 +2149,15 @@ async function openDrawer(r){
     if (!ro && !$('#f_law').value && OPT.law[dt]) $('#f_law').value = OPT.law[dt][0];
   };
   $('#f_fac').addEventListener('change', syncDetail);
+  /* 공용부를 고르면 입주사명은 비우고 잠금, 입주사명을 쓰면 전용부로 */
+  $('#f_space').addEventListener('change', e => {
+    const t = $('#f_tenant'); if (ro) return;
+    t.disabled = e.target.value === '공용부';
+    if (t.disabled) t.value = '';
+  });
+  $('#f_tenant').addEventListener('input', e => {
+    if (e.target.value.trim() && !$('#f_space').value) $('#f_space').value = '전용부';
+  });
   $('#f_detail').addEventListener('change', syncLaw);
   $('#f_done').addEventListener('change', e => { if (e.target.value) $('#f_status').value = '조치완료'; });
   $('#f_status').addEventListener('change', e => {
@@ -1995,8 +2170,8 @@ async function openDrawer(r){
 async function renderPhotos(){
   const c = S.cur, kinds = [['before','문제점 사진'],['map','위치표기'],['after','조치후 사진']];
   const blocks = await Promise.all(kinds.map(async ([k, label]) => {
-    /* 조치후 사진은 처리 결과이므로 관리자만 올리고 지웁니다 */
-    const may = canEdit(c) && (isAdmin() || k !== 'after');
+    /* 조치후 사진은 처리 결과이므로 관리자 · 소방파트만 올리고 지웁니다 */
+    const may = canEdit(c) && (isMgr() || k !== 'after');
     const refs = c.photos?.[k] || [];
     const items = await Promise.all(refs.map(async (ref, i) => {
       const u = await photoURL(ref);
@@ -2020,6 +2195,11 @@ function collect(){
     action:g('#f_action'), law:g('#f_law'), handler:g('#f_handler'), status:g('#f_status'),
     done:g('#f_done'), note:g('#f_note'), submit:$('#f_submit').checked, half:c.half||S.half
   });
+  /* 공간구분 · 입주사 — 사람이 저장했으므로 자동추정 표시를 지우고 확정합니다 */
+  c.space = g('#f_space');
+  c.tenant = c.space === '공용부' ? '' : g('#f_tenant');
+  if (c.tenant && !c.space) c.space = '전용부';
+  c.spaceGuess = false; c.spaceOk = true;
   if (!c.id) c.id = uid();
   c.sample = false;
   return c;
@@ -2059,6 +2239,12 @@ async function handleFile(file){
         for (const k of fields){
           if (!rec[k] && nr[k]){ rec[k] = nr[k]; touched = true; }
         }
+        /* 공간구분 · 입주사 — 비어 있거나 자동추정 상태일 때만 점검표 값으로 채움 (사람이 확정한 값은 유지) */
+        const nsp = normSpace(nr.space) || (nr.tenant ? '전용부' : '');
+        if (nsp && (!rec.space || rec.spaceGuess)){
+          rec.space = nsp; rec.tenant = nsp === '공용부' ? '' : (nr.tenant || rec.tenant || '');
+          rec.spaceGuess = false; touched = true;
+        } else if (nr.tenant && rec.space === '전용부' && !rec.tenant){ rec.tenant = nr.tenant; touched = true; }
         if (adm && nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
         if (touched) upd++;
         rec.photos ||= {};
@@ -2106,9 +2292,10 @@ function download(name, blob){
 }
 function toCSV(){
   /* 연번(표시 순번)과 점검표 원본 No.를 모두 내보냅니다 — 원본 대조용 */
-  const H = ['연번','구역','점검표 No.','점검일자','시설구분','상세구분','동별','층','구역상세','점검결과 문제점','개선 대책','관련법규','처리방안','처리상태','완료일','소방서제출','비고'];
+  const H = ['연번','구역','점검표 No.','점검일자','시설구분','상세구분','동별','공간구분','입주사명','층','구역상세','점검결과 문제점','개선 대책','관련법규','처리방안','처리상태','완료일','소방서제출','비고'];
   const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const body = current().map((r, i) => [i+1,r.sheet,r.no,r.date,r.fac,r.detail,r.dong,r.floor,r.loc,
+  const body = current().map((r, i) => [i+1,r.sheet,r.no,r.date,r.fac,r.detail,r.dong,
+    r.space ? r.space + (r.spaceGuess ? '(추정)' : '') : '미지정', r.tenant||'', r.floor,r.loc,
     r.problem,r.action,r.law,r.handler,deriveStatus(r),r.done,r.submit?'O':'',r.note].map(q).join(','));
   download(`원그로브_${HALF_LABEL[S.half]}_지적현황_${new Date().toISOString().slice(0,10)}.csv`,
     new Blob(['﻿' + [H.map(q).join(','), ...body].join('\r\n')], { type:'text/csv;charset=utf-8' }));
@@ -2119,31 +2306,42 @@ async function sha(s){
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('wg:' + s));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
 }
+/* 권한별 비밀번호 : [meta/pins 필드, 이 기기 저장 키, 기본값] */
+const PIN_DEF = {
+  admin: ['adminHash','wg_pin','0000'],
+  fire:  ['fireHash','wg_pin_fire','2222'],
+  staff: ['staffHash','wg_pin_staff','1111']
+};
 async function pinHash(kind){
   /* Firebase에 연결되어 있으면 meta/pins 문서(모든 기기 공용)를 우선 사용하고,
      연결 전이거나 아직 클라우드에 저장된 적이 없으면 이 기기의 값 → 기본값 순으로 씁니다. */
+  const [field, key, def] = PIN_DEF[kind];
   if (S.mode === 'cloud' && S.pinsCloud){
-    const v = S.pinsCloud[kind === 'admin' ? 'adminHash' : 'staffHash'];
+    const v = S.pinsCloud[field];
     if (v) return v;
   }
-  return ls(kind === 'admin' ? 'wg_pin' : 'wg_pin_staff')
-      || await sha(kind === 'admin' ? '0000' : '1111');
+  return ls(key) || await sha(def);
 }
-const ROLE_LABEL = { admin:'관리자', inspector:'점검업체', viewer:'보기 전용' };
-const isAdmin = () => S.role === 'admin';
-const isStaff = () => S.role === 'admin' || S.role === 'inspector';
-/* 점검업체는 새로 쓰는 건만 입력할 수 있고, 이미 등록된 건은 읽기 전용입니다 */
-const canEdit = rec => isAdmin() || (S.role === 'inspector' && !rec?.id);
+const ROLE_LABEL = { admin:'관리자', fire:'소방파트', inspector:'점검업체', viewer:'보기 전용' };
+const isAdmin  = () => S.role === 'admin';
+const isFire   = () => S.role === 'fire';
+const isMgr    = () => S.role === 'admin' || S.role === 'fire';              /* 처리 관련 입력 · 기존 건 수정 */
+const isStaff  = () => S.role === 'admin' || S.role === 'inspector';         /* 점검표 업로드 */
+const isEditor = () => S.role === 'admin' || S.role === 'fire' || S.role === 'inspector';  /* 지적 추가 */
+/* 관리자 · 소방파트는 모든 건 수정, 점검업체는 새로 쓰는 건만 입력 (이미 등록된 건은 읽기 전용) */
+const canEdit = rec => isMgr() || (S.role === 'inspector' && !rec?.id);
+/* 구역(시트) 선택지 = 기본 목록 + 실제 점검표 시트명 */
+const zoneList = () => [...new Set([...OPT.zone, ...inHalf().map(r => r.sheet).filter(Boolean)])];
 
 function applyRole(){
   const b = document.body;
   b.classList.toggle('role-admin', isAdmin());
   b.classList.toggle('role-inspector', S.role === 'inspector');
-  $$('[data-need]').forEach(el => {
-    el.hidden = el.dataset.need === 'admin' ? !isAdmin() : !isStaff();
-  });
+  b.classList.toggle('role-fire', isFire());
+  const ok = { admin:isAdmin(), staff:isStaff(), mgr:isMgr(), edit:isEditor() };
+  $$('[data-need]').forEach(el => { el.hidden = !ok[el.dataset.need]; });
   const btn = $('#adminBtn');
-  btn.textContent = S.role === 'viewer' ? '관리자' : ROLE_LABEL[S.role] + ' 모드 해제';
+  btn.textContent = S.role === 'viewer' ? '권한 로그인' : ROLE_LABEL[S.role] + ' 모드 해제';
   btn.setAttribute('aria-pressed', S.role !== 'viewer');
   /* 권한이 낮아지면 보고 있던 탭에서 현황판으로 되돌립니다
      설정 탭은 관리자 전용 — 비밀번호·연결정보가 들어 있습니다 */
@@ -2152,7 +2350,7 @@ function applyRole(){
 }
 function setRole(role){
   S.role = role;
-  if (role !== 'admin'){
+  if (!isMgr()){
     S.filters.handler.clear(); S.delSel.clear();
     S.dFrom = S.dTo = ''; $('#dFrom').value = $('#dTo').value = '';
   }
@@ -2165,7 +2363,7 @@ function askPin(){
   const m = document.createElement('div');
   m.className = 'modal';
   m.innerHTML = `<h3>권한 확인</h3>
-    <p>비밀번호에 따라 <b>점검업체</b> 또는 <b>관리자</b> 모드로 들어갑니다.</p>
+    <p>비밀번호에 따라 <b>소방파트</b> · <b>점검업체</b> · <b>관리자</b> 모드로 들어갑니다.</p>
     <input type="password" id="pinIn" inputmode="numeric" autocomplete="off" placeholder="● ● ● ●">
     <div class="err" id="pinErr"></div>
     <div class="modal-row"><button class="btn" id="pinCancel">취소</button>
@@ -2176,6 +2374,7 @@ function askPin(){
   const go = async () => {
     const h = await sha(m.querySelector('#pinIn').value);
     const role = h === await pinHash('admin') ? 'admin'
+               : h === await pinHash('fire')  ? 'fire'
                : h === await pinHash('staff') ? 'inspector' : null;
     if (role){ close(); setRole(role); toast(ROLE_LABEL[role] + ' 모드입니다'); }
     else { m.querySelector('#pinErr').textContent = '비밀번호가 맞지 않습니다.'; m.querySelector('#pinIn').select(); }
@@ -2211,6 +2410,7 @@ function renderStats(){
   $('#oAct').textContent = new Set(Object.values(OPT.action).flat()).size + '종';
 }
 function afterLoad(){
+  buildTenants();
   S.rows.forEach(normalize);
   if (S.view === 'board') renderBoard();
   if (S.view === 'list'){ renderFilters(); renderList(); }
@@ -2251,6 +2451,48 @@ $('#delAll').onchange = e => {
   $$('.delChk').forEach(c => c.checked = e.target.checked);
   syncDelSel(rows);
 };
+/* 공간구분 · 입주사 일괄 지정 (관리자 · 소방파트) */
+$('#bulkBtn').onclick = () => {
+  if (!isMgr()) return toast('관리자 · 소방파트만 지정할 수 있습니다', true);
+  const pick = S.rows.filter(r => S.delSel.has(r.id));
+  if (!pick.length) return;
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<h3>공간구분 · 입주사 지정</h3>
+    <p>선택한 <b>${pick.length}건</b>에 같은 값을 넣습니다. 다른 입력값은 그대로 둡니다.</p>
+    <div class="fld"><label for="bkSpace">공간구분</label>
+      <select id="bkSpace"><option value="전용부">전용부 (입주사)</option><option value="공용부">공용부</option><option value="">미지정으로 되돌리기</option></select></div>
+    <div class="fld"><label for="bkTenant">입주사명</label>
+      <input type="text" id="bkTenant" list="l_bkTenant" autocomplete="off" placeholder="예: 플래그원"
+        style="font-family:inherit;letter-spacing:0;text-align:left;font-size:14px">
+      <datalist id="l_bkTenant">${S.tenants.map(v => `<option value="${esc(v)}">`).join('')}</datalist></div>
+    <div class="err" id="bkErr"></div>
+    <div class="modal-row"><button class="btn" id="bkCancel">취소</button>
+      <button class="btn primary" id="bkOk">${pick.length}건 지정</button></div>`;
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  document.body.append(sc, m);
+  const close = () => { m.remove(); sc.remove(); };
+  const sp = m.querySelector('#bkSpace'), tn = m.querySelector('#bkTenant');
+  /* 선택한 건이 모두 같은 입주사면 미리 채워 둡니다 */
+  const same = [...new Set(pick.map(r => r.tenant).filter(Boolean))];
+  if (same.length === 1) tn.value = same[0];
+  sp.onchange = () => { tn.disabled = sp.value !== '전용부'; if (tn.disabled) tn.value = ''; };
+  m.querySelector('#bkCancel').onclick = close; sc.onclick = close;
+  m.querySelector('#bkOk').onclick = async () => {
+    const space = sp.value, tenant = space === '전용부' ? tn.value.trim() : '';
+    if (space === '전용부' && !tenant){ m.querySelector('#bkErr').textContent = '전용부는 입주사명을 입력해 주세요.'; tn.focus(); return; }
+    m.querySelector('#bkOk').disabled = true;
+    const rs = pick.map(r => ({ ...r, space, tenant, spaceGuess:false, spaceOk:true }));
+    try {
+      await saveMany(rs);
+      close(); S.delSel.clear(); renderList();
+      toast(`${rs.length}건을 ${space ? (space === '전용부' ? tenant : '공용부') : '미지정'}(으)로 지정했습니다`);
+    } catch(err){
+      console.warn('bulk', err); m.querySelector('#bkOk').disabled = false;
+      m.querySelector('#bkErr').textContent = '저장하지 못했습니다. 연결 상태를 확인해 주세요.';
+    }
+  };
+  setTimeout(() => tn.focus(), 30);
+};
 $('#delSelBtn').onclick = async () => {
   if (!isAdmin()) return toast('삭제는 관리자만 가능합니다', true);
   const pick = S.rows.filter(r => S.delSel.has(r.id));
@@ -2288,8 +2530,8 @@ $('#tbody').onclick = e => {
   $$('#tbody tr').forEach(x => x.classList.remove('sel')); tr.classList.add('sel');
   const r = S.rows.find(x => x.id === tr.dataset.id); if (r) openDrawer(r);
 };
-$('#newBtn').onclick = () => isStaff() && openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
-  sheet:'', no:'', fac:'', detail:'', dong:'', floor:'', loc:'', problem:'', action:'', law:'',
+$('#newBtn').onclick = () => isEditor() && openDrawer({ half:S.half, date:new Date().toISOString().slice(0,10),
+  sheet:'', no:'', fac:'', detail:'', dong:'', space:'', tenant:'', floor:'', loc:'', problem:'', action:'', law:'',
   handler:'', status:'미조치', done:'', submit:false, note:'', photos:{} });
 $('#toUpload').onclick = () => setView('upload');
 /* 인쇄 전에 남은 썸네일까지 모두 채운 뒤 인쇄창을 엽니다
@@ -2368,14 +2610,21 @@ $('#cldCloud').onchange  = e => ls('wg_cld_cloud',  e.target.value.trim());
 $('#cldPreset').onchange = e => ls('wg_cld_preset', e.target.value.trim());
 $('#pinSave').onclick = async () => {
   if (!isAdmin()) return toast('관리자만 바꿀 수 있습니다', true);
-  const a = $('#pinNew').value.trim(), b = $('#pinStaff').value.trim();
-  if (!a && !b) return toast('바꿀 비밀번호를 입력해 주세요', true);
-  if ((a && a.length < 4) || (b && b.length < 4)) return toast('4자리 이상 입력해 주세요', true);
-  if (a && b && a === b) return toast('두 비밀번호를 다르게 정해 주세요', true);
+  const ins = [['admin','#pinNew','관리자'], ['fire','#pinFire','소방파트'], ['staff','#pinStaff','점검업체']]
+    .map(([k, id, lab]) => ({ k, id, lab, v: $(id).value.trim() }));
+  const chg = ins.filter(x => x.v);
+  if (!chg.length) return toast('바꿀 비밀번호를 입력해 주세요', true);
+  if (chg.some(x => x.v.length < 4)) return toast('4자리 이상 입력해 주세요', true);
+  /* 바꾼 뒤 세 비밀번호가 서로 같으면 낮은 권한으로 로그인할 수 없게 되므로 막습니다 */
+  const fin = {};
+  for (const x of ins) fin[x.k] = x.v ? await sha(x.v) : await pinHash(x.k);
+  if (new Set(Object.values(fin)).size < 3) return toast('관리자 · 소방파트 · 점검업체 비밀번호는 서로 달라야 합니다', true);
   const done = [];
   const upd = {};
-  if (a){ upd.adminHash = await sha(a); ls('wg_pin', upd.adminHash); $('#pinNew').value=''; done.push('관리자'); }
-  if (b){ upd.staffHash = await sha(b); ls('wg_pin_staff', upd.staffHash); $('#pinStaff').value=''; done.push('점검업체'); }
+  for (const x of chg){
+    const [field, key] = PIN_DEF[x.k];
+    upd[field] = fin[x.k]; ls(key, fin[x.k]); $(x.id).value = ''; done.push(x.lab);
+  }
   if (S.mode === 'cloud'){
     try {
       await S.db.collection('meta').doc('pins').set(upd, { merge:true });
@@ -2583,7 +2832,7 @@ async function boot(localOnly){
   if (sv) { try { $('#fbCfg').value = JSON.stringify(JSON.parse(sv), null, 2); } catch(e){} }
   try {
     const r = sessionStorage.getItem('wg_role');
-    if (r === 'admin' || r === 'inspector') S.role = r;
+    if (r === 'admin' || r === 'inspector' || r === 'fire') S.role = r;
   } catch(e){}
   applyRole();
   setMode(); setView('board'); boot();
