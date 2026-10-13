@@ -228,6 +228,10 @@ td.c-space{white-space:nowrap}
 .sp-g{display:block;font-size:10px;color:var(--faint);margin-top:2px}
 .bar-row[data-jk]{cursor:pointer}
 .bar-row[data-jk]:hover .nm{color:var(--ink);text-decoration:underline}
+.note-jump{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--undone-t);
+  text-decoration:underline;text-underline-offset:2px;font-weight:500}
+.note-jump:hover{color:var(--ink)}
+.note-jump:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 td.c-prob{max-width:300px;min-width:180px}
 td.c-prob b{font-weight:400;display:block;white-space:pre-line}
 td.c-prob i{font-style:normal;display:block;color:var(--faint);font-size:11.5px;margin-top:3px}
@@ -706,6 +710,7 @@ body.can-edit .ph .del{display:grid}
       <div class="filter-group"><span class="gl">공간</span><div class="chips" id="fSpace"></div></div>
       <div class="filter-group" id="fTenantG"><span class="gl">입주사</span><div class="chips" id="fTenant"></div></div>
       <div class="filter-group" data-need="mgr"><span class="gl">처리주체</span><div class="chips" id="fHandler"></div></div>
+      <div class="filter-group" id="fChkG"><span class="gl">확인 필요</span><div class="chips" id="fChk"></div></div>
     </div>
 
     <!-- 인쇄할 때만 나오는 제목줄 (화면 상단바가 인쇄에서 숨겨지므로 대체) -->
@@ -1176,7 +1181,7 @@ const S = {
   rows: [], half: '2026H2', view: 'board', role: 'viewer',
   mode: 'local', fb: null, db: null, unsub: null,
   pinsCloud: null, unsubPins: null,
-  filters: { status:new Set(), fac:new Set(), dong:new Set(), space:new Set(), tenant:new Set(), handler:new Set() },
+  filters: { status:new Set(), fac:new Set(), dong:new Set(), space:new Set(), tenant:new Set(), handler:new Set(), chk:new Set() },
   tenants: [],
   q: '', sort: 'def', cur: null, dirtyPhotos: null,
   dFrom: '', dTo: '', delSel: new Set()
@@ -1828,6 +1833,8 @@ function current(){
     if (f.space.size && !f.space.has(spaceKey(r))) return false;
     if (f.tenant.size && !f.tenant.has(r.tenant || '')) return false;
     if (f.handler.size && !f.handler.has(r.handler)) return false;
+    /* 확인 필요 : 자동추정(공간·입주사를 「층및 구역」 문구로 추정한 건) */
+    if (f.chk.size && !(f.chk.has('자동추정') && r.spaceGuess)) return false;
     /* 기간 검색 (관리자·소방파트) — 점검일자 기준, 시작·끝 날짜 포함 */
     if (isMgr() && (S.dFrom || S.dTo)){
       const d = String(r.date || '').slice(0, 10);
@@ -1927,8 +1934,12 @@ function renderBoard(){
   const gs = ['전용부','공용부','미지정'].map(k => ({ name:k, jv:k, rows: rows.filter(r => spaceKey(r) === k) })).filter(g => g.rows.length);
   $('#barSpace').innerHTML = barBlock(gs, max(gs), 'space');
   const nGuess = rows.filter(r => r.spaceGuess).length, nNone = rows.filter(r => !r.space).length;
-  $('#spaceNote').textContent = (nNone || nGuess)
-    ? `미지정 ${nNone}건 · 자동추정 ${nGuess}건 — 지적내역에서 체크 후 「공간·입주사 지정」으로 확정하세요.` : '';
+  /* 건수를 누르면 그 건만 걸러진 지적내역으로 이동합니다 (0건은 누를 수 없음) */
+  const jl = (n, k, v, lab) => n
+    ? `<button type="button" class="note-jump" data-jk="${k}" data-jv="${v}" title="${lab} ${n}건만 보기">${lab} ${n}건</button>`
+    : `${lab} 0건`;
+  $('#spaceNote').innerHTML = (nNone || nGuess)
+    ? `${jl(nNone,'space','미지정','미지정')} · ${jl(nGuess,'chk','자동추정','자동추정')} — 누르면 해당 건만 보입니다. 체크 후 「공간·입주사 지정」으로 확정하세요.` : '';
 
   /* 입주사별 (전용부) */
   const pr = rows.filter(r => r.space === '전용부');
@@ -1961,7 +1972,7 @@ document.addEventListener('mouseover', e => {
 document.addEventListener('mouseout', e => { if (e.target.closest?.('[data-tip]')) tipEl?.remove(); });
 /* 현황판 막대를 누르면 그 조건으로 지적내역 열기 */
 $('#view-board').addEventListener('click', e => {
-  const row = e.target.closest('.bar-row[data-jk]'); if (!row) return;
+  const row = e.target.closest('.bar-row[data-jk], .note-jump[data-jk]'); if (!row) return;
   const k = row.dataset.jk; if (!S.filters[k]) return;
   Object.values(S.filters).forEach(s => s.clear());
   S.filters[k].add(row.dataset.jv);
@@ -1972,7 +1983,8 @@ $('#view-board').addEventListener('click', e => {
 /* ═══ 필터 칩 ══════════════════════════════════════════════════ */
 function renderFilters(){
   const rows = inHalf();
-  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : k === 'space' ? spaceKey(r) : (r[k] ?? '');
+  const val = (r, k) => k === 'status' ? deriveStatus(r) : k === 'dong' ? dongOf(r) : k === 'space' ? spaceKey(r)
+                     : k === 'chk' ? (r.spaceGuess ? '자동추정' : '') : (r[k] ?? '');
   const cnt = (k, v) => rows.filter(r => val(r, k) === v).length;
   const build = (box, key, vals, lab) => $(box).innerHTML = vals.map(v => {
     const c = cnt(key, v); if (!c && !S.filters[key].has(v)) return '';
@@ -1989,6 +2001,9 @@ function renderFilters(){
   build('#fTenant','tenant', tv);
   $('#fTenantG').hidden = !tv.length;
   build('#fHandler','handler', OPT.handler);
+  /* 확인 필요 — 해당 건이 있거나 선택 중일 때만 보입니다 */
+  build('#fChk','chk', ['자동추정'], v => v + ' · 공간·입주사 확인');
+  $('#fChkG').hidden = !cnt('chk','자동추정') && !S.filters.chk.size;
 }
 
 /* ═══ 목록 ═════════════════════════════════════════════════════ */
