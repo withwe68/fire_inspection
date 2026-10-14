@@ -578,6 +578,113 @@ body.can-edit .ph .del{display:grid}
   .sp-common{border-style:dotted}
   .thumbs img{width:26px;height:20px}
 }
+
+/* ═══ 입주사 안내문 (A4 가로 · 인쇄 / PDF 저장) ══════════════════════
+   화면에서는 용지 모양 그대로 미리 보고, 인쇄할 때는 이 부분만 출력합니다. */
+#rpt{position:fixed;inset:0;z-index:90;background:#2b2f36;display:flex;flex-direction:column}
+#rpt[hidden]{display:none}
+.rpt-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 16px;background:var(--panel);
+  border-bottom:1px solid var(--line);font-size:12.5px}
+.rpt-bar h2{font-size:14px;margin:0 6px 0 0}
+.rpt-bar label{display:flex;align-items:center;gap:6px;color:var(--dim);white-space:nowrap}
+.rpt-bar select,.rpt-bar input[type=date]{background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+  padding:4px 8px;color:var(--ink);font-size:12.5px}
+.rpt-bar #rptTo{max-width:260px}
+.rpt-bar .spacer{flex:1}
+.rpt-info{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.rpt-warn{margin:0;padding:8px 16px;background:#3a2c14;color:#f3c77b;font-size:12.5px;line-height:1.6;border-bottom:1px solid #5a4420}
+.rpt-warn[hidden]{display:none}
+.rpt-scroll{flex:1;overflow:auto;padding:18px 0 40px}
+.rpt-pages{--z:1;zoom:var(--z);display:flex;flex-direction:column;align-items:center;gap:16px}
+.rpt-empty{color:#c9d1db;font-size:14px;text-align:center;padding:60px 20px;zoom:1}
+
+.sheet{position:relative;width:297mm;height:209.6mm;box-sizing:border-box;padding:9mm 12mm 7mm;background:#fff;color:#14171c;
+  overflow:hidden;display:flex;flex-direction:column;flex:none;box-shadow:0 2px 14px rgba(0,0,0,.45);
+  font-family:var(--sans);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sh-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10mm;
+  border-bottom:.7mm solid #1d3557;padding-bottom:2.6mm;margin-bottom:3mm}
+.sh-org{font-size:8.5pt;letter-spacing:.04em;color:#4a5566;font-weight:500}
+.sh-title{font-size:17pt;font-weight:700;color:#1d3557;margin:0 0 1.8mm;letter-spacing:-.01em;line-height:1.25}
+.sh-to{font-size:11pt;font-weight:600}
+.sh-to b{font-size:13pt;font-weight:700}
+.sh-meta{display:grid;grid-template-columns:auto auto;gap:.9mm 3.2mm;font-size:8.8pt;align-items:baseline;flex:none}
+.sh-meta dt{color:#5b6676;text-align:right}
+.sh-meta dd{margin:0;font-weight:500}
+.sh-meta .due{font-size:11pt;font-weight:700;color:#b8460b}
+.sh-meta .due-box{grid-column:1/3;margin-top:.8mm;background:#fff1e6;border:.35mm solid #e07b39;border-radius:1mm;
+  padding:1.2mm 3mm;text-align:center;color:#b8460b;font-weight:700;font-size:10.5pt}
+.sh-intro{font-size:9.2pt;line-height:1.55;color:#2a313c;margin:0 0 2.6mm}
+.sh-body{flex:1;min-height:0;display:block}
+.sh-foot{display:flex;justify-content:space-between;align-items:center;border-top:.25mm solid #b9c1cc;padding-top:1.6mm;
+  margin-top:2mm;font-size:8pt;color:#5b6676;flex:none}
+.sh-foot .pg{font-weight:600;color:#14171c}
+
+table.rt{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.8pt;line-height:1.42}
+table.rt thead th{background:#1d3557;color:#fff;font-weight:600;font-size:8.6pt;padding:1.7mm 2mm;text-align:left;
+  border:.25mm solid #1d3557;height:7mm;box-sizing:border-box}
+table.rt thead th.c{text-align:center}
+table.rt td{border:.25mm solid #b9c1cc;padding:1.3mm 2mm;vertical-align:middle;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
+table.rt tbody tr:nth-child(even) td{background:#f5f7fa}
+table.rt tbody tr{break-inside:avoid}
+td.t-no{text-align:center;font-weight:700;color:#1d3557}
+td.t-loc .fl{font-weight:700}
+td.t-loc .lc{color:#2a313c}
+td.t-loc .dg{display:inline-block;font-size:7.4pt;font-weight:700;color:#1d3557;border:.25mm solid #1d3557;border-radius:.8mm;padding:0 1mm;margin-right:1mm}
+td.t-prob .ft{display:block;font-size:7.4pt;color:#5b6676;margin-bottom:.5mm}
+td.t-prob .pt{font-weight:600}
+td.t-law{font-size:8pt;color:#2a313c}
+td.t-ph{padding:1.2mm 1.5mm}
+.ph-row{display:flex;gap:1.5mm;align-items:center;justify-content:flex-start}
+.ph-s{position:relative;flex:none;height:var(--ph);background:#eef1f5;border:.2mm solid #c7ced8;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ph-s.ph-none{background:none;border-color:transparent}
+.ph-s img{width:100%;height:100%;object-fit:contain;display:block}
+.ph-s .more{position:absolute;right:0;top:0;background:rgba(20,23,28,.78);color:#fff;font-size:6.5pt;padding:0 1.2mm;border-bottom-left-radius:.8mm}
+.ph-s .lbl{position:absolute;left:0;bottom:0;background:rgba(29,53,87,.88);color:#fff;font-size:6.2pt;padding:0 1.2mm;border-top-right-radius:.8mm}
+.sheet.d8 table.rt{font-size:8pt}.sheet.d10 table.rt{font-size:7.4pt;line-height:1.3}
+.sheet.d8 td.t-law,.sheet.d10 td.t-law{font-size:7.2pt}
+.sheet.d10 td{padding:.7mm 1.6mm}
+
+@media print{
+  body.printing-report{background:#fff!important;overflow:visible!important}
+  body.printing-report > *:not(#rpt){display:none!important}
+  body.printing-report #rpt{position:static;inset:auto;display:block!important;background:#fff;overflow:visible}
+  body.printing-report .rpt-bar,body.printing-report .rpt-warn{display:none!important}
+  body.printing-report .rpt-scroll{overflow:visible;padding:0}
+  body.printing-report .rpt-pages{zoom:1!important;display:block;gap:0}
+  body.printing-report .sheet{margin:0;box-shadow:none;break-after:page;page-break-after:always}
+  body.printing-report .sheet:last-child{break-after:auto;page-break-after:auto}
+}
+#rptMeasure{position:absolute;left:-12000px;top:0;visibility:hidden;pointer-events:none}
+
+/* ── 중복 정리 (관리자) ─────────────────────────────────────────── */
+#dupBtn.has{border-color:#8a6a2a;color:var(--undone-t);background:#2e2616}
+.modal.dup-modal{width:min(1080px,calc(100% - 24px));max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:18px 18px 14px}
+.dup-modal h3 small{font-weight:400;color:var(--faint);font-size:12px;margin-left:6px}
+.dup-modal > p{margin:0 0 10px}
+.dup-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px;color:var(--dim)}
+.dup-list{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+.dup-g{border:1px solid var(--line);border-radius:var(--r);background:var(--panel2);padding:10px 12px}
+.dup-g.off{opacity:.5}
+.dup-g header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
+.dup-g header label{display:flex;gap:7px;align-items:center;cursor:pointer}
+.dup-why{font-size:11.5px;padding:2px 8px;border-radius:99px;background:#22344a;color:var(--doing-t);border:1px solid #2f4d6b}
+.dup-tw{overflow-x:auto}
+.dup-t{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+.dup-t th{font-weight:500;color:var(--faint);text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dup-t td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+.dup-t tr:last-child td{border-bottom:0}
+.dup-t td.c-k{width:62px;white-space:nowrap}
+.dup-t td.c-k label{display:flex;gap:5px;align-items:center;cursor:pointer}
+.dup-t tr.dk-keep td.c-k b{color:var(--done-t)}
+.dup-t tr.dk-drop td{color:var(--faint)}
+.dup-t tr.dk-drop td.c-k b{color:var(--crit-t)}
+.dup-t td.c-m{font-family:var(--mono);white-space:nowrap}
+.dup-t .emp{color:var(--crit-t);font-size:11.5px}
+.dup-plan{margin:8px 0 0;font-size:12px;color:var(--dim);line-height:1.6}
+.dup-plan b{color:var(--done-t);font-weight:500}
+.dup-foot{display:flex;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.dup-foot .sum{flex:1;font-size:12.5px;color:var(--dim);min-width:200px}
+.dup-empty{padding:30px 10px;text-align:center;color:var(--dim);font-size:13.5px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -698,7 +805,9 @@ body.can-edit .ph .del{display:grid}
       <div class="spacer"></div>
       <button class="btn sm no-print" id="bulkBtn" data-need="mgr" disabled title="체크한 항목의 공용부/전용부·입주사명을 한 번에 지정">공간·입주사 지정</button>
       <button class="btn sm danger no-print" id="delSelBtn" data-need="admin" disabled>선택 삭제</button>
+      <button class="btn sm no-print" id="dupBtn" data-need="admin" title="같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다">중복 정리</button>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
+      <button class="btn sm no-print" id="rptBtn" data-need="mgr" title="입주사별 지적사항 개선 안내문 (A4 가로) 만들기">입주사 안내문</button>
       <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
       <button class="btn sm primary edit-only" id="newBtn">＋ 지적 추가</button>
     </div>
@@ -980,6 +1089,27 @@ body.can-edit .ph .del{display:grid}
 </aside>
 
 <div class="lightbox" id="lightbox" hidden><img id="lbImg" alt="지적사항 사진 확대"><div class="cap" id="lbCap"></div></div>
+
+<!-- ══ 입주사 안내문 (A4 가로) ═══════════════════════════════════ -->
+<div id="rpt" hidden role="dialog" aria-modal="true" aria-label="입주사 안내문 미리보기">
+  <div class="rpt-bar no-print">
+    <h2>입주사 안내문</h2>
+    <label>수신 <select id="rptTo"></select></label>
+    <label>페이지당 <select id="rptPer">
+      <option value="4">4건</option><option value="5">5건</option><option value="6">6건</option>
+      <option value="8">8건</option><option value="10">10건</option></select></label>
+    <label>개선기한 <input type="date" id="rptDue"></label>
+    <label>발송일 <input type="date" id="rptDate"></label>
+    <label title="조치가 끝난 건도 안내문에 넣습니다"><input type="checkbox" id="rptDone"> 조치완료 건 포함</label>
+    <span class="rpt-info" id="rptInfo"></span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="rptPrint">인쇄 / PDF 저장</button>
+    <button class="btn" id="rptClose">닫기</button>
+  </div>
+  <p class="rpt-warn no-print" id="rptWarn" hidden></p>
+  <div class="rpt-scroll"><div class="rpt-pages" id="rptPages"></div></div>
+</div>
+<div id="rptMeasure" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
@@ -1777,6 +1907,8 @@ function normalize(r){
   r.date = normDate(r.date, 2026);
   r.done = normDate(r.done, 2026);
   if (!r.floor && r.loc){ const s = splitFloor(r.loc); if (s.floor){ r.floor = s.floor; r.loc = s.rest; } }
+  /* 예전 업로드에서 남은 '층 매장부분' → '매장부분' (층 칸이 B2 일 때) */
+  if (/^B\d+$/.test(r.floor || '') && /^층(\s|$)/.test(r.loc || '')) r.loc = r.loc.replace(/^층\s*/, '');
   /* 공간구분 · 입주사 */
   r.space = normSpace(r.space);
   r.tenant = String(r.tenant||'').trim();
@@ -1797,10 +1929,13 @@ function deriveStatus(r){
   return '미조치';
 }
 function splitFloor(loc){
-  const m = String(loc||'').match(/^\s*(옥상|지하\s*\d+층|B\s*\d+|\d+\s*층)\s*(.*)$/s);
+  /* 'B2층 매장' 처럼 B 뒤에 '층'이 붙은 표기도 한 덩어리로 떼어 냅니다
+     (예전에는 층=B2, 구역='층 매장' 으로 나뉘었습니다) */
+  const m = String(loc||'').match(/^\s*(옥상|지하\s*\d+\s*층|B\s*\d+\s*층?|\d+\s*층)\s*(.*)$/s);
   if (!m) return { floor:'', rest: loc||'' };
   let f = m[1].replace(/\s/g,'');
   const d = f.match(/^지하(\d+)층$/); if (d) f = 'B' + d[1];
+  f = f.replace(/^(B\d+)층$/, '$1');
   return { floor:f, rest:(m[2]||'').trim() };
 }
 const fullLoc = r => [r.floor, r.loc].filter(Boolean).join(' ');
@@ -2260,10 +2395,19 @@ async function handleFile(file){
     for (const r of inHalf()){ if (normMark(r.mark)) index(r); else legacy.push(r); }
     const claimed = new Set();
     const findLegacy = nr => {
-      const L = cmp(nr.loc), P = cmp(nr.problem);
-      const c = legacy.filter(r => !claimed.has(r.id) && r.sheet === nr.sheet && L && cmp(fullLoc(r)) === L
-                                 && (cmp(r.problem) === P || String(r.no) === String(nr.no)));
-      return c.find(r => String(r.no) === String(nr.no)) || c[0];
+      const sp = splitFloor(nr.loc), F = cmp(sp.floor);
+      const Ls = new Set([cmp(nr.loc), cmp([sp.floor, sp.rest].filter(Boolean).join(' '))].filter(Boolean));
+      const P = cmp(nr.problem);
+      const free = legacy.filter(r => !claimed.has(r.id) && r.sheet === nr.sheet);
+      const c = free.filter(r => Ls.has(cmp(fullLoc(r))) && (cmp(r.problem) === P || String(r.no) === String(nr.no)));
+      if (c.length) return c.find(r => String(r.no) === String(nr.no)) || c[0];
+      /* ④ 같은 일보의 같은 행 — 시트·점검일자·No.·층이 같고 시설구분(또는 문제점)이 같은 예전 건.
+         점검업체가 수정본에서 구역 문구만 고쳐 다시 보낸 경우(예: '폰부스1번, 2번, 3번' → '폰부스 3개소')
+         예전에는 새 건으로 들어가 중복이 됐습니다. 점검일자가 들어가므로 일보마다 No.가 1부터
+         다시 시작해도 다른 날 건과는 겹치지 않습니다. */
+      if (nr.no === '' || !nr.date) return undefined;
+      return free.find(r => String(r.no) === String(nr.no) && r.date === nr.date && cmp(r.floor) === F
+                           && (normFac(r.fac) === normFac(nr.fac) || cmp(r.problem) === P));
     };
     const tag = nr => `${nr.sheet} No.${nr.no || '?'}${nr.mark ? ` (${nr.mark})` : ''} · ${nr._row}행`;
 
@@ -2338,7 +2482,7 @@ async function handleFile(file){
         }
       }
       if (!isNew){
-        const how = viaLegacy ? '층및구역·문제점 일치' : '동별+위치표기 일치';
+        const how = viaLegacy ? '위치표기 없던 예전 건과 일치' : '동별+위치표기 일치';
         if (touched) upd++;
         else same.push(`${tag(nr)} — 이미 등록된 건(${how})${markFilled ? ', 위치표기 저장' : ''}, 바뀐 내용 없음`);
       }
@@ -2514,6 +2658,7 @@ function afterLoad(){
   if (S.view === 'list'){ renderFilters(); renderList(); }
   if (S.view === 'settings') renderStats();
   $('#tabCnt').textContent = inHalf().length;
+  updDupBtn();
 }
 
 /* ═══ 이벤트 ═══════════════════════════════════════════════════ */
@@ -2608,6 +2753,211 @@ $('#delSelBtn').onclick = async () => {
   renderList();
   toast(n === pick.length ? `${n}건 삭제했습니다` : `${n}/${pick.length}건만 삭제됐습니다`, n !== pick.length);
 };
+
+/* ═══ 중복 정리 (관리자) ═══════════════════════════════════════════
+   같은 지적사항이 두 번 등록된 묶음을 찾아, 남길 건 하나에 빈 칸(위치표기·처리주체·사진 등)을
+   채운 뒤 나머지를 지웁니다. 아래 중 하나라도 맞으면 같은 건으로 봅니다.
+     ① 동별 + 위치표기가 같음
+     ② 같은 시트·점검일자·No.·층이고 시설구분(또는 문제점)이 같음
+        (수정본 일보를 다시 올려 위치표기 있는 건이 하나 더 생긴 경우)
+     ③ 같은 동·층·구역상세·문제점 문구 (띄어쓰기·기호 차이는 무시)
+   위치표기가 둘 다 있고 서로 다르면 번호만 겹친 별개 지적이므로 묶지 않습니다.
+   기본으로 남기는 건 : 처리주체·완료일·비고 등 입력해 둔 내용이 많은 건 → 같으면 먼저 등록된 건 */
+const dcmp = s => String(s ?? '').replace(/[\s.,·()\[\]\-_/~]/g,'').toLowerCase();
+const dupDk = r => String(normDong(r.dong) || dongOf(r) || r.sheet || '').toUpperCase();
+const createdAt = r => { const t = parseInt(String(r.id || '').slice(1, -6), 36); return (t > 1.4e12 && t < 4e12) ? t : (r.updatedAt || 0); };
+const workScore = r => (r.handler ? 2 : 0) + (r.done ? 2 : 0) + (r.status && r.status !== '미조치' ? 1 : 0)
+  + (r.note ? 1 : 0) + (r.submit ? 1 : 0) + (r.spaceOk ? 1 : 0) + ((r.photos?.after || []).length ? 1 : 0);
+const phN = (r, k) => (r.photos?.[k] || []).length;
+
+function dupWhy(a, b){
+  const ma = normMark(a.mark), mb = normMark(b.mark);
+  if (ma && mb) return (ma === mb && dupDk(a) === dupDk(b)) ? '위치표기 같음' : '';
+  const fl = dcmp(a.floor) === dcmp(b.floor);
+  if (a.sheet === b.sheet && a.date && a.date === b.date && String(a.no ?? '') !== '' && String(a.no) === String(b.no) && fl
+      && (normFac(a.fac) === normFac(b.fac) || dcmp(a.problem) === dcmp(b.problem)))
+    return (ma || mb) ? '같은 일보·같은 No. (한쪽만 위치표기)' : '같은 일보·같은 No.';
+  if (dupDk(a) === dupDk(b) && fl && dcmp(a.loc) && dcmp(a.loc) === dcmp(b.loc)
+      && dcmp(a.problem) && dcmp(a.problem) === dcmp(b.problem))
+    return '층·구역·문제점 같음';
+  return '';
+}
+function dupGroups(){
+  const rows = inHalf(), n = rows.length, par = rows.map((_, i) => i), pairs = [];
+  const find = i => par[i] === i ? i : (par[i] = find(par[i]));
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++){
+    const w = dupWhy(rows[i], rows[j]); if (!w) continue;
+    pairs.push([i, j, w]);
+    const a = find(i), b = find(j); if (a !== b) par[b] = a;
+  }
+  const g = new Map();
+  for (const [i, j, w] of pairs){
+    const k = find(i), o = g.get(k) || { idx:new Set(), why:new Set() };
+    o.idx.add(i); o.idx.add(j); o.why.add(w); g.set(k, o);
+  }
+  return [...g.values()].map(o => {
+    const rs = [...o.idx].map(i => rows[i]).sort((a, b) => createdAt(a) - createdAt(b));
+    const keep = rs.reduce((k, r) => workScore(r) > workScore(k) ? r : k, rs[0]);
+    const marks = new Set(rs.map(r => normMark(r.mark)).filter(Boolean));
+    /* 위치표기가 서로 다른 건이 한 묶음에 섞이면 사람이 직접 판단하도록 기본 해제 */
+    return { rows:rs, why:[...o.why], keepId:keep.id, mixed:marks.size > 1, on:marks.size <= 1 };
+  }).sort((a, b) => zc(a.rows[0], b.rows[0]) || String(b.rows[0].date || '').localeCompare(String(a.rows[0].date || ''))
+                  || (+a.rows[0].no || 0) - (+b.rows[0].no || 0));
+}
+function dupMerge(g, keepId){
+  const src = g.rows.find(r => r.id === keepId) || g.rows[0];
+  const k = JSON.parse(JSON.stringify(src)); k.photos ||= {};
+  const drop = g.rows.filter(r => r.id !== src.id), notes = [];
+  const FL = [['mark','위치표기'],['handler','처리주체'],['detail','상세구분'],['problem','문제점'],
+              ['action','개선대책'],['law','관련법규'],['note','비고']];
+  for (const o of drop){
+    for (const [f, lab] of FL){
+      const v = f === 'mark' ? normMark(o.mark) : o[f];
+      if (!k[f] && v){ k[f] = v; notes.push(`${lab} ${String(v).length > 16 ? String(v).slice(0, 16) + '…' : v}`); }
+    }
+    if ((!k.space || k.spaceGuess) && o.space && !o.spaceGuess){
+      k.space = o.space; k.tenant = o.tenant || ''; k.spaceGuess = false; notes.push(`공간 ${o.tenant || o.space}`);
+    }
+    if (!k.done && o.done){ k.done = o.done; k.status = '조치완료'; notes.push(`완료일 ${o.done}`); }
+    if (!k.submit && o.submit){ k.submit = true; notes.push('소방서 제출'); }
+    for (const [p, lab] of [['before','문제점 사진'],['map','위치표기 사진'],['after','조치후 사진']])
+      if (!phN(k, p) && phN(o, p)){ k.photos[p] = o.photos[p].slice(); notes.push(`${lab} ${phN(o, p)}장`); }
+  }
+  k.updatedAt = Date.now();
+  return { keep:k, drop, notes };
+}
+function updDupBtn(){
+  const b = $('#dupBtn'); if (!b) return;
+  const n = dupGroups().length;
+  b.textContent = n ? `중복 정리 ${n}` : '중복 정리';
+  b.classList.toggle('has', n > 0);
+  b.title = n ? `중복으로 보이는 묶음 ${n}개 — 눌러서 확인 후 정리` : '같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다';
+}
+const fmtTs = t => {
+  if (!t) return '—';
+  const d = new Date(t), p = n => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+function openDup(){
+  if (!isAdmin()) return toast('중복 정리는 관리자만 할 수 있습니다', true);
+  const G = dupGroups();
+  const m = document.createElement('div'); m.className = 'modal dup-modal';
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', '중복 정리');
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  let busy = false;
+  const onKey = e => { if (e.key === 'Escape' && !busy) close(); };
+  const close = () => { m.remove(); sc.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  const head = `<h3>중복 정리 <small>${esc(HALF_LABEL[S.half])} · 전체 ${inHalf().length}건</small></h3>`;
+  if (!G.length){
+    m.innerHTML = `${head}<div class="dup-empty">중복으로 보이는 건이 없습니다.<br>
+      <small>판정 기준 : 동별+위치표기 · 같은 일보의 같은 No. · 층·구역·문제점 문구</small></div>
+      <div class="modal-row"><button class="btn" id="dupX">닫기</button></div>`;
+    document.body.append(sc, m);
+    m.querySelector('#dupX').onclick = close; sc.onclick = close;
+    return;
+  }
+  const rowHtml = (g, gi, r) => {
+    const mk = normMark(r.mark);
+    return `<tr data-id="${esc(r.id)}">
+      <td class="c-k"><label><input type="radio" name="dupK${gi}" value="${esc(r.id)}"${r.id === g.keepId ? ' checked' : ''}><b></b></label></td>
+      <td class="c-m">${fmtTs(createdAt(r))}</td>
+      <td class="c-m">${mk ? esc(mk) : '<span class="emp">없음</span>'}</td>
+      <td>${esc(fullLoc(r))}</td>
+      <td>${esc(r.problem || '')}</td>
+      <td>${r.handler ? esc(r.handler) : '<span class="emp">없음</span>'}</td>
+      <td>${esc(deriveStatus(r))}${r.done ? ' ' + esc(String(r.done).slice(5)) : ''}</td>
+      <td class="c-m">${phN(r, 'before')} · ${phN(r, 'map')} · ${phN(r, 'after')}</td></tr>`;
+  };
+  const gHtml = (g, gi) => { const r0 = g.rows[0]; return `<section class="dup-g" data-gi="${gi}">
+    <header><label><input type="checkbox" class="dupOn"${g.on ? ' checked' : ''}>
+      <b>${esc(zoneLabel(r0))} · ${esc(r0.date || '날짜 없음')} · No.${esc(r0.no || '?')}</b></label>
+      <span style="color:var(--faint)">${g.rows.length}건</span>
+      ${g.why.map(w => `<span class="dup-why">${esc(w)}</span>`).join('')}
+      ${g.mixed ? '<span class="dup-why" style="background:#3a2c14;color:#f3c77b;border-color:#5a4420">위치표기가 다른 건이 섞여 있어 기본 해제</span>' : ''}</header>
+    <div class="dup-tw"><table class="dup-t"><thead><tr><th>남김</th><th>등록</th><th>위치표기</th><th>층·구역</th>
+      <th>문제점</th><th>처리주체</th><th>상태</th><th title="문제점 · 위치표기 · 조치후">사진</th></tr></thead>
+      <tbody>${g.rows.map(r => rowHtml(g, gi, r)).join('')}</tbody></table></div>
+    <p class="dup-plan"></p></section>`; };
+  m.innerHTML = `${head}
+    <p>같은 지적사항이 두 번 이상 등록된 것으로 보이는 묶음 <b>${G.length}개</b>입니다.
+       묶음마다 <b>남길 건</b>을 고르면, 남는 건의 빈 칸(위치표기·처리주체·사진 등)을 다른 건에서 채운 뒤 나머지를 삭제합니다.
+       남는 건에 이미 들어 있는 값은 바꾸지 않습니다.</p>
+    <div class="dup-tools"><button class="btn sm ghost" id="dupAll">모두 선택</button>
+      <button class="btn sm ghost" id="dupNone">모두 해제</button>
+      <span>사진 칸 = 문제점 · 위치표기 · 조치후 장수 / 등록 = 처음 등록된 시각</span></div>
+    <div class="dup-list">${G.map(gHtml).join('')}</div>
+    <div class="dup-foot"><span class="sum" id="dupSum"></span>
+      <button class="btn" id="dupX">닫기</button>
+      <button class="btn danger" id="dupOk"></button></div>`;
+  document.body.append(sc, m);
+
+  const paint = gi => {
+    const g = G[gi], sec = m.querySelector(`.dup-g[data-gi="${gi}"]`);
+    const { notes, drop } = dupMerge(g, g.keepId);
+    sec.classList.toggle('off', !g.on);
+    sec.querySelector('.dupOn').checked = g.on;
+    sec.querySelectorAll('tbody tr').forEach(tr => {
+      const k = tr.dataset.id === g.keepId;
+      tr.className = k ? 'dk-keep' : 'dk-drop'; tr.querySelector('.c-k b').textContent = k ? '남김' : '삭제';
+    });
+    sec.querySelector('.dup-plan').innerHTML = g.on
+      ? `정리하면 → 남는 건에 ${notes.length ? '<b>' + notes.map(esc).join(' · ') + '</b> 채움' : '채울 빈 칸 없음'}, 나머지 ${drop.length}건 삭제`
+      : '이 묶음은 정리하지 않습니다.';
+  };
+  const sum = () => {
+    const on = G.filter(g => g.on), d = on.reduce((s, g) => s + g.rows.length - 1, 0), ok = m.querySelector('#dupOk');
+    m.querySelector('#dupSum').textContent = `선택 ${on.length}/${G.length}묶음 · 삭제 ${d}건 → 정리 후 ${inHalf().length - d}건`;
+    ok.disabled = !on.length || busy;
+    if (!busy) ok.textContent = `${on.length}묶음 정리 (${d}건 삭제)`;
+  };
+  G.forEach((_, i) => paint(i)); sum();
+
+  m.addEventListener('change', e => {
+    const sec = e.target.closest('.dup-g'); if (!sec || busy) return;
+    const gi = +sec.dataset.gi;
+    if (e.target.type === 'radio') G[gi].keepId = e.target.value;
+    if (e.target.classList.contains('dupOn')) G[gi].on = e.target.checked;
+    paint(gi); sum();
+  });
+  m.querySelector('#dupAll').onclick  = () => { G.forEach((g, i) => { g.on = true;  paint(i); }); sum(); };
+  m.querySelector('#dupNone').onclick = () => { G.forEach((g, i) => { g.on = false; paint(i); }); sum(); };
+  m.querySelector('#dupX').onclick = () => { if (!busy) close(); };
+  sc.onclick = () => { if (!busy) close(); };
+
+  m.querySelector('#dupOk').onclick = async () => {
+    const on = G.filter(g => g.on); if (!on.length || busy) return;
+    const d = on.reduce((s, g) => s + g.rows.length - 1, 0);
+    if (!confirm(`${on.length}묶음을 정리합니다.\n남길 건의 빈 칸을 채운 뒤 ${d}건을 삭제합니다. 되돌릴 수 없습니다.\n\n정리 전에 「CSV 내보내기」로 백업해 두면 안전합니다.`)) return;
+    busy = true; sum();
+    const ok = m.querySelector('#dupOk'), plans = on.map(g => dupMerge(g, g.keepId));
+    ok.textContent = '저장 중…';
+    try { await saveMany(plans.map(p => p.keep)); }
+    catch(err){
+      console.warn('dup save', err); busy = false; sum();
+      return toast('저장하지 못했습니다. 연결 상태를 확인해 주세요 (아무것도 지우지 않았습니다)', true);
+    }
+    let del = 0, fail = 0;
+    for (const p of plans){
+      const keepRefs = new Set(Object.values(p.keep.photos || {}).flat());
+      for (const o of p.drop){
+        /* 남는 건으로 옮긴 사진은 함께 지워지지 않도록 삭제 대상 목록에서 뺍니다 */
+        const live = S.rows.find(x => x.id === o.id);
+        if (live?.photos) live.photos = Object.fromEntries(Object.entries(live.photos)
+          .map(([k, a]) => [k, (a || []).filter(x => !keepRefs.has(x))]));
+        try { await delRow(o.id); del++; ok.textContent = `삭제 중… ${del}/${d}`; }
+        catch(err){ console.warn('dup del', err); fail++; }
+      }
+    }
+    close();
+    if (S.cur && plans.some(p => p.drop.some(o => o.id === S.cur.id))) closeDrawer();
+    S.delSel.clear(); afterLoad();
+    toast(fail ? `${plans.length}묶음 정리 · ${del}건 삭제 · ${fail}건 실패 — 다시 눌러 남은 건을 확인하세요`
+               : `${plans.length}묶음 정리 · ${del}건 삭제했습니다`, !!fail);
+  };
+}
+$('#dupBtn').onclick = openDup;
+
 $('#filterBox').onclick = e => {
   const c = e.target.closest('.chip'); if (!c) return;
   const set = S.filters[c.dataset.k];
@@ -2643,6 +2993,190 @@ $('#printBtn').onclick = async () => {
   window.print();
 };
 $('#csvBtn').onclick = toCSV;
+
+/* ═══ 입주사 안내문 (A4 가로) ═══════════════════════════════════
+   · 수신처별로 지적사항을 모아 A4 가로 용지 한 장씩 나눕니다.
+   · 한 장에 들어가는 건수 = 선택한 건수 이하 + 실제로 들어가는 높이까지 (글이 길면 자동으로 다음 장).
+   · 사진은 저장된 파일 그대로 넣으므로 인쇄·PDF에서도 저장 해상도를 유지합니다.
+   · 처리주체 · 처리상태 · 비고 · 소방서 제출은 입주사에 보내는 문서이므로 넣지 않습니다. */
+const RPT = { token: 0 };
+const WD = ['일','월','화','수','목','금','토'];
+const ymdOf = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const fmtKo = (s, wd) => {
+  const m = String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return '';
+  const t = `${m[1]}. ${+m[2]}. ${+m[3]}.`;
+  return wd ? `${t}(${WD[new Date(+m[1], +m[2]-1, +m[3]).getDay()]})` : t;
+};
+const floorNum = r => {
+  const f = String(r.floor || '').replace(/\s/g,'');
+  let m = f.match(/^지하(\d+)/) || f.match(/^B(\d+)/i); if (m) return -m[1];
+  m = f.match(/^(\d+)층/); if (m) return +m[1];
+  return /옥상/.test(f) ? 99 : 0;
+};
+const rptSort = (a, b) => String(dongOf(a)).localeCompare(String(dongOf(b))) || floorNum(a) - floorNum(b)
+  || String(a.mark||'').localeCompare(String(b.mark||''), 'en', { numeric:true }) || (+a.no||0) - (+b.no||0);
+
+/* 수신처 나누기 : 공용부·건물분 → 「건물 전체」 / 전용부 + 입주사 → 입주사별 / 나머지 → 미분류 */
+function rptGroups(){
+  const incDone = $('#rptDone').checked;
+  const base = inHalf().filter(r => { const st = deriveStatus(r); return st !== '제외' && (incDone || st !== '조치완료'); });
+  const isBld = r => r.space === '공용부' || r.handler === '건물분';
+  const g = { building: [], tenants: new Map(), none: [] };
+  for (const r of base){
+    if (isBld(r)) g.building.push(r);
+    else if (r.space === '전용부' && r.tenant){ (g.tenants.get(r.tenant) || g.tenants.set(r.tenant, []).get(r.tenant)).push(r); }
+    else g.none.push(r);
+  }
+  return g;
+}
+
+async function openReport(){
+  const g = rptGroups();
+  RPT.pre = (S.filters.tenant.size === 1) ? [...S.filters.tenant][0] : '';
+  $('#rptPer').value = ls('wg_rpt_per') || '6';
+  $('#rptDue').value = ls('wg_rpt_due') || '2026-11-30';
+  $('#rptDate').value = ymdOf(new Date());
+  fillRptTo(g, RPT.pre ? 'T:' + RPT.pre : '');
+  $('#rpt').hidden = false; document.body.style.overflow = 'hidden';
+  await renderReport();
+}
+function fillRptTo(g, want){
+  const sel = $('#rptTo'), cur = want || sel.value;
+  const t = [...g.tenants.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'));
+  sel.innerHTML = `<option value="B">건물 전체 — 공용부·건물분 (${g.building.length}건)</option>`
+    + t.map(([n, a]) => `<option value="T:${esc(n)}">${esc(n)} (${a.length}건)</option>`).join('');
+  sel.value = [...sel.options].some(o => o.value === cur) ? cur : (t.length ? 'T:' + t[0][0] : 'B');
+}
+function closeReport(){ $('#rpt').hidden = true; document.body.style.overflow = ''; $('#rptPages').innerHTML = ''; $('#rptMeasure').innerHTML = ''; }
+
+/* ── 한 건 → 표의 한 행 ── */
+async function rptRow(r, no, o){
+  const bef = (r.photos?.before || []), map = (r.photos?.map || [])[0];
+  const [u1, u2, um] = await Promise.all([photoURL(bef[0]), photoURL(bef[1]), photoURL(map)]);
+  const slot = (u, w, extra = '', lbl = '') => u
+    ? `<div class="ph-s" style="width:${w}mm"><img src="${esc(u)}" alt="">${extra}${lbl}</div>`
+    : `<div class="ph-s ph-none" style="width:${w}mm"></div>`;
+  const more = bef.length > 2 ? `<span class="more">+${bef.length - 2}</span>` : '';
+  const dg = o.showDong ? `<span class="dg">${esc(dongLabel(dongOf(r)))}</span>` : '';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="t-no">${no}</td>
+    <td class="t-loc">${dg}<span class="fl">${esc(r.floor || '')}</span><div class="lc">${esc(r.loc || '')}</div></td>
+    <td class="t-prob"><span class="ft">${esc([r.fac, r.detail].filter(Boolean).join(' · '))}</span><span class="pt">${esc(r.problem || '')}</span></td>
+    <td class="t-act">${esc(r.action || '')}</td>
+    <td class="t-law">${esc(r.law || '')}</td>
+    <td class="t-ph"><div class="ph-row">${slot(u1, o.pw)}${o.slots > 1 ? slot(u2, o.pw, more) : ''}${slot(um, o.pm, '', o.ph >= 14 ? '<span class="lbl">위치표기</span>' : '')}</div></td>`;
+  return tr;
+}
+
+/* ── 용지 한 장의 틀 ── */
+function rptSheet(o, pageNo){
+  const sh = document.createElement('section');
+  sh.className = 'sheet' + (o.per >= 10 ? ' d10' : o.per >= 8 ? ' d8' : '');
+  sh.style.setProperty('--ph', o.ph + 'mm');
+  const cg = o.cols.map(w => `<col style="width:${w}mm">`).join('');
+  sh.innerHTML = `
+    <div class="sh-head">
+      <div>
+        <div class="sh-title">${esc(HALF_LABEL[S.half] || '')} 소방시설 종합점검 지적사항 개선 안내</div>
+        <div class="sh-to">수신 : <b>${esc(o.toName)}</b> ${o.building ? '' : '귀중'}</div>
+      </div>
+      <dl class="sh-meta">
+        <dt>발신</dt><dd>${esc(o.sender)}</dd>
+        <dt>발송일</dt><dd>${esc(fmtKo($('#rptDate').value))}</dd>
+        <dt>지적 건수</dt><dd>총 ${o.total}건</dd>
+        <div class="due-box">개선기한 : ~ ${esc(fmtKo($('#rptDue').value, true))}까지</div>
+      </dl>
+    </div>
+    ${pageNo === 1 ? `<p class="sh-intro">${o.building
+      ? '건물 전체(공용부 · 건물분) 관련 소방시설 종합점검 지적사항입니다. 개선기한까지 조치하여 주시기 바랍니다.'
+      : `${esc(o.toName)} 사용 공간에 대한 소방시설 종합점검 결과, 아래와 같이 지적사항이 확인되었습니다. 개선기한까지 조치하여 주시기 바랍니다.`}</p>` : ''}
+    <div class="sh-body"><table class="rt"><colgroup>${cg}</colgroup>
+      <thead><tr><th class="c">연번</th><th>위치 (층 · 구역)</th><th>점검결과 문제점</th><th>개선 대책</th><th>관련 법규</th><th>현장 사진 (문제점 · 위치표기)</th></tr></thead>
+      <tbody></tbody></table></div>
+    <div class="sh-foot"><span>${esc(o.sender)}</span><span class="pg"></span></div>`;
+  return sh;
+}
+
+/* ── 건수·사진 크기 정하기 ── */
+function rptLayout(per, slots){
+  const rowH = Math.floor(128 / per * 10) / 10;           /* 첫 장(안내문 포함)에서도 per건이 들어가는 행 높이(mm) */
+  const ph = Math.min(30, Math.max(10, rowH - 3));         /* 사진 높이 */
+  const pw = Math.min(34, +(ph * 1.333).toFixed(1));       /* 문제점 사진 가로 */
+  const pm = Math.min(38, +(ph * 1.45).toFixed(1));        /* 위치표기(도면) 가로 — 글씨가 있어 조금 더 크게 */
+  const photoCol = +(pw * slots + pm + 1.5 * slots + 3.4).toFixed(1);
+  const rest = 273 - photoCol - 11;                         /* 연번 11mm 제외 */
+  const wts = [38, 54, 40, 36], sum = wts.reduce((a, b) => a + b, 0);
+  const cols = [11, ...wts.map(w => +(rest * w / sum).toFixed(1)), photoCol];
+  return { per, rowH, ph, pw, pm, slots, cols };
+}
+
+async function renderReport(){
+  const my = ++RPT.token;
+  const g = rptGroups(), val = $('#rptTo').value;
+  const per = +$('#rptPer').value || 6;
+  ls('wg_rpt_per', per); ls('wg_rpt_due', $('#rptDue').value);
+  const building = val === 'B';
+  const toName = building ? '건물 전체 (공용부 · 건물분)' : val.slice(2);
+  const rows = (building ? g.building : (g.tenants.get(toName) || [])).slice().sort(rptSort);
+  const slots = rows.some(r => (r.photos?.before || []).length > 1) ? 2 : 1;
+  const o = { ...rptLayout(per, slots), building, toName, showDong: building, total: rows.length, sender: '원그로브 시설팀 소방파트' };
+  const box = $('#rptPages'), mz = $('#rptMeasure');
+
+  /* 안내 문구 : 자동추정 · 미분류 */
+  const w = [], guess = rows.filter(r => r.spaceGuess).length;
+  if (guess) w.push(`이 안내문에 <b>자동추정 ${guess}건</b>이 들어 있습니다. 지적내역에서 공간·입주사를 확정한 뒤 보내는 것을 권합니다.`);
+  if (g.none.length) w.push(`공간구분이 없거나 입주사가 비어 있는 <b>${g.none.length}건</b>은 어느 안내문에도 들어가지 않습니다.`);
+  const bn = $('#rptWarn'); bn.innerHTML = w.join(' · '); bn.hidden = !w.length;
+  $('#rptInfo').textContent = rows.length ? `${rows.length}건` : '';
+
+  if (!rows.length){
+    box.innerHTML = '<div class="rpt-empty">이 수신처에 안내할 지적사항이 없습니다.</div>'; fitReportZoom(); return;
+  }
+  mz.innerHTML = '';
+  const sheets = []; let i = 0;
+  while (i < rows.length){
+    if (my !== RPT.token) return;
+    const sh = rptSheet(o, sheets.length + 1); mz.append(sh);
+    const tb = sh.querySelector('tbody'), foot = sh.querySelector('.sh-foot'), tbl = sh.querySelector('table.rt');
+    let n = 0;
+    while (i + n < rows.length && n < per){
+      const tr = await rptRow(rows[i + n], i + n + 1, o);
+      tr.style.height = o.rowH + 'mm'; tb.append(tr);
+      if (tbl.getBoundingClientRect().bottom > foot.getBoundingClientRect().top - 1 && n > 0){ tr.remove(); break; }
+      n++;
+    }
+    i += n; sheets.push(sh);
+  }
+  if (my !== RPT.token) return;
+  sheets.forEach((sh, k) => sh.querySelector('.pg').textContent = `${k + 1} / ${sheets.length} 쪽`);
+  box.replaceChildren(...sheets);
+  $('#rptInfo').textContent = `${rows.length}건 · ${sheets.length}쪽`;
+  fitReportZoom();
+}
+function fitReportZoom(){
+  const z = Math.min(1, (innerWidth - 24) / (297 * 96 / 25.4));
+  $('#rptPages').style.setProperty('--z', z.toFixed(3));
+}
+async function printReport(){
+  const imgs = $$('#rptPages img');
+  await Promise.all(imgs.map(im => im.decode ? im.decode().catch(() => {}) : 0));
+  const st = document.createElement('style');
+  st.textContent = '@page{size:A4 landscape;margin:0}'; document.head.append(st);
+  document.body.classList.add('printing-report');
+  const done = () => { document.body.classList.remove('printing-report'); st.remove(); removeEventListener('afterprint', done); };
+  addEventListener('afterprint', done);
+  window.print();
+}
+$('#rptBtn').onclick = openReport;
+$('#rptClose').onclick = closeReport;
+$('#rptPrint').onclick = printReport;
+['#rptTo','#rptPer','#rptDue','#rptDate','#rptDone'].forEach(id => $(id).onchange = () => {
+  if (id === '#rptDone') fillRptTo(rptGroups());
+  renderReport();
+});
+addEventListener('resize', () => { if (!$('#rpt').hidden) fitReportZoom(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#rpt').hidden) closeReport(); });
 $('#dClose').onclick = $('#dCancel').onclick = closeDrawer;
 $('#scrim').onclick = closeDrawer;
 $('#dSave').onclick = async () => {
@@ -2938,4 +3472,4 @@ async function boot(localOnly){
 </script>
 
 </body>
-</html>
+</html>
