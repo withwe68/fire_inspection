@@ -1102,6 +1102,7 @@ td.t-ph{padding:1.2mm 1.5mm}
     <label>발송일 <input type="date" id="rptDate"></label>
     <label title="조치가 끝난 건도 안내문에 넣습니다"><input type="checkbox" id="rptDone"> 조치완료 건 포함</label>
     <span class="rpt-info" id="rptInfo"></span>
+    <span class="rpt-info" id="rptHold" title="처리주체 또는 상태가 보류인 건은 안내문에 넣지 않습니다"></span>
     <span class="spacer"></span>
     <button class="btn primary" id="rptPrint">인쇄 / PDF 저장</button>
     <button class="btn" id="rptClose">닫기</button>
@@ -1921,7 +1922,19 @@ function normalize(r){
 }
 
 /* ═══ 파생값 ═══════════════════════════════════════════════════ */
+function isHoldHandler(r){ return /^보류/.test(r.handler || ''); }
+/* 저장되는 상태값도 처리주체와 맞춥니다 — 화면(deriveStatus)과 Firestore 원본이 어긋나지 않게.
+   처리주체 '보류' + 상태 미조치·진행중·빈값(완료일 없음) → 상태 '보류'. 바꿨으면 true */
+function syncHold(r){
+  if (!isHoldHandler(r)) return false;
+  const s = r.status || '';
+  if (s === '미조치' || s === '진행중' || (!s && !r.done)){ r.status = '보류'; return true; }
+  return false;
+}
 function deriveStatus(r){
+  /* 처리주체가 '보류'이면 상태도 보류 — 상태가 미조치·진행중으로 남아 있어도 보류로 봅니다.
+     (이미 조치완료·제외로 확정된 건, 상태 없이 완료일만 있는 건은 그대로 둡니다) */
+  if (isHoldHandler(r) && (r.status === '미조치' || r.status === '진행중')) return '보류';
   if (r.status && OPT.status.includes(r.status)) return r.status;
   if (r.done) return '조치완료';
   if (/^보류/.test(r.handler||'')) return '보류';
@@ -2323,7 +2336,22 @@ async function openDrawer(r){
   $('#f_detail').addEventListener('change', syncLaw);
   $('#f_done').addEventListener('change', e => { if (e.target.value) $('#f_status').value = '조치완료'; });
   $('#f_status').addEventListener('change', e => {
+    /* 처리주체가 보류인데 상태만 미조치·진행중으로 바꾸면 저장 후 다시 보류로 보이므로 막습니다 */
+    if (/^보류/.test($('#f_handler').value) && (e.target.value === '미조치' || e.target.value === '진행중')){
+      e.target.value = '보류';
+      toast('처리주체가 「보류」이면 상태도 보류입니다. 처리주체를 먼저 바꿔 주세요.', true);
+      return;
+    }
     if (e.target.value === '조치완료' && !$('#f_done').value) $('#f_done').value = new Date().toISOString().slice(0,10);
+  });
+  /* 처리주체 → 상태 연동: '보류'를 고르면 상태도 보류, 보류를 풀면 보류였던 상태를 되돌립니다 */
+  $('#f_handler').addEventListener('change', e => {
+    const st = $('#f_status');
+    if (/^보류/.test(e.target.value)){
+      if (st.value !== '조치완료' && st.value !== '제외') st.value = '보류';
+    } else if (st.value === '보류'){
+      st.value = $('#f_done').value ? '조치완료' : '미조치';
+    }
   });
   syncLaw();
   await renderPhotos();
@@ -2362,6 +2390,7 @@ function collect(){
   c.tenant = c.space === '공용부' ? '' : g('#f_tenant');
   if (c.tenant && !c.space) c.space = '전용부';
   c.spaceGuess = false; c.spaceOk = true;
+  syncHold(c);                       /* 처리주체 보류 → 저장 상태도 보류 */
   if (!c.id) c.id = uid();
   c.sample = false;
   return c;
@@ -2464,6 +2493,7 @@ async function handleFile(file){
           rec.spaceGuess = false; touched = true;
         } else if (nr.tenant && rec.space === '전용부' && !rec.tenant){ rec.tenant = nr.tenant; touched = true; }
         if (adm && nr.done && !rec.done){ rec.done = nr.done; rec.status = '조치완료'; touched = true; }
+        if (syncHold(rec)) touched = true;   /* 빈 처리주체가 '보류'로 채워진 경우 상태도 맞춤 */
         rec.photos ||= {};
         /* 예전 건에 위치표기 채우기 (다음 업로드부터 동별+위치표기로 바로 찾음) */
         if (m && !normMark(rec.mark)){ rec.mark = m; markFilled = true; }
@@ -2823,6 +2853,7 @@ function dupMerge(g, keepId){
     for (const [p, lab] of [['before','문제점 사진'],['map','위치표기 사진'],['after','조치후 사진']])
       if (!phN(k, p) && phN(o, p)){ k.photos[p] = o.photos[p].slice(); notes.push(`${lab} ${phN(o, p)}장`); }
   }
+  if (syncHold(k)) notes.push('상태 보류');   /* 합치며 처리주체가 '보류'가 된 경우 */
   k.updatedAt = Date.now();
   return { keep:k, drop, notes };
 }
@@ -3019,9 +3050,12 @@ const rptSort = (a, b) => String(dongOf(a)).localeCompare(String(dongOf(b))) || 
 /* 수신처 나누기 : 공용부·건물분 → 「건물 전체」 / 전용부 + 입주사 → 입주사별 / 나머지 → 미분류 */
 function rptGroups(){
   const incDone = $('#rptDone').checked;
-  const base = inHalf().filter(r => { const st = deriveStatus(r); return st !== '제외' && (incDone || st !== '조치완료'); });
+  /* 안내문 대상 : 제외·보류 건은 입주사에 알리지 않으므로 뺍니다 (보류는 처리주체 '보류'인 건 포함) */
+  const half = inHalf();
+  const held = half.filter(r => deriveStatus(r) === '보류').length;
+  const base = half.filter(r => { const st = deriveStatus(r); return st !== '제외' && st !== '보류' && (incDone || st !== '조치완료'); });
   const isBld = r => r.space === '공용부' || r.handler === '건물분';
-  const g = { building: [], tenants: new Map(), none: [] };
+  const g = { building: [], tenants: new Map(), none: [], held };
   for (const r of base){
     if (isBld(r)) g.building.push(r);
     else if (r.space === '전용부' && r.tenant){ (g.tenants.get(r.tenant) || g.tenants.set(r.tenant, []).get(r.tenant)).push(r); }
@@ -3046,6 +3080,7 @@ function fillRptTo(g, want){
   sel.innerHTML = `<option value="B">건물 전체 — 공용부·건물분 (${g.building.length}건)</option>`
     + t.map(([n, a]) => `<option value="T:${esc(n)}">${esc(n)} (${a.length}건)</option>`).join('');
   sel.value = [...sel.options].some(o => o.value === cur) ? cur : (t.length ? 'T:' + t[0][0] : 'B');
+  $('#rptHold').textContent = g.held ? `보류 ${g.held}건 제외` : '';
 }
 function closeReport(){ $('#rpt').hidden = true; document.body.style.overflow = ''; $('#rptPages').innerHTML = ''; $('#rptMeasure').innerHTML = ''; }
 
@@ -3472,4 +3507,4 @@ async function boot(localOnly){
 </script>
 
 </body>
-</html>
+</html>
