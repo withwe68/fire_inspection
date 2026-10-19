@@ -657,7 +657,8 @@ td.t-ph{padding:1.2mm 1.5mm}
 #rptMeasure{position:absolute;left:-12000px;top:0;visibility:hidden;pointer-events:none}
 
 /* ── 중복 정리 (관리자) ─────────────────────────────────────────── */
-#dupBtn.has{border-color:#8a6a2a;color:var(--undone-t);background:#2e2616}
+#dupBtn.has,#fbBtn.has{border-color:#8a6a2a;color:var(--undone-t);background:#2e2616}
+.dup-t td.c-to b{color:var(--done-t);font-weight:500}
 .modal.dup-modal{width:min(1080px,calc(100% - 24px));max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:18px 18px 14px}
 .dup-modal h3 small{font-weight:400;color:var(--faint);font-size:12px;margin-left:6px}
 .dup-modal > p{margin:0 0 10px}
@@ -806,6 +807,7 @@ td.t-ph{padding:1.2mm 1.5mm}
       <button class="btn sm no-print" id="bulkBtn" data-need="mgr" disabled title="체크한 항목의 공용부/전용부·입주사명을 한 번에 지정">공간·입주사 지정</button>
       <button class="btn sm danger no-print" id="delSelBtn" data-need="admin" disabled>선택 삭제</button>
       <button class="btn sm no-print" id="dupBtn" data-need="admin" title="같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다">중복 정리</button>
+      <button class="btn sm no-print" id="fbBtn" data-need="mgr" title="상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분·공용부로 정리합니다">방화구획 정리</button>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
       <button class="btn sm no-print" id="rptBtn" data-need="mgr" title="입주사별 지적사항 개선 안내문 (A4 가로) 만들기">입주사 안내문</button>
       <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
@@ -1165,7 +1167,7 @@ const OPT = {
     '피난설비': ['유도등','유도표지','비상조명등','휴대용 비상조명등','완강기','구조대','피난사다리','인명구조기구','피난안내도','피난관련'],
     '소화활동설비': ['제연설비','비상콘센트','방수구','연결송수관','연결살수설비','무선통신보조설비','연소방지설비'],
     '제연설비': ['급기구','배기구','제연댐퍼','제연팬','차압','방연풍속','플랩댐퍼','제연커튼'],
-    '기타설비': ['방화셔터','방화문','방화구획','관통부','슬라이딩도어','출입통제','가연물','피난통로','비상구','배연창']
+    '기타설비': ['방화셔터','방화문','방화구획','슬라이딩도어','출입통제','가연물','피난통로','비상구','배연창']
   },
 
   /* 상세구분 → 관련법규 (첫 항목이 기본 추천) */
@@ -1224,8 +1226,7 @@ const OPT = {
     '연소방지설비': ['NFPC506 제4조'],
     '방화셔터': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','자동방화셔터 및 방화문의 기준 제3조'],
     '방화문': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','소방시설 설치 및 관리에 관한 법률 제16조'],
-    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
-    '관통부': ['건축자재등 품질인정 및 관리기준 제33조 외','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
+    '방화구획': ['건축법 시행령 제46조','건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조','건축자재등 품질인정 및 관리기준 제33조 외'],
     '슬라이딩도어': ['건축물의 피난∙방화구조 등의 기준에관한 규칙 제14조'],
     '출입통제': ['소방시설 설치 및 관리에 관한 법률 제16조'],
     '가연물': ['소방시설 설치 및 관리에 관한 법률 제16조'],
@@ -1266,7 +1267,6 @@ const OPT = {
     '방화셔터': ['방화셔터 보수','연동 선로 보수','동작에 장애 없도록 보완','하강장애물 제거','일체형 셔터 개선'],
     '방화문': ['방화문 닫힘상태 유지','도어클로저 보수','고임물 제거','방화문 교체','개방장치 연동 보수'],
     '방화구획': ['구획 복구','관통부 마감 보수','내화충전재 시공'],
-    '관통부': ['관통부 마감 보수','내화충전재 시공'],
     '슬라이딩도어': ['연동 선로 보수','개방장치 보수'],
     '출입통제': ['연동 해제 확인','비상시 개방 보완','프로그램 수정'],
     '가연물': ['가연물 정리','적치물 제거'],
@@ -1821,7 +1821,7 @@ async function parseXlsx(file, onProg){
       }
       out.push({
         sheet: sh.name, no: get('no') || '', date: normDate(get('date'), yearHint),
-        fac: txt('fac').replace(/\s/g,''), detail: txt('detail').replace(/\n/g,' '),
+        fac: txt('fac').replace(/\s/g,''), detail: normDetail(txt('detail').replace(/\n/g,' ')),
         dong: txt('dong').replace(/\n/g,''), loc: txt('loc'),
         problem: txt('problem'), action: txt('action').replace(/\n/g,' '),
         law: txt('law').replace(/\n/g,' '), handler: txt('handler'),
@@ -1847,6 +1847,13 @@ async function parseXlsx(file, onProg){
 /* ═══ 값 정규화 ════════════════════════════════════════════════
    점검업체 양식에는 '활동설비', '소화기구/소화설비', 'A, B,\nC, D' 처럼
    표기가 섞여 들어옵니다. 통계·필터는 대표값으로 묶고 원본은 보존합니다. */
+/* 상세구분 통일 : 점검업체가 '관통부'로 적어 보내는 건은 「방화구획」으로 합칩니다
+   (관통부 마감 미비 = 방화구획 관통부 내화채움 미비 · 건축물방화구조규칙 제14조) */
+const DETAIL_ALIAS = { '관통부':'방화구획', '관통':'방화구획', '관통부마감':'방화구획', '방화구획관통부':'방화구획' };
+function normDetail(v){
+  const s = String(v||'').trim();
+  return DETAIL_ALIAS[s.replace(/\s/g,'')] || s;
+}
 const FAC_ALIAS = { '활동설비':'소화활동설비', '소화용수설비':'소화활동설비', '자동화재탐지설비':'경보설비',
                     '피난구조설비':'피난설비', '소화기':'소화기구' };
 function normFac(v){
@@ -1903,6 +1910,9 @@ function guessTenant(loc){
 function normalize(r){
   const f = normFac(r.fac);
   if (f && f !== r.fac){ r.facRaw ||= r.fac; r.fac = f; }
+  if (r.detail && DETAIL_ALIAS[String(r.detail).replace(/\s/g,'')]){
+    r.detailRaw ||= r.detail; r.detail = normDetail(r.detail); (S.legacyDetail ||= new Set()).add(r.id);
+  }
   const d = normDong(r.dong);
   if (d && d !== r.dong){ r.dongRaw ||= r.dong; r.dong = d; }
   r.date = normDate(r.date, 2026);
@@ -2681,14 +2691,41 @@ function renderStats(){
   $('#oLaw').textContent = new Set(Object.values(OPT.law).flat()).size + '종';
   $('#oAct').textContent = new Set(Object.values(OPT.action).flat()).size + '종';
 }
+/* 예전 상세구분('관통부')으로 저장된 건을 원본(Firestore)에서도 「방화구획」으로 바꿉니다.
+   관리자 모드에서 해당 건이 있을 때 한 번만 실행 · 상세구분 칸만 고칩니다 · 실패하면 이번 접속 중에는 다시 시도하지 않습니다 */
+async function migrateDetail(){
+  if (S.migDetail || S.migDetailFail) return;
+  const rows = S.rows.filter(r => S.legacyDetail.has(r.id) && r.detail === normDetail(r.detail));
+  if (!rows.length) return;
+  S.migDetail = true;
+  try {
+    if (S.mode === 'cloud'){
+      for (let i = 0; i < rows.length; i += 400){
+        const b = S.db.batch();
+        rows.slice(i, i+400).forEach(r => b.update(S.db.collection('items').doc(r.id),
+          { detail: r.detail, detailRaw: r.detailRaw || '', updatedAt: Date.now() }));
+        await b.commit();
+      }
+    } else {
+      await IDB.putMany(rows);
+    }
+    rows.forEach(r => S.legacyDetail.delete(r.id));
+    toast(`상세구분 「관통부」 ${rows.length}건을 「방화구획」으로 통일해 저장했습니다`);
+  } catch(e){
+    console.warn('migrateDetail', e); S.migDetailFail = true;
+    toast('상세구분 통일 저장에 실패했습니다 — 화면에는 방화구획으로 표시됩니다', true);
+  } finally { S.migDetail = false; }
+}
 function afterLoad(){
   buildTenants();
   S.rows.forEach(normalize);
+  /* 정리 대상은 접속 동안 유지 — 보기 모드로 불러온 뒤 관리자로 들어와도 원본까지 정리됩니다 */
+  if (isAdmin() && S.legacyDetail?.size) migrateDetail();
   if (S.view === 'board') renderBoard();
   if (S.view === 'list'){ renderFilters(); renderList(); }
   if (S.view === 'settings') renderStats();
   $('#tabCnt').textContent = inHalf().length;
-  updDupBtn();
+  updDupBtn(); updFbBtn();
 }
 
 /* ═══ 이벤트 ═══════════════════════════════════════════════════ */
@@ -2988,6 +3025,104 @@ function openDup(){
   };
 }
 $('#dupBtn').onclick = openDup;
+
+/* ═══ 방화구획 정리 ═══════════════════════════════════════════
+   방화구획(관통부 포함)은 PS·EPS·TPS·전실 등 공용 설비 공간의 구획 문제이므로
+   처리주체가 비어 있거나 공간구분이 미지정 · 「전용부인데 입주사 미기재」 · 자동추정인 건을
+   처리주체 「건물분」, 공간구분 「공용부」로 맞춥니다.
+   이미 입주사·자체처리 등으로 정한 처리주체, 입주사명이 확정된 전용부는 건드리지 않습니다. */
+const fbNeedSpace = r => !r.space || r.spaceGuess || (r.space === '전용부' && !r.tenant);
+function fbCands(){
+  return inHalf().filter(r => r.detail === '방화구획' && (!r.handler || r.handler === '건물분')
+                           && (!r.handler || fbNeedSpace(r)));
+}
+function fbFix(r){
+  const k = JSON.parse(JSON.stringify(r));
+  if (!k.handler) k.handler = '건물분';
+  if (fbNeedSpace(k)){ k.space = '공용부'; k.tenant = ''; }
+  k.spaceGuess = false; k.spaceOk = true;
+  return k;
+}
+function updFbBtn(){
+  const b = $('#fbBtn'); if (!b) return;
+  const n = fbCands().length;
+  b.textContent = n ? `방화구획 정리 ${n}` : '방화구획 정리';
+  b.classList.toggle('has', n > 0);
+  b.title = n ? `처리주체·공간구분이 비어 있는 방화구획 ${n}건 — 눌러서 확인 후 정리`
+              : '상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분·공용부로 정리합니다';
+}
+function openFb(){
+  if (!isMgr()) return toast('방화구획 정리는 관리자·소방파트만 할 수 있습니다', true);
+  const C = fbCands().sort((a, b) => zc(a, b) || (+a.no || 0) - (+b.no || 0)).map(r => ({ r, on:true }));
+  const m = document.createElement('div'); m.className = 'modal dup-modal';
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', '방화구획 정리');
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  let busy = false;
+  const onKey = e => { if (e.key === 'Escape' && !busy) close(); };
+  const close = () => { m.remove(); sc.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  const head = `<h3>방화구획 정리 <small>${esc(HALF_LABEL[S.half])}</small></h3>`;
+  if (!C.length){
+    m.innerHTML = `${head}<div class="dup-empty">정리할 건이 없습니다.<br>
+      <small>대상 : 상세구분 방화구획 중 처리주체가 비었거나 공간구분이 미지정·입주사 미기재·자동추정인 건</small></div>
+      <div class="modal-row"><button class="btn" id="fbX">닫기</button></div>`;
+    document.body.append(sc, m);
+    m.querySelector('#fbX').onclick = close; sc.onclick = close;
+    return;
+  }
+  const spTxt = r => !r.space ? '미지정'
+    : r.space === '전용부' ? (r.tenant ? `전용부 · ${r.tenant}${r.spaceGuess ? ' (추정)' : ''}` : '전용부 · 입주사 미기재') : r.space;
+  const rowHtml = (c, i) => { const r = c.r, k = fbFix(r); return `<tr data-i="${i}">
+      <td class="c-k"><label><input type="checkbox" class="fbOn" checked></label></td>
+      <td>${esc(zoneLabel(r) || r.dong || '')}</td>
+      <td>${esc(fullLoc(r))}</td>
+      <td>${esc(r.problem || '')}</td>
+      <td class="c-to">${r.handler ? esc(r.handler) : '<span class="emp">없음</span>'}${r.handler !== k.handler ? ` → <b>${esc(k.handler)}</b>` : ''}</td>
+      <td class="c-to">${esc(spTxt(r))}${(r.space !== k.space || r.tenant !== k.tenant || r.spaceGuess) ? ` → <b>${esc(k.space)}</b>` : ''}</td></tr>`; };
+  m.innerHTML = `${head}
+    <p>상세구분 <b>방화구획</b>(관통부 포함) 중 처리주체가 비어 있거나 공간구분이 정해지지 않은 <b>${C.length}건</b>입니다.
+       PS·EPS·TPS·전실 등 공용 설비 공간이므로 처리주체를 <b>건물분</b>, 공간구분을 <b>공용부</b>로 정리합니다.
+       이미 들어 있는 처리주체는 바꾸지 않습니다. 입주사 쪽 건이 섞여 있으면 체크를 풀어 주세요.</p>
+    <div class="dup-tools"><button class="btn sm ghost" id="fbAll">모두 선택</button>
+      <button class="btn sm ghost" id="fbNone">모두 해제</button></div>
+    <div class="dup-list"><div class="dup-tw"><table class="dup-t"><thead><tr><th>정리</th><th>구역</th><th>층·구역</th>
+      <th>문제점</th><th>처리주체</th><th>공간구분</th></tr></thead>
+      <tbody>${C.map(rowHtml).join('')}</tbody></table></div></div>
+    <div class="dup-foot"><span class="sum" id="fbSum"></span>
+      <button class="btn" id="fbX">닫기</button>
+      <button class="btn primary" id="fbOk"></button></div>`;
+  document.body.append(sc, m);
+  const sum = () => {
+    const n = C.filter(c => c.on).length, ok = m.querySelector('#fbOk');
+    m.querySelector('#fbSum').textContent = `선택 ${n}/${C.length}건`;
+    ok.disabled = !n || busy;
+    if (!busy) ok.textContent = `${n}건 정리`;
+  };
+  sum();
+  m.addEventListener('change', e => {
+    const tr = e.target.closest('tr[data-i]'); if (!tr || busy) return;
+    C[+tr.dataset.i].on = e.target.checked; sum();
+  });
+  const setAll = v => { C.forEach(c => c.on = v); m.querySelectorAll('.fbOn').forEach(x => x.checked = v); sum(); };
+  m.querySelector('#fbAll').onclick = () => setAll(true);
+  m.querySelector('#fbNone').onclick = () => setAll(false);
+  m.querySelector('#fbX').onclick = () => { if (!busy) close(); };
+  sc.onclick = () => { if (!busy) close(); };
+  m.querySelector('#fbOk').onclick = async () => {
+    const out = C.filter(c => c.on).map(c => fbFix(c.r)); if (!out.length || busy) return;
+    busy = true; sum(); m.querySelector('#fbOk').textContent = '저장 중…';
+    try { await saveMany(out); }
+    catch(err){
+      console.warn('fb save', err); busy = false; sum();
+      return toast('저장하지 못했습니다. 연결 상태를 확인해 주세요 (바뀐 것은 없습니다)', true);
+    }
+    close();
+    if (S.cur && out.some(k => k.id === S.cur.id)) closeDrawer();
+    afterLoad();
+    toast(`방화구획 ${out.length}건 — 처리주체 건물분 · 공간구분 공용부로 정리했습니다`);
+  };
+}
+$('#fbBtn').onclick = openFb;
 
 $('#filterBox').onclick = e => {
   const c = e.target.closest('.chip'); if (!c) return;
