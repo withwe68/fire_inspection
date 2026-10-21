@@ -601,18 +601,16 @@ body.can-edit .ph .del{display:grid}
 .sheet{position:relative;width:297mm;height:209.6mm;box-sizing:border-box;padding:9mm 12mm 7mm;background:#fff;color:#14171c;
   overflow:hidden;display:flex;flex-direction:column;flex:none;box-shadow:0 2px 14px rgba(0,0,0,.45);
   font-family:var(--sans);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.sh-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10mm;
+/* 제목 글자 윗선을 오른쪽 「발신」 줄 높이에 맞춤 (위쪽 정렬) */
+.sh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;
   border-bottom:.7mm solid #1d3557;padding-bottom:2.6mm;margin-bottom:3mm}
 .sh-org{font-size:8.5pt;letter-spacing:.04em;color:#4a5566;font-weight:500}
 .sh-title{font-size:17pt;font-weight:700;color:#1d3557;margin:0 0 1.8mm;letter-spacing:-.01em;line-height:1.25}
 .sh-to{font-size:11pt;font-weight:600}
 .sh-to b{font-size:13pt;font-weight:700}
-.sh-meta{display:grid;grid-template-columns:auto auto;gap:.9mm 3.2mm;font-size:8.8pt;align-items:baseline;flex:none}
+.sh-meta{display:grid;grid-template-columns:auto auto;gap:.9mm 3.2mm;font-size:8.8pt;align-items:baseline;flex:none;margin:.6mm 0 0}  /* dl 기본 여백 제거 → 발신 줄을 제목 윗선에 맞춤 */
 .sh-meta dt{color:#5b6676;text-align:right}
 .sh-meta dd{margin:0;font-weight:500}
-.sh-meta .due{font-size:11pt;font-weight:700;color:#b8460b}
-.sh-meta .due-box{grid-column:1/3;margin-top:.8mm;background:#fff1e6;border:.35mm solid #e07b39;border-radius:1mm;
-  padding:1.2mm 3mm;text-align:center;color:#b8460b;font-weight:700;font-size:10.5pt}
 .sh-intro{font-size:9.2pt;line-height:1.55;color:#2a313c;margin:0 0 2.6mm}
 .sh-body{flex:1;min-height:0;display:block}
 .sh-foot{display:flex;justify-content:space-between;align-items:center;border-top:.25mm solid #b9c1cc;padding-top:1.6mm;
@@ -632,8 +630,13 @@ td.t-loc .lc{color:#2a313c}
 td.t-loc .dg{display:inline-block;font-size:7.4pt;font-weight:700;color:#1d3557;border:.25mm solid #1d3557;border-radius:.8mm;padding:0 1mm;margin-right:1mm}
 td.t-prob .ft{display:block;font-size:7.4pt;color:#5b6676;margin-bottom:.5mm}
 td.t-prob .pt{font-weight:600}
-td.t-law{font-size:8pt;color:#2a313c}
+/* 개선대책/관련법규 : 위 = 개선대책, 아래 = 관련법규 */
+td.t-al .ac{display:block;font-weight:500}
+td.t-al .lw{display:block;margin-top:.9mm;padding-top:.7mm;border-top:.2mm dashed #c7ced8;font-size:8pt;color:#2a313c}
+td.t-al .ac:empty,td.t-al .lw:empty{display:none}
 td.t-ph{padding:1.2mm 1.5mm}
+td.t-aft .ph-row{justify-content:center}
+td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
 .ph-row{display:flex;gap:1.5mm;align-items:center;justify-content:flex-start}
 .ph-s{position:relative;flex:none;height:var(--ph);background:#eef1f5;border:.2mm solid #c7ced8;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ph-s.ph-none{background:none;border-color:transparent}
@@ -641,7 +644,7 @@ td.t-ph{padding:1.2mm 1.5mm}
 .ph-s .more{position:absolute;right:0;top:0;background:rgba(20,23,28,.78);color:#fff;font-size:6.5pt;padding:0 1.2mm;border-bottom-left-radius:.8mm}
 .ph-s .lbl{position:absolute;left:0;bottom:0;background:rgba(29,53,87,.88);color:#fff;font-size:6.2pt;padding:0 1.2mm;border-top-right-radius:.8mm}
 .sheet.d8 table.rt{font-size:8pt}.sheet.d10 table.rt{font-size:7.4pt;line-height:1.3}
-.sheet.d8 td.t-law,.sheet.d10 td.t-law{font-size:7.2pt}
+.sheet.d8 td.t-al .lw,.sheet.d10 td.t-al .lw,.sheet.d8 td.t-done,.sheet.d10 td.t-done{font-size:7.2pt}
 .sheet.d10 td{padding:.7mm 1.6mm}
 
 @media print{
@@ -1098,9 +1101,8 @@ td.t-ph{padding:1.2mm 1.5mm}
     <h2>입주사 안내문</h2>
     <label>수신 <select id="rptTo"></select></label>
     <label>페이지당 <select id="rptPer">
-      <option value="4">4건</option><option value="5">5건</option><option value="6">6건</option>
+      <option value="4">4건</option><option value="5">5건</option><option value="6" selected>6건</option>
       <option value="8">8건</option><option value="10">10건</option></select></label>
-    <label>개선기한 <input type="date" id="rptDue"></label>
     <label>발송일 <input type="date" id="rptDate"></label>
     <label title="조치가 끝난 건도 안내문에 넣습니다"><input type="checkbox" id="rptDone"> 조치완료 건 포함</label>
     <span class="rpt-info" id="rptInfo"></span>
@@ -3202,8 +3204,7 @@ function rptGroups(){
 async function openReport(){
   const g = rptGroups();
   RPT.pre = (S.filters.tenant.size === 1) ? [...S.filters.tenant][0] : '';
-  $('#rptPer').value = ls('wg_rpt_per') || '6';
-  $('#rptDue').value = ls('wg_rpt_due') || '2026-11-30';
+  $('#rptPer').value = '6';            /* 안내문 기본 : 페이지당 6건 (열 때마다 6건으로 시작) */
   $('#rptDate').value = ymdOf(new Date());
   fillRptTo(g, RPT.pre ? 'T:' + RPT.pre : '');
   $('#rpt').hidden = false; document.body.style.overflow = 'hidden';
@@ -3228,14 +3229,20 @@ async function rptRow(r, no, o){
     : `<div class="ph-s ph-none" style="width:${w}mm"></div>`;
   const more = bef.length > 2 ? `<span class="more">+${bef.length - 2}</span>` : '';
   const dg = o.showDong ? `<span class="dg">${esc(dongLabel(dongOf(r)))}</span>` : '';
+  /* 조치후 사진 · 완료일자 : 조치가 끝난 건(「조치완료 건 포함」)이면 저장된 값을, 아니면 빈 칸으로 둡니다 */
+  const aft = (r.photos?.after || []);
+  const ua = await photoURL(aft[0]);
+  const aMore = aft.length > 1 ? `<span class="more">+${aft.length - 1}</span>` : '';
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="t-no">${no}</td>
     <td class="t-loc">${dg}<span class="fl">${esc(r.floor || '')}</span><div class="lc">${esc(r.loc || '')}</div></td>
     <td class="t-prob"><span class="ft">${esc([r.fac, r.detail].filter(Boolean).join(' · '))}</span><span class="pt">${esc(r.problem || '')}</span></td>
-    <td class="t-act">${esc(r.action || '')}</td>
-    <td class="t-law">${esc(r.law || '')}</td>
-    <td class="t-ph"><div class="ph-row">${slot(u1, o.pw)}${o.slots > 1 ? slot(u2, o.pw, more) : ''}${slot(um, o.pm, '', o.ph >= 14 ? '<span class="lbl">위치표기</span>' : '')}</div></td>`;
+    <td class="t-al"><span class="ac">${esc(r.action || '')}</span><span class="lw">${esc(r.law || '')}</span></td>
+    <td class="t-ph"><div class="ph-row">${slot(u1, o.pw)}${o.slots > 1 ? slot(u2, o.pw, more) : ''}${slot(um, o.pm, '', o.ph >= 14 ? '<span class="lbl">위치표기</span>' : '')}</div></td>
+    <td class="t-ph t-aft"><div class="ph-row">${ua ? slot(ua, o.pw, aMore) : ''}</div></td>
+    <td class="t-done">${esc(fmtKo(r.done))}</td>
+    <td class="t-note"></td>`;
   return tr;
 }
 
@@ -3255,29 +3262,39 @@ function rptSheet(o, pageNo){
         <dt>발신</dt><dd>${esc(o.sender)}</dd>
         <dt>발송일</dt><dd>${esc(fmtKo($('#rptDate').value))}</dd>
         <dt>지적 건수</dt><dd>총 ${o.total}건</dd>
-        <div class="due-box">개선기한 : ~ ${esc(fmtKo($('#rptDue').value, true))}까지</div>
       </dl>
     </div>
     ${pageNo === 1 ? `<p class="sh-intro">${o.building
-      ? '건물 전체(공용부 · 건물분) 관련 소방시설 종합점검 지적사항입니다. 개선기한까지 조치하여 주시기 바랍니다.'
-      : `${esc(o.toName)} 사용 공간에 대한 소방시설 종합점검 결과, 아래와 같이 지적사항이 확인되었습니다. 개선기한까지 조치하여 주시기 바랍니다.`}</p>` : ''}
+      ? '건물 전체(공용부 · 건물분) 관련 소방시설 종합점검 지적사항입니다. 아래 지적사항을 조치하여 주시기 바랍니다.'
+      : `${esc(o.toName)} 사용 공간에 대한 소방시설 종합점검 결과, 아래와 같이 지적사항이 확인되었습니다. 조치하여 주시기 바랍니다.`}</p>` : ''}
     <div class="sh-body"><table class="rt"><colgroup>${cg}</colgroup>
-      <thead><tr><th class="c">연번</th><th>위치 (층 · 구역)</th><th>점검결과 문제점</th><th>개선 대책</th><th>관련 법규</th><th>현장 사진 (문제점 · 위치표기)</th></tr></thead>
+      <thead><tr><th class="c">연번</th><th>위치 (층 · 구역)</th><th>점검결과 문제점</th><th>개선대책/관련법규</th><th>현장 사진 (문제점 · 위치표기)</th><th class="c">조치후 사진</th><th class="c">완료일자</th><th class="c">비고</th></tr></thead>
       <tbody></tbody></table></div>
     <div class="sh-foot"><span>${esc(o.sender)}</span><span class="pg"></span></div>`;
   return sh;
 }
 
 /* ── 건수·사진 크기 정하기 ── */
+/* 열 구성 (A4 가로, 표 폭 273mm)
+   연번 | 위치 | 문제점 | 개선대책/관련법규 | 현장 사진 | 조치후 사진 | 완료일자 | 비고
+   사진이 커지는 4~5건/쪽에서도 글자 칸이 좁아지지 않도록, 글자 칸 합계가 TEXT_MIN 이상
+   남을 때까지 사진 크기를 줄입니다. */
+const RPT_COL = { no:11, done:23, note:20 }, RPT_TEXT_MIN = 118;
 function rptLayout(per, slots){
   const rowH = Math.floor(128 / per * 10) / 10;           /* 첫 장(안내문 포함)에서도 per건이 들어가는 행 높이(mm) */
-  const ph = Math.min(30, Math.max(10, rowH - 3));         /* 사진 높이 */
-  const pw = Math.min(34, +(ph * 1.333).toFixed(1));       /* 문제점 사진 가로 */
-  const pm = Math.min(38, +(ph * 1.45).toFixed(1));        /* 위치표기(도면) 가로 — 글씨가 있어 조금 더 크게 */
-  const photoCol = +(pw * slots + pm + 1.5 * slots + 3.4).toFixed(1);
-  const rest = 273 - photoCol - 11;                         /* 연번 11mm 제외 */
-  const wts = [38, 54, 40, 36], sum = wts.reduce((a, b) => a + b, 0);
-  const cols = [11, ...wts.map(w => +(rest * w / sum).toFixed(1)), photoCol];
+  let ph = Math.min(30, Math.max(10, rowH - 3));           /* 사진 높이 */
+  let pw, pm, photoCol, aftCol, rest;
+  for (;;){
+    pw = Math.min(34, +(ph * 1.333).toFixed(1));           /* 문제점·조치후 사진 가로 */
+    pm = Math.min(38, +(ph * 1.45).toFixed(1));            /* 위치표기(도면) 가로 — 글씨가 있어 조금 더 크게 */
+    photoCol = +(pw * slots + pm + 1.5 * slots + 3.4).toFixed(1);
+    aftCol   = +(pw + 3.4).toFixed(1);
+    rest = 273 - photoCol - aftCol - RPT_COL.no - RPT_COL.done - RPT_COL.note;
+    if (rest >= RPT_TEXT_MIN || ph <= 10) break;
+    ph = +(ph - 0.5).toFixed(1);
+  }
+  const wts = [36, 54, 50], sum = wts.reduce((a, b) => a + b, 0);   /* 위치 · 문제점 · 개선대책/관련법규 */
+  const cols = [RPT_COL.no, ...wts.map(w => +(rest * w / sum).toFixed(1)), photoCol, aftCol, RPT_COL.done, RPT_COL.note];
   return { per, rowH, ph, pw, pm, slots, cols };
 }
 
@@ -3285,7 +3302,6 @@ async function renderReport(){
   const my = ++RPT.token;
   const g = rptGroups(), val = $('#rptTo').value;
   const per = +$('#rptPer').value || 6;
-  ls('wg_rpt_per', per); ls('wg_rpt_due', $('#rptDue').value);
   const building = val === 'B';
   const toName = building ? '건물 전체 (공용부 · 건물분)' : val.slice(2);
   const rows = (building ? g.building : (g.tenants.get(toName) || [])).slice().sort(rptSort);
@@ -3341,7 +3357,7 @@ async function printReport(){
 $('#rptBtn').onclick = openReport;
 $('#rptClose').onclick = closeReport;
 $('#rptPrint').onclick = printReport;
-['#rptTo','#rptPer','#rptDue','#rptDate','#rptDone'].forEach(id => $(id).onchange = () => {
+['#rptTo','#rptPer','#rptDate','#rptDone'].forEach(id => $(id).onchange = () => {
   if (id === '#rptDone') fillRptTo(rptGroups());
   renderReport();
 });
