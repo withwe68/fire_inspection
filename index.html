@@ -689,6 +689,26 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
 .dup-foot{display:flex;gap:9px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .dup-foot .sum{flex:1;font-size:12.5px;color:var(--dim);min-width:200px}
 .dup-empty{padding:30px 10px;text-align:center;color:var(--dim);font-size:13.5px;line-height:1.7}
+
+/* ── PM사 보고 엑셀 ─────────────────────────────────────────────── */
+#pmBtn{border-color:#2f4d6b;color:var(--doing-t)}
+.modal.pm-modal{width:min(780px,calc(100% - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:18px 18px 14px}
+.pm-modal h3 small{font-weight:400;color:var(--faint);font-size:12px;margin-left:6px}
+.pm-modal > p{margin:0 0 12px}
+.pm-opt{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12.5px;color:var(--dim);
+  margin-bottom:12px;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r)}
+.pm-opt label{display:inline-flex;gap:5px;align-items:center;cursor:pointer;white-space:nowrap}
+.pm-opt input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent)}
+.pm-opt input[type=date]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--ink);font-size:12.5px}
+.pm-opt .gl{color:var(--faint);font-size:11.5px}
+.dup-t.pm-t{min-width:560px}
+.pm-t td.n,.pm-t th.n{text-align:right;font-family:var(--mono);white-space:nowrap}
+.pm-t td.rg{color:var(--faint);font-size:11.5px}
+.pm-t tr.sum td{font-weight:600;border-top:1px solid var(--line2)}
+.pm-t .k{display:inline-block;min-width:20px;text-align:center;border-radius:4px;padding:0 5px;margin-right:6px;
+  font-family:var(--mono);font-size:11px;font-weight:600;background:var(--raise);border:1px solid var(--line2)}
+.pm-warn{font-size:12px;color:var(--undone-t);line-height:1.7;margin:10px 0 0}
+.pm-warn:empty{display:none}
 </style>
 </head>
 <body>
@@ -813,6 +833,7 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
       <button class="btn sm no-print" id="fbBtn" data-need="mgr" title="상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분·공용부로 정리합니다">방화구획 정리</button>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
       <button class="btn sm no-print" id="rptBtn" data-need="mgr" title="입주사별 지적사항 개선 안내문 (A4 가로) 만들기">입주사 안내문</button>
+      <button class="btn sm no-print" id="pmBtn" data-need="mgr" title="미처리 지적을 업무시설 입주사 · 판매시설 · 건물분(공용부)으로 나눠 엑셀로 저장">PM 보고 엑셀</button>
       <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
       <button class="btn sm primary edit-only" id="newBtn">＋ 지적 추가</button>
     </div>
@@ -3169,6 +3190,7 @@ $('#csvBtn').onclick = toCSV;
    · 사진은 저장된 파일 그대로 넣으므로 인쇄·PDF에서도 저장 해상도를 유지합니다.
    · 처리주체 · 처리상태 · 비고 · 소방서 제출은 입주사에 보내는 문서이므로 넣지 않습니다. */
 const RPT = { token: 0 };
+const RPT_BLD = '태영건설';   /* 건물분(공용부·처리주체 건물분) 안내문 수신처 — 시공사 하자 */
 const WD = ['일','월','화','수','목','금','토'];
 const ymdOf = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
 const fmtKo = (s, wd) => {
@@ -3185,7 +3207,7 @@ const floorNum = r => {
 const rptSort = (a, b) => String(dongOf(a)).localeCompare(String(dongOf(b))) || floorNum(a) - floorNum(b)
   || String(a.mark||'').localeCompare(String(b.mark||''), 'en', { numeric:true }) || (+a.no||0) - (+b.no||0);
 
-/* 수신처 나누기 : 공용부·건물분 → 「건물 전체」 / 전용부 + 입주사 → 입주사별 / 나머지 → 미분류 */
+/* 수신처 나누기 : 공용부·건물분 → 「태영건설」 / 전용부 + 입주사 → 입주사별 / 나머지 → 미분류 */
 function rptGroups(){
   const incDone = $('#rptDone').checked;
   /* 안내문 대상 : 제외·보류 건은 입주사에 알리지 않으므로 뺍니다 (보류는 처리주체 '보류'인 건 포함) */
@@ -3214,7 +3236,7 @@ async function openReport(){
 function fillRptTo(g, want){
   const sel = $('#rptTo'), cur = want || sel.value;
   const t = [...g.tenants.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'));
-  sel.innerHTML = `<option value="B">건물 전체 — 공용부·건물분 (${g.building.length}건)</option>`
+  sel.innerHTML = `<option value="B">태영건설 — 건물분·공용부 (${g.building.length}건)</option>`
     + t.map(([n, a]) => `<option value="T:${esc(n)}">${esc(n)} (${a.length}건)</option>`).join('');
   sel.value = [...sel.options].some(o => o.value === cur) ? cur : (t.length ? 'T:' + t[0][0] : 'B');
   $('#rptHold').textContent = g.held ? `보류 ${g.held}건 제외` : '';
@@ -3257,7 +3279,7 @@ function rptSheet(o, pageNo){
     <div class="sh-head">
       <div>
         <div class="sh-title">${esc(HALF_LABEL[S.half] || '')} 소방시설 종합점검 지적사항 개선 안내</div>
-        <div class="sh-to">수신 : <b>${esc(o.toName)}</b> ${o.building ? '' : '귀중'}</div>
+        <div class="sh-to">수신 : <b>${esc(o.toName)}</b> 귀중</div>
       </div>
       <dl class="sh-meta">
         <dt>발신</dt><dd>${esc(o.sender)}</dd>
@@ -3266,7 +3288,7 @@ function rptSheet(o, pageNo){
       </dl>
     </div>
     ${pageNo === 1 ? `<p class="sh-intro">${o.building
-      ? '건물 전체(공용부 · 건물분) 관련 소방시설 종합점검 지적사항입니다. 아래 지적사항을 조치하여 주시기 바랍니다.'
+      ? '건물분(공용부 포함) 소방시설 종합점검 지적사항입니다. 하자 보수 대상이오니 아래 지적사항을 조치하여 주시기 바랍니다.'
       : `${esc(o.toName)} 사용 공간에 대한 소방시설 종합점검 결과, 아래와 같이 지적사항이 확인되었습니다. 조치하여 주시기 바랍니다.`}</p>` : ''}
     <div class="sh-body"><table class="rt"><colgroup>${cg}</colgroup>
       <thead><tr><th class="c">연번</th><th>위치 (층 · 구역)</th><th>점검결과 문제점</th><th>개선대책/관련법규</th><th>현장 사진 (문제점 · 위치표기)</th><th class="c">조치후 사진</th><th class="c">완료일자</th><th class="c">비고</th></tr></thead>
@@ -3304,7 +3326,7 @@ async function renderReport(){
   const g = rptGroups(), val = $('#rptTo').value;
   const per = +$('#rptPer').value || 6;
   const building = val === 'B';
-  const toName = building ? '건물 전체 (공용부 · 건물분)' : val.slice(2);
+  const toName = building ? RPT_BLD : val.slice(2);
   const rows = (building ? g.building : (g.tenants.get(toName) || [])).slice().sort(rptSort);
   const slots = rows.some(r => (r.photos?.before || []).length > 1) ? 2 : 1;
   const o = { ...rptLayout(per, slots), building, toName, showDong: building, total: rows.length, sender: '원그로브 시설팀 소방파트' };
@@ -3388,7 +3410,7 @@ async function xlPhoto(ref){
 async function exportReportXlsx(){
   const btn = $('#rptXlsx'); if (btn.disabled) return;
   const g = rptGroups(), val = $('#rptTo').value, building = val === 'B';
-  const toName = building ? '건물 전체 (공용부 · 건물분)' : val.slice(2);
+  const toName = building ? RPT_BLD : val.slice(2);
   const rows = (building ? g.building : (g.tenants.get(toName) || [])).slice().sort(rptSort);
   if (!rows.length) return toast('이 수신처에 안내할 지적사항이 없습니다', true);
   btn.disabled = true; const label = btn.textContent; btn.textContent = '엑셀 만드는 중…';
@@ -3416,7 +3438,7 @@ async function exportReportXlsx(){
     ws.getCell('A2').value = { richText:[
       { text:'수신 :  ', font:font({ bold:true }) },
       { text:toName, font:font({ size:13, bold:true }) },
-      ...(building ? [] : [{ text:'    귀중', font:font({ bold:true }) }]) ] };
+      { text:'    귀중', font:font({ bold:true }) } ] };
     [['발       신:', '원그로브 시설팀 소방파트'],
      ['발  송  일:', fmtKo($('#rptDate').value)],
      ['지적 건수:', `총 ${rows.length} 건`]].forEach(([k, v], i) => {
@@ -3427,7 +3449,7 @@ async function exportReportXlsx(){
     });
     for (let c = 1; c <= 9; c++) ws.getCell(3, c).border = { bottom:{ style:'medium', color:{ argb:NAVY } } };
     ws.mergeCells('A4:I4'); ws.getRow(4).height = 21.95;
-    /* 안내 문구 + 적색 과태료 안내 (입주사 안내문에만 — 건물 전체 안내문은 임차사 부담 문구가 맞지 않아 뺍니다) */
+    /* 안내 문구 + 적색 과태료 안내 (입주사 안내문에만 — 태영건설(건물분) 안내문은 임차사 부담 문구가 맞지 않아 뺍니다) */
     ws.getCell('A4').value = { richText:[
       { text:`${half} 소방시설 종합점검 결과, 아래와 같이 지적사항이 확인되었으니 조치하여 주시기 바랍니다.`, font:font({ size:9.5 }) },
       ...(building ? [] : [{ text:'( 기한내 미조치시 300만원 이하의 과태료 처분 임차사 부담 )', font:font({ size:9.5, color:{ argb:'FFFF0000' } }) }]) ] };
@@ -3478,7 +3500,7 @@ async function exportReportXlsx(){
 
     const buf = await wb.xlsx.writeBuffer();
     const safe = s => String(s).replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
-    download(`${safe(half)}_지적사항_개선안내_${safe(building ? '건물전체' : toName)}_${ymdOf(new Date())}.xlsx`,
+    download(`${safe(half)}_지적사항_개선안내_${safe(building ? '태영건설_건물분' : toName)}_${ymdOf(new Date())}.xlsx`,
       new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     toast(miss ? `엑셀을 저장했습니다 — 사진 ${miss}장은 불러오지 못해 빈칸으로 두었습니다` : `엑셀을 저장했습니다 (${rows.length}건)`, !!miss);
   } catch(e){
@@ -3486,6 +3508,332 @@ async function exportReportXlsx(){
   } finally { btn.disabled = false; btn.textContent = label; }
 }
 $('#rptXlsx').onclick = exportReportXlsx;
+
+/* ═══ PM사 보고 엑셀 — 미처리 지적 4구역 ══════════════════════════
+   ① 업무시설 입주사 : 3층 ~ 11층 (+ 2층 부민병원)
+   ② 판매시설 입주사 : 지하1층 ~ 2층
+   ③ 트레이더스      : 지하2층 (지하2층 전용부는 트레이더스뿐)
+   ④ 건물분          : 공용부 + 처리주체 「건물분」 (시공사 태영건설 하자 포함)
+                       (+ 공간 미지정이면서 지하3층 이하 · 옥상 · 주차장/펌프실 등 건물 설비 구역)
+   공용부 · 건물분은 층과 상관없이 ④로 먼저 보냅니다 → 지하2층 공용부도 건물분입니다.
+   층을 알 수 없거나 범위 밖에 있는 전용부는 「분류 확인」 시트로 따로 내어 빠지는 건이 없게 합니다.
+   지금 걸어 둔 필터와 상관없이 이번 회차 전체를 대상으로 합니다. */
+const PM_GRP = [
+  { k:'A', no:'①', name:'업무시설 입주사', range:'업무시설 3층~11층 입주사 (2층 부민병원 포함)', sheet:'1.업무시설 입주사(3~11F)', title:'업무시설 입주사 (3층~11층 · 2층 부민병원 포함)' },
+  { k:'B', no:'②', name:'판매시설 입주사', range:'판매시설 지하1층~2층 입주사',               sheet:'2.판매시설 입주사(B1~2F)', title:'판매시설 입주사 (지하1층~2층)' },
+  { k:'T', no:'③', name:'트레이더스',      range:'지하2층 트레이더스',                         sheet:'3.트레이더스(B2)',         title:'트레이더스 (지하2층)' },
+  { k:'C', no:'④', name:'건물분',          range:'공용부 및 처리주체 건물분 (태영건설)',        sheet:'4.건물분(공용부 포함)',     title:'건물분 (공용부 포함 · 태영건설)' },
+  { k:'X', no:'?', name:'분류 확인 필요',  range:'층 정보 없음 · 범위 밖 전용부',              sheet:'분류확인',                 title:'분류 확인 필요 — 층·공간구분 확인 후 재분류' }
+];
+const PM_KEYS = PM_GRP.map(p => p.k);
+const PM_HOSP = /부민/, PM_TRD = /트레이더스|traders/i;
+function pmClass(r){
+  if (r.space === '공용부' || r.handler === '건물분') return 'C';
+  const f = floorNum(r), sh = String(r.sheet || '');
+  const hosp = PM_HOSP.test(`${r.tenant || ''} ${r.loc || ''}`);
+  if (f){
+    if (f >= 3 && f <= 11) return 'A';
+    if (f === 2 && hosp)   return 'A';
+    if (f >= -1 && f <= 2) return 'B';
+    if (f === -2)          return 'T';                  /* 지하2층 전용부 = 트레이더스 (공용부는 위에서 건물분) */
+    return r.space === '전용부' ? 'X' : 'C';           /* 지하3층 이하 · 옥상 */
+  }
+  /* 층이 비어 있을 때 : 입주사 · 시트명으로 판단 */
+  if (hosp) return 'A';
+  if (PM_TRD.test(`${r.tenant || ''} ${sh}`)) return 'T';
+  if (/판매/.test(sh)) return 'B';
+  if (/주차장|펌프|가스계|제연|경보/.test(sh) && r.space !== '전용부') return 'C';
+  return 'X';
+}
+function pmGroups(st){
+  const g = Object.fromEntries(PM_KEYS.map(k => [k, []]));
+  for (const r of inHalf()) if (st.has(deriveStatus(r))) g[pmClass(r)].push(r);
+  return g;
+}
+/* 정렬 : ① 입주사(건수 많은 순) → 층(높은 층부터) / ②③ 층(2층 → B2) → 입주사 / ④ 동 → 층 */
+function pmSort(k, rows){
+  const tk = r => r.tenant || '';
+  const cnt = new Map(); rows.forEach(r => cnt.set(tk(r), (cnt.get(tk(r)) || 0) + 1));
+  const byT = (a, b) => (!tk(a)) - (!tk(b)) || cnt.get(tk(b)) - cnt.get(tk(a)) || tk(a).localeCompare(tk(b), 'ko');
+  const fl  = (a, b) => floorNum(b) - floorNum(a);
+  const dg  = (a, b) => String(dongOf(a)).localeCompare(String(dongOf(b)));
+  const mk  = (a, b) => String(a.mark || '').localeCompare(String(b.mark || ''), 'en', { numeric:true }) || (+a.no || 0) - (+b.no || 0);
+  const f = k === 'A' ? (a, b) => byT(a, b) || fl(a, b) || dg(a, b) || mk(a, b)
+          : (k === 'B' || k === 'T') ? (a, b) => fl(a, b) || byT(a, b) || dg(a, b) || mk(a, b)
+          :             (a, b) => dg(a, b) || fl(a, b) || mk(a, b);
+  return rows.slice().sort(f);
+}
+const pmSpace = r => r.space === '공용부' ? '공용부'
+  : r.space === '전용부' ? (r.tenant || '입주사 미기재') + (r.spaceGuess ? ' (추정)' : '')
+  : (r.tenant ? r.tenant + ' (공간 미지정)' : '공간 미지정');
+const pmDays = (r, base) => {
+  const a = Date.parse(String(r.date || '').slice(0, 10)), b = Date.parse(base);
+  return (isNaN(a) || isNaN(b)) ? '' : Math.max(0, Math.round((b - a) / 86400000));
+};
+
+function openPm(){
+  if (!isMgr()) return toast('관리자 · 소방파트만 만들 수 있습니다', true);
+  const m = document.createElement('div'); m.className = 'modal pm-modal';
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'PM사 보고 엑셀');
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  let busy = false;
+  const onKey = e => { if (e.key === 'Escape' && !busy) close(); };
+  const close = () => { m.remove(); sc.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  m.innerHTML = `<h3>PM사 보고 엑셀 <small>${esc(HALF_LABEL[S.half])} · 전체 ${inHalf().length}건</small></h3>
+    <p>미처리 지적사항을 <b>업무시설 입주사 · 판매시설 입주사 · 트레이더스 · 건물분(공용부)</b> 4구역으로 나눠 시트별로 저장합니다.
+       첫 시트에는 구분별 · 입주사별 · 시설구분별 요약표가 들어갑니다. 지금 걸어 둔 필터와 상관없이 이번 회차 전체가 대상입니다.</p>
+    <div class="pm-opt">
+      <label><span class="gl">기준일</span><input type="date" id="pmDate" value="${ymdOf(new Date())}"></label>
+      <span class="gl">포함 상태</span>
+      <label><input type="checkbox" class="pmSt" value="미조치" checked>미조치</label>
+      <label><input type="checkbox" class="pmSt" value="진행중" checked>진행중</label>
+      <label><input type="checkbox" class="pmSt" value="보류">보류</label>
+      <label title="건마다 문제점 사진 1장을 넣습니다. 건수가 많으면 시간이 조금 걸립니다"><input type="checkbox" id="pmPhoto" checked>문제점 사진 넣기</label>
+    </div>
+    <div class="dup-tw"><table class="dup-t pm-t"><thead></thead><tbody></tbody></table></div>
+    <p class="pm-warn" id="pmWarn"></p>
+    <div class="dup-foot"><span class="sum" id="pmSum"></span>
+      <button class="btn" id="pmX">닫기</button>
+      <button class="btn primary" id="pmOk">엑셀 저장</button></div>`;
+  document.body.append(sc, m);
+
+  const opts = () => ({
+    st: new Set([...m.querySelectorAll('.pmSt')].filter(c => c.checked).map(c => c.value)),
+    photo: m.querySelector('#pmPhoto').checked,
+    date: m.querySelector('#pmDate').value || ymdOf(new Date())
+  });
+  const paint = () => {
+    const o = opts(), STS = OPT.status.filter(s => o.st.has(s)), g = pmGroups(o.st);
+    const c = (rs, s) => rs.filter(r => deriveStatus(r) === s).length;
+    m.querySelector('thead').innerHTML = `<tr><th>구분</th><th>범위</th>${STS.map(s => `<th class="n">${s}</th>`).join('')}<th class="n">계</th></tr>`;
+    const all = PM_KEYS.flatMap(k => g[k]);
+    m.querySelector('tbody').innerHTML = PM_GRP.filter(p => p.k !== 'X' || g.X.length).map(p =>
+      `<tr><td><span class="k">${p.no}</span>${esc(p.name)}</td><td class="rg">${esc(p.range)}</td>
+        ${STS.map(s => `<td class="n">${c(g[p.k], s)}</td>`).join('')}<td class="n"><b>${g[p.k].length}</b></td></tr>`).join('')
+      + `<tr class="sum"><td>합계</td><td></td>${STS.map(s => `<td class="n">${c(all, s)}</td>`).join('')}<td class="n">${all.length}</td></tr>`;
+    const w = [];
+    if (g.X.length) w.push(`「분류 확인」 ${g.X.length}건 — 층 정보가 없거나 범위 밖 전용부입니다. 엑셀에 별도 시트로 넣습니다.`);
+    const guess = all.filter(r => r.spaceGuess).length, none = [...g.A, ...g.B, ...g.T].filter(r => !r.space).length;
+    if (guess) w.push(`자동추정 ${guess}건이 섞여 있습니다(엑셀에 「(추정)」 표시).`);
+    if (none) w.push(`입주사 구역(업무·판매·트레이더스)에 공간 미지정 ${none}건 — 층으로만 분류했습니다. 공용부라면 「공간·입주사 지정」 후 다시 저장하면 건물분으로 옮겨집니다.`);
+    m.querySelector('#pmWarn').innerHTML = w.map(esc).join('<br>');
+    m.querySelector('#pmSum').textContent = STS.length ? `미처리 ${all.length}건 · 시트 ${1 + 4 + (g.X.length ? 1 : 0)}개` : '포함할 상태를 하나 이상 고르세요';
+    m.querySelector('#pmOk').disabled = busy || !all.length;
+  };
+  paint();
+  m.addEventListener('change', () => { if (!busy) paint(); });
+  m.querySelector('#pmX').onclick = () => { if (!busy) close(); };
+  sc.onclick = () => { if (!busy) close(); };
+  m.querySelector('#pmOk').onclick = async () => {
+    if (busy) return;
+    busy = true; const ok = m.querySelector('#pmOk'); ok.disabled = true;
+    try { await pmExport(opts(), t => ok.textContent = t); close(); }
+    catch(e){ console.warn('pm xlsx', e); toast('엑셀을 만들지 못했습니다 — ' + (e?.message || e), true); }
+    finally { busy = false; if (m.isConnected){ ok.textContent = '엑셀 저장'; paint(); } }
+  };
+}
+
+async function pmPool(items, n, fn){
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+    while (i < items.length){ const k = i++; await fn(items[k], k); }
+  }));
+}
+
+async function pmExport(o, say){
+  say('엑셀 준비 중…');
+  const ExcelJS = await loadExcelJS();
+  const F = XL.FONT, NAVY = XL.NAVY, half = HALF_LABEL[S.half] || '', base = o.date;
+  const STS = OPT.status.filter(s => o.st.has(s));
+  const g = pmGroups(o.st);
+  for (const k of PM_KEYS) g[k] = pmSort(k, g[k]);
+  const LINE = { style:'thin', color:{ argb:'FFB9C1CC' } }, BOX = { top:LINE, left:LINE, bottom:LINE, right:LINE };
+  const font = (x = {}) => ({ name:F, size:10, ...x });
+  const fill = argb => ({ type:'pattern', pattern:'solid', fgColor:{ argb } });
+  const ST_FILL = { '미조치':'FFFCE8C8', '진행중':'FFD6E9F7', '보류':'FFE6EAEE' };
+  const wb = new ExcelJS.Workbook(); wb.creator = '원그로브 시설팀 소방파트'; wb.created = new Date();
+  const page = (portrait, rows) => ({
+    pageSetup:{ paperSize:9, orientation: portrait ? 'portrait' : 'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0,
+                margins:{ left:.3, right:.3, top:.45, bottom:.5, header:.2, footer:.25 }, horizontalCentered:true,
+                ...(rows ? { printTitlesRow: rows } : {}) },
+    headerFooter:{ oddFooter:'&L원그로브 시설팀 소방파트&C&A&R&P / &N 쪽' }
+  });
+  const cnt = (rs, s) => rs.filter(r => deriveStatus(r) === s).length;
+
+  /* ── 요약 시트 ───────────────────────────────────────────── */
+  const ws0 = wb.addWorksheet('요약', { ...page(true), views:[{ showGridLines:false }] });
+  const NC = 2 + Math.max(STS.length + 1, 5);                       /* 표 폭(열 수) */
+  ws0.columns = [24, 34, ...Array(NC - 2).fill(11)].map(width => ({ width }));
+  let rn = 1;
+  ws0.mergeCells(rn, 1, rn, NC);
+  Object.assign(ws0.getCell(rn, 1), { value:`${half} 소방시설 종합점검 미처리 지적사항 현황`, font:font({ size:16, bold:true, color:{ argb:NAVY } }) });
+  ws0.getRow(rn).height = 26; rn++;
+  ws0.mergeCells(rn, 1, rn, NC);
+  Object.assign(ws0.getCell(rn, 1), { value:`PM사 보고 · 기준일 ${fmtKo(base, true)} · 포함 상태 ${STS.join('·')} · 원그로브 시설팀 소방파트`,
+    font:font({ size:9.5, color:{ argb:'FF5B6676' } }) });
+  for (let c = 1; c <= NC; c++) ws0.getCell(rn, c).border = { bottom:{ style:'medium', color:{ argb:NAVY } } };
+  rn += 2;
+
+  /* 전체 진척 (현황판과 같은 계산 : 보류·제외 제외 기준 완료율) */
+  const H = inHalf(), t = tally(H), active = H.length - t.보류 - t.제외;
+  const pct = active ? Math.round(t.조치완료 / active * 100) : 0;
+  ws0.mergeCells(rn, 1, rn, NC);
+  ws0.getCell(rn, 1).value = { richText:[
+    { text:'전체 지적 ', font:font() }, { text:`${H.length}건`, font:font({ bold:true }) },
+    { text:`  ·  조치완료 ${t.조치완료}건  ·  미조치 ${t.미조치}건  ·  진행중 ${t.진행중}건  ·  보류 ${t.보류} / 제외 ${t.제외}건  ·  조치 완료율 `, font:font() },
+    { text:`${pct}%`, font:font({ bold:true, color:{ argb:NAVY } }) },
+    { text:` (보류·제외 제외 ${active}건 기준)`, font:font({ size:9, color:{ argb:'FF5B6676' } }) } ] };
+  ws0.getRow(rn).height = 20; rn += 2;
+
+  /* 표 그리기 도우미 — merge2 : 첫 칸을 A:B 두 칸에 걸쳐 씁니다 */
+  const section = label => {
+    ws0.mergeCells(rn, 1, rn, NC);
+    Object.assign(ws0.getCell(rn, 1), { value:label, font:font({ size:11, bold:true, color:{ argb:NAVY } }) });
+    ws0.getRow(rn).height = 20; rn++;
+  };
+  const table = (head, body, { merge2 = false, sumRow = null } = {}) => {
+    const put = (vals, kind) => {
+      const row = ws0.getRow(rn); row.height = 19;
+      let c = 1;
+      vals.forEach((v, i) => {
+        if (i === 0 && merge2){ ws0.mergeCells(rn, 1, rn, 2); }
+        const cell = ws0.getCell(rn, c); cell.value = v;
+        const num = typeof v === 'number';
+        cell.alignment = { vertical:'middle', horizontal: kind === 'h' ? 'center' : num ? 'right' : 'left', wrapText:true };
+        cell.font = kind === 'h' ? font({ size:9.5, bold:true, color:{ argb:'FFFFFFFF' } })
+                  : font({ bold: kind === 's' || i === vals.length - 1 && num });
+        if (kind === 'h') cell.fill = fill(NAVY); else if (kind === 's') cell.fill = fill('FFEEF1F5');
+        cell.border = BOX;
+        if (i === 0 && merge2){ ws0.getCell(rn, 2).border = BOX; c += 2; } else c++;
+      });
+      rn++;
+    };
+    put(head, 'h'); body.forEach(v => put(v)); if (sumRow) put(sumRow, 's');
+    rn++;
+  };
+
+  let secNo = 0;
+  section(`${++secNo}. 구분별 미처리 현황`);
+  const shown = PM_GRP.filter(p => p.k !== 'X' || g.X.length);
+  const all = shown.flatMap(p => g[p.k]);
+  table(['구분', '범위', ...STS, '계'],
+    shown.map(p => [p.k === 'X' ? '분류 확인 필요' : `${p.no} ${p.name}`, p.range, ...STS.map(s => cnt(g[p.k], s)), g[p.k].length]),
+    { sumRow:['합계', '', ...STS.map(s => cnt(all, s)), all.length] });
+
+  const byTenant = (rows, blank) => {
+    const mp = new Map();
+    rows.forEach(r => { const k = r.tenant || blank(r); (mp.get(k) || mp.set(k, []).get(k)).push(r); });
+    return [...mp].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'))
+      .map(([k, rs]) => [k, ...STS.map(s => cnt(rs, s)), rs.length]);
+  };
+  const blankName = r => r.space ? '(입주사명 미기재)' : '(공간 미지정)';
+  if (g.A.length){
+    section(`${++secNo}. 업무시설 입주사별 (3층~11층 · 2층 부민병원)`);
+    table(['입주사', ...STS, '계'], byTenant(g.A, blankName), { merge2:true, sumRow:['합계', ...STS.map(s => cnt(g.A, s)), g.A.length] });
+  }
+  if (g.B.length){
+    section(`${++secNo}. 판매시설 입주사별 (지하1층~2층)`);
+    table(['입주사', ...STS, '계'], byTenant(g.B, blankName), { merge2:true, sumRow:['합계', ...STS.map(s => cnt(g.B, s)), g.B.length] });
+  }
+  /* 시설구분 × 구분 */
+  section(`${++secNo}. 시설구분별 미처리 건수`);
+  const facs = [...OPT.fac, ...new Set(all.map(r => r.fac).filter(f => f && !OPT.fac.includes(f)))];
+  const fRows = facs.map(f => [f, ...shown.map(p => g[p.k].filter(r => r.fac === f).length), all.filter(r => r.fac === f).length])
+    .filter(v => v[v.length - 1]);
+  const noFac = all.filter(r => !r.fac);
+  if (noFac.length) fRows.push(['(시설구분 미기재)', ...shown.map(p => g[p.k].filter(r => !r.fac).length), noFac.length]);
+  table(['시설구분', ...shown.map(p => p.k === 'X' ? '분류확인' : p.name), '계'], fRows,
+    { merge2:true, sumRow:['합계', ...shown.map(p => g[p.k].length), all.length] });
+
+  ws0.mergeCells(rn, 1, rn, NC);
+  Object.assign(ws0.getCell(rn, 1), {
+    value:'※ 분류 기준 : 공용부 또는 처리주체 「건물분」은 층과 관계없이 건물분으로 집계. 그 외는 층 기준(3~11층 업무시설, 지하1층~2층 판매시설, 지하2층 트레이더스, 2층 부민병원은 업무시설). '
+        + '경과일 = 기준일 − 점검일자. 「(추정)」은 층및구역 문구로 입주사를 자동 추정한 건.',
+    font:font({ size:8.5, color:{ argb:'FF5B6676' } }), alignment:{ wrapText:true, vertical:'top' } });
+  ws0.getRow(rn).height = 40;
+
+  /* ── 상세 시트 (구분별) ─────────────────────────────────── */
+  const COLS = [
+    ['연번',5.5], ['동',6.5], ['층',6.5], ['입주사 / 공간',16], ['구역',22], ['시설구분',10.5], ['상세구분',11],
+    ['점검결과 문제점',36], ['개선대책',22], ['관련법규',20], ['처리주체',9.5], ['상태',8.5], ['점검일자',11], ['경과일',7.5],
+    ...(o.photo ? [['문제점 사진',15]] : []), ['비고',16] ];
+  const NCOL = COLS.length, PHC = o.photo ? NCOL - 1 : 0;
+  const est = (s, w) => String(s || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length * 1.75 / w)), 0);
+
+  /* 사진 미리 받기 (동시에 6장씩) */
+  const bufs = new Map();
+  if (o.photo){
+    const need = all.filter(r => r.photos?.before?.[0]);
+    let done = 0;
+    await pmPool(need, 6, async r => {
+      const b = await xlPhoto(r.photos.before[0]); if (b) bufs.set(r.id, b);
+      say(`사진 받는 중… ${++done}/${need.length}`);
+    });
+  }
+  let miss = 0;
+  for (const p of shown){
+    const rows = g[p.k];
+    const ws = wb.addWorksheet(p.sheet, { ...page(false, '3:3'), views:[{ state:'frozen', ySplit:3, showGridLines:false }] });
+    ws.columns = COLS.map(([, width]) => ({ width }));
+    ws.mergeCells(1, 1, 1, NCOL);
+    Object.assign(ws.getCell(1, 1), { value:`${half} 미처리 지적사항 — ${p.title}`, font:font({ size:14, bold:true, color:{ argb:NAVY } }) });
+    ws.getRow(1).height = 24;
+    ws.mergeCells(2, 1, 2, NCOL);
+    Object.assign(ws.getCell(2, 1), { value:`${STS.map(s => `${s} ${cnt(rows, s)}`).join(' · ')} · 계 ${rows.length}건   |   기준일 ${fmtKo(base)}   |   원그로브 시설팀 소방파트`,
+      font:font({ size:9.5, color:{ argb:'FF5B6676' } }) });
+    for (let c = 1; c <= NCOL; c++) ws.getCell(2, c).border = { bottom:{ style:'medium', color:{ argb:NAVY } } };
+    const hr = ws.getRow(3); hr.height = 22; hr.values = COLS.map(([h]) => h);
+    hr.eachCell(c => { c.fill = fill(NAVY); c.font = font({ size:9.5, bold:true, color:{ argb:'FFFFFFFF' } });
+      c.alignment = { vertical:'middle', horizontal:'center', wrapText:true }; c.border = BOX; });
+    if (rows.length) ws.autoFilter = { from:{ row:3, column:1 }, to:{ row:3, column:NCOL } };
+
+    for (let i = 0; i < rows.length; i++){
+      say(`${p.name} 시트 작성 중… ${i + 1}/${rows.length}`);
+      const d = rows[i], n = 4 + i, row = ws.getRow(n), st = deriveStatus(d);
+      const vals = [i + 1, dongLabel(dongOf(d)), d.floor || '', pmSpace(d), d.loc || '', d.fac || '', d.detail || '',
+        d.problem || '', d.action || '', d.law || '', d.handler || '', st, d.date || '', pmDays(d, base),
+        ...(o.photo ? [''] : []), d.note || ''];
+      row.values = vals;
+      const lines = Math.max(...[[4,16],[5,22],[8,36],[9,22],[10,20],[NCOL,16]].map(([c, w]) => est(vals[c - 1], w)));
+      const hasPh = PHC && bufs.has(d.id);
+      row.height = Math.max(hasPh ? 60 : 20, lines * 13 + 6);
+      for (let c = 1; c <= NCOL; c++){
+        const cell = row.getCell(c);
+        const center = [1,2,3,11,12,13,14].includes(c);
+        cell.alignment = { vertical:'middle', horizontal: center ? 'center' : 'left', wrapText:true };
+        cell.font = font({ size:9.5 }); cell.border = BOX;
+        if (i % 2) cell.fill = fill('FFF7F9FB');
+      }
+      row.getCell(1).font = font({ size:9.5, bold:true, color:{ argb:NAVY } });
+      row.getCell(8).font = font({ size:9.5, bold:true });
+      if (d.spaceGuess || !d.space) row.getCell(4).font = font({ size:9.5, color:{ argb:'FFB26A00' } });
+      if (ST_FILL[st]) row.getCell(12).fill = fill(ST_FILL[st]);
+      row.getCell(12).font = font({ size:9.5, bold: st === '미조치' });
+      const days = vals[13];
+      if (days !== '' && days >= 30) row.getCell(14).font = font({ size:9.5, bold:true, color:{ argb:'FFC0392B' } });
+      if (hasPh){
+        const id = wb.addImage({ buffer:bufs.get(d.id), extension:'jpeg' });
+        const off = Math.max(0, Math.round((row.height / .75 - 70) / 2)) * 9525;
+        ws.addImage(id, { tl:{ nativeCol:PHC - 1, nativeColOff:5 * 9525, nativeRow:n - 1, nativeRowOff:off },
+                          ext:{ width:96, height:70 }, editAs:'oneCell' });
+      } else if (PHC && d.photos?.before?.[0]) miss++;
+    }
+    if (!rows.length){
+      ws.mergeCells(4, 1, 4, NCOL);
+      Object.assign(ws.getCell(4, 1), { value:'미처리 지적사항이 없습니다.', font:font({ color:{ argb:'FF5B6676' } }), alignment:{ horizontal:'center' } });
+    }
+  }
+
+  say('파일 저장 중…');
+  const buf = await wb.xlsx.writeBuffer();
+  const safe = s => String(s).replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  download(`원그로브_${safe(half)}_미처리 지적현황_PM보고_${base}.xlsx`,
+    new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  toast(miss ? `엑셀을 저장했습니다 (${all.length}건) — 사진 ${miss}장은 불러오지 못해 빈칸입니다`
+             : `엑셀을 저장했습니다 — 미처리 ${all.length}건 · 업무 ${g.A.length} · 판매 ${g.B.length} · 트레이더스 ${g.T.length} · 건물분 ${g.C.length}`, !!miss);
+}
+$('#pmBtn').onclick = openPm;
 
 $('#rptBtn').onclick = openReport;
 $('#rptClose').onclick = closeReport;
