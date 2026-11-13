@@ -709,6 +709,20 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
   font-family:var(--mono);font-size:11px;font-weight:600;background:var(--raise);border:1px solid var(--line2)}
 .pm-warn{font-size:12px;color:var(--undone-t);line-height:1.7;margin:10px 0 0}
 .pm-warn:empty{display:none}
+
+/* ── 소방서 제출용 엑셀 버튼 (초록) ───────────────────────────── */
+#subBtn{background:#8CC63F;border-color:#8CC63F;color:#13210A;font-weight:600}
+#subBtn:hover{background:#9BD64D;border-color:#9BD64D}
+.modal.sub-modal{width:min(820px,calc(100% - 24px))}
+.sub-note{font-size:11.5px;color:var(--faint);line-height:1.7;margin:10px 0 0}
+
+/* ── 설정 : 관리자 기능 카드 ───────────────────────────────────── */
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr));gap:12px}
+.adm-item{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:9px}
+.adm-item h4{margin:0;font-size:13px;font-weight:600}
+.adm-item p{margin:0;font-size:12px;color:var(--faint);line-height:1.6;flex:1}
+.adm-item .adm-st{font-size:12px;color:var(--dim)}
+.adm-item .btn{align-self:flex-start}
 </style>
 </head>
 <body>
@@ -827,14 +841,12 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
       </span>
       <button class="btn sm" id="resetFilter">필터 해제</button>
       <div class="spacer"></div>
-      <button class="btn sm no-print" id="bulkBtn" data-need="mgr" disabled title="체크한 항목의 공용부/전용부·입주사명을 한 번에 지정">공간·입주사 지정</button>
+      <span class="role-note no-print" id="selHint" hidden>선택한 항목의 공간·입주사 지정은 설정 › 관리자 기능에서 합니다</span>
       <button class="btn sm danger no-print" id="delSelBtn" data-need="admin" disabled>선택 삭제</button>
-      <button class="btn sm no-print" id="dupBtn" data-need="admin" title="같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다">중복 정리</button>
-      <button class="btn sm no-print" id="fbBtn" data-need="mgr" title="상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분·공용부로 정리합니다">방화구획 정리</button>
       <button class="btn sm no-print" id="printBtn">인쇄</button>
       <button class="btn sm no-print" id="rptBtn" data-need="mgr" title="입주사별 지적사항 개선 안내문 (A4 가로) 만들기">입주사 안내문</button>
       <button class="btn sm no-print" id="pmBtn" data-need="mgr" title="미처리 지적을 업무시설 입주사 · 판매시설 · 건물분(공용부)으로 나눠 엑셀로 저장">PM 보고 엑셀</button>
-      <button class="btn sm no-print" id="csvBtn">CSV 내보내기</button>
+      <button class="btn sm no-print" id="subBtn" data-need="mgr" title="상세에서 「소방서 제출 대상」으로 체크한 건만 소화설비 → 경보설비 → 피난구조설비 → 소화용수설비 → 소화활동설비 → 기타 순으로 엑셀 저장">소방서 제출용</button>
       <button class="btn sm primary edit-only" id="newBtn">＋ 지적 추가</button>
     </div>
 
@@ -923,7 +935,7 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
         <p style="font-size:12px;color:var(--faint);margin:10px 0 0;line-height:1.7">
           <b>공간구분 · 입주사명</b> 열이 없는 예전 양식은 「미지정」으로 들어옵니다.
           「층및 구역」에 등록된 입주사명이 적혀 있으면 <b>추정</b>으로 표시해 두니,
-          지적내역에서 확인 후 <b>공간·입주사 지정</b>으로 확정해 주세요.
+          지적내역에서 확인 후 <b>설정 › 관리자 기능 › 공간·입주사 지정</b>으로 확정해 주세요.
         </p>
       </div>
     </div>
@@ -941,16 +953,17 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
             <thead><tr><th style="width:118px">구분</th><th style="width:84px">비밀번호</th><th>할 수 있는 일</th></tr></thead>
             <tbody>
               <tr><td><b>보기 전용</b></td><td class="c-date">없음</td>
-                  <td>현황판 · 지적내역 조회, 사진 확대, 인쇄, CSV 내려받기</td></tr>
+                  <td>현황판 · 지적내역 조회, 사진 확대, 인쇄</td></tr>
               <tr><td><b style="color:var(--doing-t)">점검업체</b></td><td class="c-date">1111</td>
                   <td>위의 모든 것 + <b>지적 추가 · 점검표 업로드</b><br>
                       <span style="color:var(--faint);font-size:11.5px">처리주체 · 처리상태 · 완료일 · 조치후 사진은 보이지 않습니다. 기존 건은 수정할 수 없습니다.</span></td></tr>
               <tr><td><b style="color:#A9D68E">소방파트</b></td><td class="c-date">2222</td>
                   <td>위의 모든 것 + <b>모든 지적사항 수정</b>(처리주체 · 처리상태 · 완료일 · 조치후 사진 · 공간구분 · 입주사명 포함),
-                      <b>지적 추가 · 공간·입주사 일괄 지정 · 기간 검색</b><br>
+                      <b>지적 추가 · 기간 검색 · PM 보고 · 소방서 제출 엑셀 · 입주사 안내문</b><br>
                       <span style="color:var(--faint);font-size:11.5px">삭제 · 점검표 업로드 · 설정은 할 수 없습니다.</span></td></tr>
               <tr><td><b style="color:var(--crit-t)">관리자</b></td><td class="c-date">0000</td>
-                  <td>위의 모든 것 + <b>모든 항목 수정 · 삭제 · 처리 관련 입력</b></td></tr>
+                  <td>위의 모든 것 + <b>모든 항목 수정 · 삭제 · 처리 관련 입력</b>,
+                      <b>설정 › 관리자 기능</b>(공간·입주사 지정 · 중복 정리 · 방화구획 정리 · CSV 내보내기)</td></tr>
             </tbody>
           </table>
         </div>
@@ -969,6 +982,35 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
           연결 전(이 기기 저장 상태)에 바꾼 비밀번호는 그 기기에만 적용되며, 그 경우에 한해 브라우저
           사이트 데이터를 지우면 기본값으로 돌아갑니다.
         </p>
+      </div>
+
+      <div class="panel set-card" data-need="admin" style="grid-column:1/-1">
+        <h3>관리자 기능</h3>
+        <p>지적내역 화면에서 옮겨 온 정리 도구입니다. 자료를 바꾸거나 내려받는 기능이므로 필요할 때만 사용하세요.</p>
+        <div class="adm-grid">
+          <div class="adm-item">
+            <h4>공간 · 입주사 지정</h4>
+            <p>지적내역에서 체크한 항목에 공용부 / 전용부와 입주사명을 한 번에 넣습니다.</p>
+            <div class="adm-st" id="bulkInfo"></div>
+            <button class="btn" id="bulkBtn" type="button" title="지적내역에서 체크한 항목의 공용부/전용부·입주사명을 한 번에 지정">공간·입주사 지정</button>
+          </div>
+          <div class="adm-item">
+            <h4>중복 정리</h4>
+            <p>같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다. 정리 전에 CSV로 백업해 두면 안전합니다.</p>
+            <button class="btn" id="dupBtn" type="button" title="같은 지적사항이 두 번 등록된 건을 찾아 하나로 합칩니다">중복 정리</button>
+          </div>
+          <div class="adm-item">
+            <h4>방화구획 정리</h4>
+            <p>상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분 · 공용부로 정리합니다.</p>
+            <button class="btn" id="fbBtn" type="button" title="상세구분 방화구획 중 처리주체·공간구분이 비어 있는 건을 건물분·공용부로 정리합니다">방화구획 정리</button>
+          </div>
+          <div class="adm-item">
+            <h4>CSV 내보내기</h4>
+            <p>현재 회차의 지적내역 전체를 CSV 파일로 저장합니다.</p>
+            <label class="chk" style="font-size:12px"><input type="checkbox" id="csvFilt"> 지적내역에 걸어 둔 필터 · 검색 조건만 내보내기</label>
+            <button class="btn" id="csvBtn" type="button">CSV 내보내기</button>
+          </div>
+        </div>
       </div>
 
       <div class="panel set-card" data-need="admin">
@@ -2121,7 +2163,7 @@ function renderBoard(){
     ? `<button type="button" class="note-jump" data-jk="${k}" data-jv="${v}" title="${lab} ${n}건만 보기">${lab} ${n}건</button>`
     : `${lab} 0건`;
   $('#spaceNote').innerHTML = (nNone || nGuess)
-    ? `${jl(nNone,'space','미지정','미지정')} · ${jl(nGuess,'chk','자동추정','자동추정')} — 누르면 해당 건만 보입니다. 체크 후 「공간·입주사 지정」으로 확정하세요.` : '';
+    ? `${jl(nNone,'space','미지정','미지정')} · ${jl(nGuess,'chk','자동추정','자동추정')} — 누르면 해당 건만 보입니다. 체크 후 설정 › 관리자 기능의 「공간·입주사 지정」으로 확정하세요.` : '';
 
   /* 입주사별 (전용부) */
   const pr = rows.filter(r => r.space === '전용부');
@@ -2244,14 +2286,21 @@ function spaceCell(r){
   }
   return '<span class="sp sp-none" title="공간구분이 지정되지 않았습니다">미지정</span>';
 }
+/* 공간·입주사 지정(설정 탭)이 쓰는 선택 건수 표시 — 선택은 지적내역의 체크 칸에서 합니다 */
+function updBulkInfo(){
+  const n = S.rows.filter(r => S.delSel.has(r.id)).length;
+  const bb = $('#bulkBtn'), bi = $('#bulkInfo'), h = $('#selHint');
+  if (bb) bb.textContent = n ? `공간·입주사 지정 (${n})` : '공간·입주사 지정';
+  if (bi) bi.innerHTML = n ? `지적내역에서 체크한 <b>${n}건</b>이 대상입니다.` : '대상 : 지적내역에서 체크한 항목 (현재 0건)';
+  if (h) h.hidden = !(n && isAdmin());
+}
 function syncDelSel(rows){
   const vis = new Set(rows.map(r => r.id));
   for (const id of [...S.delSel]) if (!vis.has(id)) S.delSel.delete(id);
-  const n = S.delSel.size, btn = $('#delSelBtn'), bb = $('#bulkBtn');
+  const n = S.delSel.size, btn = $('#delSelBtn');
   btn.disabled = !n;
   btn.textContent = n ? `선택 삭제 (${n})` : '선택 삭제';
-  bb.disabled = !n;
-  bb.textContent = n ? `공간·입주사 지정 (${n})` : '공간·입주사 지정';
+  updBulkInfo();
   const all = $('#delAll');
   if (all){ all.checked = !!rows.length && n === rows.length; all.indeterminate = n > 0 && n < rows.length; }
   $$('#tbody tr.row').forEach(tr => tr.classList.toggle('pick-on', S.delSel.has(tr.dataset.id)));
@@ -2596,14 +2645,15 @@ function download(name, blob){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
-function toCSV(){
+function toCSV(filtered){
   /* 연번(표시 순번)과 점검표 원본 No.를 모두 내보냅니다 — 원본 대조용 */
   const H = ['연번','구역','점검표 No.','위치표기','점검일자','시설구분','상세구분','동별','공간구분','입주사명','층','구역상세','점검결과 문제점','개선 대책','관련법규','처리방안','처리상태','완료일','소방서제출','비고'];
   const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const body = current().map((r, i) => [i+1,r.sheet,r.no,r.mark||'',r.date,r.fac,r.detail,r.dong,
+  const src = filtered ? current() : inHalf().slice().sort((a, b) => zc(a, b) || (+a.no || 0) - (+b.no || 0));
+  const body = src.map((r, i) => [i+1,r.sheet,r.no,r.mark||'',r.date,r.fac,r.detail,r.dong,
     r.space ? r.space + (r.spaceGuess ? '(추정)' : '') : '미지정', r.tenant||'', r.floor,r.loc,
     r.problem,r.action,r.law,r.handler,deriveStatus(r),r.done,r.submit?'O':'',r.note].map(q).join(','));
-  download(`원그로브_${HALF_LABEL[S.half]}_지적현황_${new Date().toISOString().slice(0,10)}.csv`,
+  download(`원그로브_${HALF_LABEL[S.half]}_지적현황${filtered ? '_필터적용' : ''}_${new Date().toISOString().slice(0,10)}.csv`,
     new Blob(['﻿' + [H.map(q).join(','), ...body].join('\r\n')], { type:'text/csv;charset=utf-8' }));
 }
 
@@ -2705,6 +2755,7 @@ function setView(v){
   if (v === 'settings') renderStats();
 }
 function renderStats(){
+  updBulkInfo();
   const h1 = S.rows.filter(r => (r.half||'2026H1') === '2026H1').length;
   const h2 = S.rows.filter(r => r.half === '2026H2').length;
   $('#stCount').textContent = S.rows.length;
@@ -2749,7 +2800,7 @@ function afterLoad(){
   if (S.view === 'list'){ renderFilters(); renderList(); }
   if (S.view === 'settings') renderStats();
   $('#tabCnt').textContent = inHalf().length;
-  updDupBtn(); updFbBtn();
+  updDupBtn(); updFbBtn(); updBulkInfo();
 }
 
 /* ═══ 이벤트 ═══════════════════════════════════════════════════ */
@@ -2789,7 +2840,7 @@ $('#delAll').onchange = e => {
 $('#bulkBtn').onclick = () => {
   if (!isMgr()) return toast('관리자 · 소방파트만 지정할 수 있습니다', true);
   const pick = S.rows.filter(r => S.delSel.has(r.id));
-  if (!pick.length) return;
+  if (!pick.length){ toast('지적내역에서 지정할 항목을 먼저 체크해 주세요', true); setView('list'); return; }
   const m = document.createElement('div'); m.className = 'modal';
   m.innerHTML = `<h3>공간구분 · 입주사 지정</h3>
     <p>선택한 <b>${pick.length}건</b>에 같은 값을 넣습니다. 다른 입력값은 그대로 둡니다.</p>
@@ -2818,7 +2869,7 @@ $('#bulkBtn').onclick = () => {
     const rs = pick.map(r => ({ ...r, space, tenant, spaceGuess:false, spaceOk:true }));
     try {
       await saveMany(rs);
-      close(); S.delSel.clear(); renderList();
+      close(); S.delSel.clear(); updBulkInfo(); if (S.view === 'list') renderList();
       toast(`${rs.length}건을 ${space ? (space === '전용부' ? tenant : '공용부') : '미지정'}(으)로 지정했습니다`);
     } catch(err){
       console.warn('bulk', err); m.querySelector('#bkOk').disabled = false;
@@ -3182,7 +3233,7 @@ $('#printBtn').onclick = async () => {
   }
   window.print();
 };
-$('#csvBtn').onclick = toCSV;
+$('#csvBtn').onclick = () => toCSV($('#csvFilt').checked);
 
 /* ═══ 입주사 안내문 (A4 가로) ═══════════════════════════════════
    · 수신처별로 지적사항을 모아 A4 가로 용지 한 장씩 나눕니다.
@@ -3834,6 +3885,229 @@ async function pmExport(o, say){
              : `엑셀을 저장했습니다 — 미처리 ${all.length}건 · 업무 ${g.A.length} · 판매 ${g.B.length} · 트레이더스 ${g.T.length} · 건물분 ${g.C.length}`, !!miss);
 }
 $('#pmBtn').onclick = openPm;
+
+/* ═══ 소방서 제출용 엑셀 ═══════════════════════════════════════════
+   지적내역 상세의 「소방서 제출 대상」(submit)에 체크된 건만 모아 설비 구분 순서로 저장합니다.
+     ① 소화설비   = 시설구분 소화설비 · 소화기구
+     ② 경보설비   = 경보설비
+     ③ 피난구조설비 = 피난설비
+     ④ 소화용수설비 = 점검표 원본 표기가 소화용수설비(소화수조 · 저수조 · 상수도소화용수)인 건
+                    (현황판은 소화용수설비를 소화활동설비로 합쳐 보관하므로 원본 표기 facRaw 로 되살립니다)
+     ⑤ 소화활동설비 = 소화활동설비 · 제연설비
+     ⑥ 기타       = 기타설비 · 시설구분이 비었거나 위에 없는 값
+   지금 걸어 둔 필터와 상관없이 이번 회차 전체가 대상이며, 상태(미조치·조치완료 등)와도 무관합니다. */
+const SUB_GRP = [
+  { k:'extg',  no:'1', name:'소화설비',     from:'소화설비 · 소화기구' },
+  { k:'alarm', no:'2', name:'경보설비',     from:'경보설비' },
+  { k:'evac',  no:'3', name:'피난구조설비', from:'피난설비' },
+  { k:'water', no:'4', name:'소화용수설비', from:'소화용수설비 (소화수조 · 저수조 등)' },
+  { k:'act',   no:'5', name:'소화활동설비', from:'소화활동설비 · 제연설비' },
+  { k:'etc',   no:'6', name:'기타',         from:'기타설비 · 시설구분 없음' }
+];
+const SUB_WATER = /소화용수|소화수조|저수조|상수도/;
+function subClass(r){
+  if (SUB_WATER.test(`${r.facRaw || ''} ${r.fac || ''} ${r.detail || ''}`)) return 'water';
+  const f = normFac(r.fac);
+  if (f === '소화설비' || f === '소화기구') return 'extg';
+  if (f === '경보설비') return 'alarm';
+  if (f === '피난설비') return 'evac';
+  if (f === '소화활동설비' || f === '제연설비') return 'act';
+  return 'etc';
+}
+const subRows = () => inHalf().filter(r => r.submit);
+/* 설비 구분 → 시설구분 → 구역 → 동 → 층(높은 층부터) → 위치표기 · No. */
+function subGroups(rows){
+  const gi = r => SUB_GRP.findIndex(x => x.k === subClass(r));
+  const fi = r => { const i = OPT.fac.indexOf(r.fac); return i < 0 ? 99 : i; };
+  const sorted = rows.slice().sort((a, b) => gi(a) - gi(b) || fi(a) - fi(b) || zc(a, b)
+    || String(dongOf(a)).localeCompare(String(dongOf(b))) || floorNum(b) - floorNum(a)
+    || String(a.mark || '').localeCompare(String(b.mark || ''), 'en', { numeric:true }) || (+a.no || 0) - (+b.no || 0));
+  const g = Object.fromEntries(SUB_GRP.map(x => [x.k, []]));
+  sorted.forEach(r => g[subClass(r)].push(r));
+  return g;
+}
+
+function openSub(){
+  if (!isMgr()) return toast('관리자 · 소방파트만 만들 수 있습니다', true);
+  const m = document.createElement('div'); m.className = 'modal pm-modal sub-modal';
+  m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', '소방서 제출 엑셀');
+  const sc = document.createElement('div'); sc.className = 'scrim';
+  let busy = false;
+  const onKey = e => { if (e.key === 'Escape' && !busy) close(); };
+  const close = () => { m.remove(); sc.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+
+  const rows = subRows(), G = subGroups(rows), t = tally(rows);
+  const STS = OPT.status.filter(s => t[s]);
+  const cnt = (rs, s) => rs.filter(r => deriveStatus(r) === s).length;
+  const body = SUB_GRP.map(p => `<tr><td><span class="k">${p.no}</span>${esc(p.name)}</td><td class="rg">${esc(p.from)}</td>
+      ${STS.map(s => `<td class="n">${cnt(G[p.k], s)}</td>`).join('')}<td class="n"><b>${G[p.k].length}</b></td></tr>`).join('')
+    + `<tr class="sum"><td>합계</td><td></td>${STS.map(s => `<td class="n">${t[s]}</td>`).join('')}<td class="n">${rows.length}</td></tr>`;
+  const open = rows.filter(r => deriveStatus(r) !== '조치완료').length;
+  const noAfter = rows.filter(r => deriveStatus(r) === '조치완료' && !(r.photos?.after || []).length).length;
+  const w = [];
+  if (!rows.length) w.push('제출 대상으로 체크된 건이 없습니다. 지적내역에서 항목을 열어 「소방서 제출 대상」에 체크해 주세요.');
+  else {
+    if (open) w.push(`조치완료가 아닌 건 ${open}건이 들어 있습니다 (엑셀 처리상태 칸에 그대로 표시됩니다).`);
+    if (noAfter) w.push(`조치완료인데 조치후 사진이 없는 건 ${noAfter}건이 있습니다.`);
+  }
+  m.innerHTML = `<h3>소방서 제출 엑셀 <small>${esc(HALF_LABEL[S.half])} · 제출 대상 ${rows.length}건</small></h3>
+    <p>지적내역 상세에서 <b>「소방서 제출 대상」</b>으로 체크한 건만 모아
+       <b>소화설비 → 경보설비 → 피난구조설비 → 소화용수설비 → 소화활동설비 → 기타</b> 순으로 정리해 저장합니다.
+       지금 걸어 둔 필터와 상관없이 이번 회차 전체가 대상입니다.</p>
+    <div class="pm-opt">
+      <label><span class="gl">제출일</span><input type="date" id="subDate" value="${ymdOf(new Date())}"></label>
+      <label title="건마다 문제점 · 위치표기 · 조치후 사진을 1장씩 넣습니다. 건수가 많으면 시간이 조금 걸립니다"><input type="checkbox" id="subPhoto" checked>사진 넣기 (문제점 · 위치표기 · 조치후)</label>
+      <label title="비고 칸에는 내부 메모가 들어 있을 수 있어 기본으로 뺍니다"><input type="checkbox" id="subNote">비고 포함</label>
+    </div>
+    <div class="dup-tw"><table class="dup-t pm-t"><thead><tr><th>구분</th><th>포함되는 시설구분</th>${STS.map(s => `<th class="n">${s}</th>`).join('')}<th class="n">계</th></tr></thead>
+      <tbody>${body}</tbody></table></div>
+    <p class="pm-warn">${w.map(esc).join('<br>')}</p>
+    <p class="sub-note">시설구분이 비어 있거나 위 구분에 없는 건은 「기타」로 들어갑니다. 해당 건이 없는 구분도 제목줄과 「해당 사항 없음」으로 남겨 둡니다.</p>
+    <div class="dup-foot"><span class="sum">${rows.length ? `제출 대상 ${rows.length}건` : ''}</span>
+      <button class="btn" id="subX">닫기</button>
+      <button class="btn primary" id="subOk"${rows.length ? '' : ' disabled'}>엑셀 저장</button></div>`;
+  document.body.append(sc, m);
+  m.querySelector('#subX').onclick = () => { if (!busy) close(); };
+  sc.onclick = () => { if (!busy) close(); };
+  m.querySelector('#subOk').onclick = async () => {
+    if (busy) return;
+    busy = true; const ok = m.querySelector('#subOk'); ok.disabled = true;
+    try {
+      await subExport({ photo: m.querySelector('#subPhoto').checked, note: m.querySelector('#subNote').checked,
+                        date: m.querySelector('#subDate').value || ymdOf(new Date()) }, x => ok.textContent = x);
+      close();
+    } catch(e){ console.warn('sub xlsx', e); toast('엑셀을 만들지 못했습니다 — ' + (e?.message || e), true); }
+    finally { busy = false; if (m.isConnected){ ok.textContent = '엑셀 저장'; ok.disabled = false; } }
+  };
+}
+
+async function subExport(o, say){
+  say('엑셀 준비 중…');
+  const ExcelJS = await loadExcelJS();
+  const F = XL.FONT, NAVY = XL.NAVY, half = HALF_LABEL[S.half] || '';
+  const G = subGroups(subRows()), all = SUB_GRP.flatMap(x => G[x.k]);
+  if (!all.length) throw new Error('제출 대상으로 체크된 건이 없습니다');
+  const LINE = { style:'thin', color:{ argb:'FFB9C1CC' } }, BOX = { top:LINE, left:LINE, bottom:LINE, right:LINE };
+  const font = (x = {}) => ({ name:F, size:10, ...x });
+  const fill = argb => ({ type:'pattern', pattern:'solid', fgColor:{ argb } });
+  const ST_FILL = { '미조치':'FFFCE8C8', '진행중':'FFD6E9F7', '조치완료':'FFD9F0E3', '보류':'FFE6EAEE', '제외':'FFE6EAEE' };
+  const wb = new ExcelJS.Workbook(); wb.creator = '원그로브 시설팀 소방파트'; wb.created = new Date();
+
+  const COLS = [['연번',5.5], ['시설구분 / 상세구분',15], ['동 · 층',9], ['구역',22], ['점검일자',11],
+    ['점검결과 문제점',34], ['개선대책',20], ['관련법규',18], ['처리상태',9], ['완료일',11],
+    ...(o.photo ? [['문제점 사진',15], ['위치표기',15], ['조치후 사진',15]] : []),
+    ...(o.note ? [['비고',16]] : [])];
+  const NC = COLS.length, PH0 = 10;                         /* 사진 첫 열(0부터 센 번호) */
+  const HR = 4;                                             /* 표 머리 행 */
+  const ws = wb.addWorksheet('소방서 제출 지적사항', {
+    pageSetup:{ paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0,
+                margins:{ left:.3, right:.3, top:.45, bottom:.5, header:.2, footer:.25 },
+                horizontalCentered:true, printTitlesRow:`${HR}:${HR}` },
+    headerFooter:{ oddFooter:'&L원그로브 시설팀 소방파트&R&P / &N 쪽' },
+    views:[{ state:'frozen', ySplit:HR, showGridLines:false }]
+  });
+  ws.columns = COLS.map(([, width]) => ({ width }));
+
+  /* 머리 (1~3행) */
+  ws.mergeCells(1, 1, 1, NC);
+  Object.assign(ws.getCell(1, 1), { value:`${half} 소방시설 종합점검 지적사항 — 소방서 제출`, font:font({ size:15, bold:true, color:{ argb:NAVY } }) });
+  ws.getRow(1).height = 26;
+  ws.mergeCells(2, 1, 2, NC);
+  Object.assign(ws.getCell(2, 1), {
+    value:`제출일 ${fmtKo(o.date)}   |   계 ${all.length}건   |   ${SUB_GRP.map(p => `${p.name} ${G[p.k].length}`).join(' · ')}   |   원그로브 시설팀 소방파트`,
+    font:font({ size:9.5, color:{ argb:'FF5B6676' } }) });
+  for (let c = 1; c <= NC; c++) ws.getCell(2, c).border = { bottom:{ style:'medium', color:{ argb:NAVY } } };
+  ws.getRow(3).height = 6;
+  const hr = ws.getRow(HR); hr.height = 22; hr.values = COLS.map(([h]) => h);
+  hr.eachCell(c => { c.fill = fill(NAVY); c.font = font({ size:9.5, bold:true, color:{ argb:'FFFFFFFF' } });
+    c.alignment = { vertical:'middle', horizontal:'center', wrapText:true }; c.border = BOX; });
+
+  /* 사진 미리 받기 (동시에 6장씩) — 건마다 문제점 · 위치표기 · 조치후 첫 장 */
+  const KINDS = ['before', 'map', 'after'], bufs = new Map();
+  if (o.photo){
+    const need = [];
+    for (const r of all) for (const k of KINDS) if (r.photos?.[k]?.[0]) need.push([r, k]);
+    let done = 0;
+    await pmPool(need, 6, async ([r, k]) => {
+      const b = await xlPhoto(r.photos[k][0]); if (b) bufs.set(`${r.id}:${k}`, b);
+      say(`사진 받는 중… ${++done}/${need.length}`);
+    });
+  }
+
+  const est = (v, w) => String(v || '').split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length * 1.75 / w)), 0);
+  const TXT = [[2, 15], [4, 22], [6, 34], [7, 20], [8, 18], ...(o.note ? [[NC, 16]] : [])];
+  let rn = HR + 1, seq = 0, miss = 0;
+  for (const grp of SUB_GRP){
+    const rs = G[grp.k];
+    say(`${grp.name} 작성 중… (${rs.length}건)`);
+    /* 구분 제목줄 */
+    ws.mergeCells(rn, 1, rn, NC);
+    const bc = ws.getCell(rn, 1);
+    bc.value = `${grp.no}. ${grp.name}  (${rs.length}건)`;
+    bc.font = font({ size:11, bold:true, color:{ argb:NAVY } }); bc.fill = fill('FFE3E9F1');
+    bc.alignment = { vertical:'middle', horizontal:'left', indent:1 };
+    for (let c = 1; c <= NC; c++) ws.getCell(rn, c).border = BOX;
+    ws.getRow(rn).height = 22; rn++;
+    if (!rs.length){
+      ws.mergeCells(rn, 1, rn, NC);
+      Object.assign(ws.getCell(rn, 1), { value:'해당 사항 없음', font:font({ color:{ argb:'FF5B6676' } }),
+        alignment:{ vertical:'middle', horizontal:'center' } });
+      for (let c = 1; c <= NC; c++) ws.getCell(rn, c).border = BOX;
+      ws.getRow(rn).height = 19; rn++;
+      continue;
+    }
+    rs.forEach((d, i) => {
+      const row = ws.getRow(rn), st = deriveStatus(d);
+      const dg = dongOf(d) ? dongLabel(dongOf(d)) : '';
+      /* 소화용수설비는 현황판이 소화활동설비로 합쳐 보관하므로, 이 구분에서는 원본 표기를 보여 줍니다 */
+      const facTxt = (grp.k === 'water' && !SUB_WATER.test(d.fac || '')) ? (d.facRaw || '소화용수설비') : d.fac;
+      const vals = [++seq, [facTxt, d.detail].filter(Boolean).join(' · '), [dg, d.floor].filter(Boolean).join(' '), d.loc || '',
+        d.date || '', d.problem || '', d.action || '', d.law || '', st, d.done || '',
+        ...(o.photo ? ['', '', ''] : []), ...(o.note ? [d.note || ''] : [])];
+      row.values = vals;
+      const lines = Math.max(...TXT.map(([c, w]) => est(vals[c - 1], w)));
+      const hasPh = o.photo && KINDS.some(k => bufs.has(`${d.id}:${k}`));
+      row.height = Math.max(hasPh ? 60 : 20, lines * 13 + 6);
+      for (let c = 1; c <= NC; c++){
+        const cell = row.getCell(c);
+        cell.alignment = { vertical:'middle', horizontal:[1, 3, 5, 9, 10].includes(c) ? 'center' : 'left', wrapText:true };
+        cell.font = font({ size:9.5 }); cell.border = BOX;
+        if (i % 2) cell.fill = fill('FFF7F9FB');
+      }
+      row.getCell(1).font = font({ size:9.5, bold:true, color:{ argb:NAVY } });
+      row.getCell(6).font = font({ size:9.5, bold:true });
+      if (ST_FILL[st]) row.getCell(9).fill = fill(ST_FILL[st]);
+      row.getCell(9).font = font({ size:9.5, bold: st === '미조치' });
+      if (o.photo) KINDS.forEach((k, j) => {
+        const b = bufs.get(`${d.id}:${k}`);
+        if (b){
+          const id = wb.addImage({ buffer:b, extension:'jpeg' });
+          const off = Math.max(0, Math.round((row.height / .75 - 70) / 2)) * 9525;      /* 사진 세로 가운데 */
+          ws.addImage(id, { tl:{ nativeCol:PH0 + j, nativeColOff:5 * 9525, nativeRow:rn - 1, nativeRowOff:off },
+                            ext:{ width:96, height:70 }, editAs:'oneCell' });
+        } else if (d.photos?.[k]?.[0]) miss++;
+      });
+      rn++;
+    });
+  }
+  rn++;
+  ws.mergeCells(rn, 1, rn, NC);
+  Object.assign(ws.getCell(rn, 1), {
+    value:'※ 구분 기준 : 소화기구는 소화설비, 피난설비는 피난구조설비, 제연설비는 소화활동설비에 포함하였습니다. 소화용수설비는 점검표 원본에 소화용수설비로 적힌 건입니다.',
+    font:font({ size:8.5, color:{ argb:'FF5B6676' } }), alignment:{ wrapText:true, vertical:'top' } });
+  ws.getRow(rn).height = 28;
+
+  say('파일 저장 중…');
+  const buf = await wb.xlsx.writeBuffer();
+  const safe = x => String(x).replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  download(`원그로브_${safe(half)}_소방서제출_지적사항_${o.date}.xlsx`,
+    new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const sum = SUB_GRP.filter(p => G[p.k].length).map(p => `${p.name} ${G[p.k].length}`).join(' · ');
+  toast(miss ? `엑셀을 저장했습니다 (${all.length}건) — 사진 ${miss}장은 불러오지 못해 빈칸입니다`
+             : `엑셀을 저장했습니다 — 소방서 제출 ${all.length}건 (${sum})`, !!miss);
+}
+$('#subBtn').onclick = openSub;
 
 $('#rptBtn').onclick = openReport;
 $('#rptClose').onclick = closeReport;
