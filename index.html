@@ -829,6 +829,7 @@ td.t-done{text-align:center;font-size:8pt;white-space:nowrap}
         <option value="status">미조치 우선</option>
         <option value="fac">시설구분별</option>
         <option value="tenant">입주사별 (전용 → 공용)</option>
+        <option value="submit" data-need="mgr">소방서 제출 목록만 보기 (설비 순)</option>
       </select>
       <span class="date-range" data-need="mgr" title="점검일자 기간 검색 (관리자 · 소방파트)">
         <span class="gl">점검일자</span>
@@ -2058,6 +2059,7 @@ function current(){
     if (f.tenant.size && !f.tenant.has(r.tenant || '')) return false;
     if (f.handler.size && !f.handler.has(r.handler)) return false;
     /* 확인 필요 : 자동추정(공간·입주사를 「층및 구역」 문구로 추정한 건) */
+    if (S.sort === 'submit' && !r.submit) return false;      /* 정렬 「소방서 제출 목록」 : 제출 대상만 */
     if (f.chk.size && !(f.chk.has('자동추정') && r.spaceGuess)) return false;
     /* 기간 검색 (관리자·소방파트) — 점검일자 기준, 시작·끝 날짜 포함 */
     if (isMgr() && (S.dFrom || S.dTo)){
@@ -2079,6 +2081,7 @@ function current(){
   else if (S.sort === 'status') out.sort((a,b) => so[deriveStatus(a)] - so[deriveStatus(b)] || zc(a,b) || (+a.no||0)-(+b.no||0));
   else if (S.sort === 'fac')    out.sort((a,b) => OPT.fac.indexOf(a.fac)-OPT.fac.indexOf(b.fac) || zc(a,b) || (+a.no||0)-(+b.no||0));
   else if (S.sort === 'tenant') out.sort((a,b) => spo(a)-spo(b) || String(a.tenant||'').localeCompare(String(b.tenant||''),'ko') || zc(a,b) || (+a.no||0)-(+b.no||0));
+  else if (S.sort === 'submit'){ const g = subGroups(out); out = SUB_GRP.flatMap(x => g[x.k]); }   /* 소화설비 → … → 기타 */
   else                          out.sort((a,b) => zc(a,b) || (+a.no||0)-(+b.no||0));
   return out;
 }
@@ -2235,9 +2238,14 @@ async function renderList(){
   const rows = current(), tb = $('#tbody');
   $('#tabCnt').textContent = inHalf().length;
   $('#listEmpty').hidden = rows.length > 0;
+  $('#listEmpty').querySelector('h3').textContent = S.sort === 'submit' ? '소방서 제출 대상으로 체크된 지적사항이 없습니다' : '표시할 지적사항이 없습니다';
+  $('#listEmpty').querySelector('p').innerHTML = S.sort === 'submit'
+    ? '항목을 열어 <b>「소방서 제출 대상」</b>에 체크하면 이 목록에 모입니다. 다른 필터가 걸려 있으면 <b>필터 해제</b>를 눌러 보세요.'
+    : '필터를 해제하거나, <b>점검표 업로드</b> 탭에서 점검업체가 작성한 엑셀 파일을 올려 주세요.';
+  $('#toUpload').hidden = S.sort === 'submit';
   $('#tableWrap').hidden = rows.length === 0;
   $('#listFoot').textContent = rows.length
-    ? `${rows.length}건 표시 · 전체 ${inHalf().length}건 (${HALF_LABEL[S.half]})` : '';
+    ? `${rows.length}건 표시${S.sort === 'submit' ? ' (소방서 제출 대상만)' : ''} · 전체 ${inHalf().length}건 (${HALF_LABEL[S.half]})` : '';
   $('#printHead').innerHTML = `원그로브 소방시설 법정점검 지적내역 · ${esc(HALF_LABEL[S.half])}
     <span>${rows.length}건 표시 / 전체 ${inHalf().length}건 · 출력일 ${new Date().toISOString().slice(0,10)}</span>`;
   $('.date-range')?.classList.toggle('on', !!(S.dFrom || S.dTo));
@@ -2707,7 +2715,7 @@ function applyRole(){
 function setRole(role){
   S.role = role;
   if (!isMgr()){
-    S.filters.handler.clear(); S.delSel.clear();
+    S.filters.handler.clear(); S.delSel.clear(); S.sort = 'def'; $('#sortSel').value = 'def';
     S.dFrom = S.dTo = ''; $('#dFrom').value = $('#dTo').value = '';
   }
   applyRole();
@@ -2809,7 +2817,10 @@ $('#halfSel').onchange = e => { S.half = e.target.value; Object.values(S.filters
 $('#adminBtn').onclick = () => S.role !== 'viewer'
   ? (setRole('viewer'), toast('보기 전용으로 돌아갑니다')) : askPin();
 $('#q').oninput = e => { S.q = e.target.value; renderList(); };
-$('#sortSel').onchange = e => { S.sort = e.target.value; renderList(); };
+$('#sortSel').onchange = e => {
+  if (e.target.value === 'submit' && !isMgr()){ e.target.value = S.sort; return toast('관리자 · 소방파트만 볼 수 있습니다', true); }
+  S.sort = e.target.value; renderList();
+};
 $('#resetFilter').onclick = () => {
   Object.values(S.filters).forEach(s => s.clear()); S.q = ''; $('#q').value = '';
   S.dFrom = S.dTo = ''; $('#dFrom').value = $('#dTo').value = '';
@@ -3915,6 +3926,13 @@ function subClass(r){
   return 'etc';
 }
 const subRows = () => inHalf().filter(r => r.submit);
+/* 상호명 / 구역 : 입주사명 + 구역상세. 구역상세에 이미 상호가 적혀 있으면(자동추정 건 대부분) 두 번 쓰지 않습니다 */
+function subPlace(r){
+  const t = String(r.tenant || '').trim(), loc = String(r.loc || '').trim();
+  if (!t) return loc;
+  const k = s => s.replace(/\s/g, '').toUpperCase();
+  return k(loc).includes(k(t)) ? loc : [t, loc].filter(Boolean).join(' ');
+}
 /* 설비 구분 → 시설구분 → 구역 → 동 → 층(높은 층부터) → 위치표기 · No. */
 function subGroups(rows){
   const gi = r => SUB_GRP.findIndex(x => x.k === subClass(r));
@@ -3950,6 +3968,8 @@ function openSub(){
   else {
     if (open) w.push(`조치완료가 아닌 건 ${open}건이 들어 있습니다 (엑셀 처리상태 칸에 그대로 표시됩니다).`);
     if (noAfter) w.push(`조치완료인데 조치후 사진이 없는 건 ${noAfter}건이 있습니다.`);
+    const guess = rows.filter(r => r.spaceGuess && r.tenant).length;
+    if (guess) w.push(`입주사명이 자동추정(미확정)인 건 ${guess}건이 「상호명 / 구역」에 그대로 들어갑니다. 확인 후 저장하세요.`);
   }
   m.innerHTML = `<h3>소방서 제출 엑셀 <small>${esc(HALF_LABEL[S.half])} · 제출 대상 ${rows.length}건</small></h3>
     <p>지적내역 상세에서 <b>「소방서 제출 대상」</b>으로 체크한 건만 모아
@@ -3994,7 +4014,7 @@ async function subExport(o, say){
   const ST_FILL = { '미조치':'FFFCE8C8', '진행중':'FFD6E9F7', '조치완료':'FFD9F0E3', '보류':'FFE6EAEE', '제외':'FFE6EAEE' };
   const wb = new ExcelJS.Workbook(); wb.creator = '원그로브 시설팀 소방파트'; wb.created = new Date();
 
-  const COLS = [['연번',5.5], ['시설구분 / 상세구분',15], ['동 · 층',9], ['구역',22], ['점검일자',11],
+  const COLS = [['연번',5.5], ['시설구분 / 상세구분',15], ['동 · 층',9], ['상호명 / 구역',22], ['점검일자',11],
     ['점검결과 문제점',34], ['개선대책',20], ['관련법규',18], ['처리상태',9], ['완료일',11],
     ...(o.photo ? [['문제점 사진',15], ['위치표기',15], ['조치후 사진',15]] : []),
     ...(o.note ? [['비고',16]] : [])];
@@ -4062,7 +4082,7 @@ async function subExport(o, say){
       const dg = dongOf(d) ? dongLabel(dongOf(d)) : '';
       /* 소화용수설비는 현황판이 소화활동설비로 합쳐 보관하므로, 이 구분에서는 원본 표기를 보여 줍니다 */
       const facTxt = (grp.k === 'water' && !SUB_WATER.test(d.fac || '')) ? (d.facRaw || '소화용수설비') : d.fac;
-      const vals = [++seq, [facTxt, d.detail].filter(Boolean).join(' · '), [dg, d.floor].filter(Boolean).join(' '), d.loc || '',
+      const vals = [++seq, [facTxt, d.detail].filter(Boolean).join(' · '), [dg, d.floor].filter(Boolean).join(' '), subPlace(d),
         d.date || '', d.problem || '', d.action || '', d.law || '', st, d.done || '',
         ...(o.photo ? ['', '', ''] : []), ...(o.note ? [d.note || ''] : [])];
       row.values = vals;
